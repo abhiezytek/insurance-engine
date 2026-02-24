@@ -1,102 +1,57 @@
-# API Documentation
+# API Documentation for Insurance Calculation Endpoints
 
-## Overview
-This is the API documentation for the Insurance Engine project. The purpose of this document is to provide comprehensive details on the API endpoints available in the Insurance Engine, including examples of requests and responses.
+## 1. Introduction
+- Overview of the insurance calculation system.
 
-## Base URL
-`https://api.insurance-engine.com/v1`
-
-## Endpoints
-
-### 1. Create Policy
-- **Endpoint**: `/policies`
-- **Method**: `POST`
-- **Request**:
-  - **Headers**:
-    - `Content-Type: application/json`
-  - **Body**:
+## 2. Traditional Benefit Calculation
+- **Endpoint:** `/api/traditional/calculate`
+- **Method:** POST
+- **Parameters:**
+  - `premium`: Number (Monthly premium)
+  - `term`: Number (Policy term in years)
+  - **Example Request:**
     ```json
     {
-      "customerId": "string",
-      "coverageType": "string",
-      "premium": number,
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD"
+      "premium": 1000,
+      "term": 10
     }
     ```
-- **Response**:
-  - **Status**: `201 Created`
-  - **Body**:
+  - **Example Response:**
     ```json
     {
-      "policyId": "string",
-      "status": "active"
+      "totalBenefit": 120000
     }
     ```
 
-### 2. Get Policy
-- **Endpoint**: `/policies/{policyId}`
-- **Method**: `GET`
-- **Request**:
-  - **Headers**:
-    - `Authorization: Bearer {token}`
-- **Response**:
-  - **Status**: `200 OK`
-  - **Body**:
+## 3. ULIP Benefit Calculation
+- **Endpoint:** `/api/ulip/calculate`
+- **Method:** POST
+- **Parameters:**
+  - `investmentAmount`: Number (Amount invested per month)
+  - `duration`: Number (Investment duration in years)
+  - **Example Request:**
     ```json
     {
-      "policyId": "string",
-      "customerId": "string",
-      "coverage": {
-        "type": "string",
-        "amount": number
-      },
-      "status": "string"
+      "investmentAmount": 5000,
+      "duration": 10
+    }
+    ```
+  - **Example Response:**
+    ```json
+    {
+      "totalInvestment": 600000,
+      "estimatedReturns": 800000
     }
     ```
 
-### 3. Update Policy
-- **Endpoint**: `/policies/{policyId}`
-- **Method**: `PUT`
-- **Request**:
-  - **Headers**:
-    - `Content-Type: application/json`
-  - **Body**:
-    ```json
-    {
-      "coverageType": "string",
-      "premium": number
-    }
-    ```
-- **Response**:
-  - **Status**: `200 OK`
-  - **Body**:
-    ```json
-    {
-      "message": "Policy updated successfully"
-    }
-    ```
+## 4. Formula Testing
+- Descriptive guide on how to test various formulas used for calculations.
 
-### 4. Delete Policy
-- **Endpoint**: `/policies/{policyId}`
-- **Method**: `DELETE`
-- **Response**:
-  - **Status**: `204 No Content`
+## 5. Parameter Management
+- Explanation of parameter handling and validation rules.
 
-## Authentication
-- Use Bearer Token for authentication in the headers of each request.
-
-## Error Handling
-- Common error responses are returned with appropriate HTTP status codes and a JSON body containing an error message.
-
-### Example Error:
-- **Status**: `404 Not Found`
-- **Body**:
-    ```json
-    {
-      "error": "Policy not found"
-    }
-    ```
-
-## Conclusion
-This API provides essential functionalities to manage insurance policies seamlessly. For further queries, please refer to the official support documentation or contact support.
+## 6. Audit Logs
+- Overview of how audit logs are maintained for transactions.
+  
+## 7. Conclusion
+- Summary and references to further documentation.
