@@ -6,6 +6,9 @@ namespace InsuranceEngine.Api.Services;
 
 public class BenefitCalculationService : IBenefitCalculationService
 {
+    /// <summary>Default GMB factor used when no matching factor row is found in the database.</summary>
+    private const decimal DefaultGmbFactor = 11.5m;
+
     private readonly InsuranceDbContext _db;
 
     public BenefitCalculationService(InsuranceDbContext db) => _db = db;
@@ -83,7 +86,8 @@ public class BenefitCalculationService : IBenefitCalculationService
 
             // SSV
             var (ssvF1, ssvF2) = LookupSsvFactors(py, ssvFactors);
-            var ssvIncomeComponent = Round(giBase * reductionRatio + li);
+            // income component: GI (already reduced) + LI (already reduced)
+            var ssvIncomeComponent = Round(gi + li);
             var ssv = Math.Max(0m, Round((ssvF1 / 100m) * paidUpGmb + (ssvF2 / 100m) * ssvIncomeComponent));
 
             // SV
@@ -146,7 +150,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        return 11.5m;
+        return DefaultGmbFactor;
     }
 
     private static decimal GetHighPremiumPct(decimal ap, string option)

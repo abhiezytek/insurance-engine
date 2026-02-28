@@ -73,8 +73,8 @@ public class BenefitCalculationTests
     [OneTimeTearDown]
     public void TearDown() => _db.Dispose();
 
-    private static BenefitIllustrationRequest ImmediateRequest(decimal ap = 50000m, int ppt = 7, int pt = 15, int age = 35, string channel = "Other") =>
-        new() { AnnualPremium = ap, Ppt = ppt, PolicyTerm = pt, EntryAge = age, Option = "Immediate", Channel = channel };
+    private static BenefitIllustrationRequest ImmediateRequest(decimal annualPremium = 50000m, int ppt = 7, int pt = 15, int age = 35, string channel = "Other") =>
+        new() { AnnualPremium = annualPremium, Ppt = ppt, PolicyTerm = pt, EntryAge = age, Option = "Immediate", Channel = channel };
 
     [Test]
     public async Task ImmediateIncome_SAD_Is10TimesAP()
