@@ -16,6 +16,11 @@ public class InsuranceDbContext : DbContext
     public DbSet<Condition> Conditions => Set<Condition>();
     public DbSet<ExcelUploadBatch> ExcelUploadBatches => Set<ExcelUploadBatch>();
     public DbSet<ExcelUploadRowError> ExcelUploadRowErrors => Set<ExcelUploadRowError>();
+    public DbSet<GmbFactor> GmbFactors => Set<GmbFactor>();
+    public DbSet<GsvFactor> GsvFactors => Set<GsvFactor>();
+    public DbSet<SsvFactor> SsvFactors => Set<SsvFactor>();
+    public DbSet<LoyaltyFactor> LoyaltyFactors => Set<LoyaltyFactor>();
+    public DbSet<DeferredIncomeFactor> DeferredIncomeFactors => Set<DeferredIncomeFactor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,5 +83,11 @@ public class InsuranceDbContext : DbContext
             e.HasKey(x => x.Id);
             e.HasOne(x => x.ExcelUploadBatch).WithMany(x => x.RowErrors).HasForeignKey(x => x.ExcelUploadBatchId);
         });
+
+        modelBuilder.Entity<GmbFactor>(e => e.HasKey(x => x.Id));
+        modelBuilder.Entity<GsvFactor>(e => e.HasKey(x => x.Id));
+        modelBuilder.Entity<SsvFactor>(e => e.HasKey(x => x.Id));
+        modelBuilder.Entity<LoyaltyFactor>(e => e.HasKey(x => x.Id));
+        modelBuilder.Entity<DeferredIncomeFactor>(e => e.HasKey(x => x.Id));
     }
 }
