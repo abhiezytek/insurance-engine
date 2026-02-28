@@ -66,7 +66,7 @@ public class CalculationIntegrationTests
         db.Products.Add(product);
         db.SaveChanges();
 
-        var version = new ProductVersion { ProductId = product.Id, Version = "1.0", IsActive = true, EffectiveDate = System.DateTime.UtcNow };
+        var version = new ProductVersion { ProductId = product.Id, Version = "1.0", IsActive = true, EffectiveDate = new DateTime(2024, 1, 1) };
         db.ProductVersions.Add(version);
         db.SaveChanges();
 

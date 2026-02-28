@@ -48,8 +48,8 @@ public class UploadController : ControllerBase
                 for (int i = 1; i < lines.Count; i++)
                 {
                     var row = lines[i].Split(',');
-                    var (ok, err) = await ProcessRow(uploadType, header, row, productVersionId, i + 1);
-                    if (ok) processedRows++; else { errorRows++; errors.Add(new ExcelUploadRowError { ExcelUploadBatchId = batch.Id, RowNumber = i + 1, ErrorMessage = err ?? "Unknown error" }); }
+                    var (success, error) = await ProcessRow(uploadType, header, row, productVersionId, i + 1);
+                    if (success) processedRows++; else { errorRows++; errors.Add(new ExcelUploadRowError { ExcelUploadBatchId = batch.Id, RowNumber = i + 1, ErrorMessage = error ?? "Unknown error" }); }
                 }
             }
             else
@@ -62,8 +62,8 @@ public class UploadController : ControllerBase
                 for (int row = 2; row <= (worksheet.Dimension?.Rows ?? 1); row++)
                 {
                     var rowData = Enumerable.Range(1, header.Length).Select(c => worksheet.Cells[row, c].Text.Trim()).ToArray();
-                    var (ok, err) = await ProcessRow(uploadType, header, rowData, productVersionId, row);
-                    if (ok) processedRows++; else { errorRows++; errors.Add(new ExcelUploadRowError { ExcelUploadBatchId = batch.Id, RowNumber = row, ErrorMessage = err ?? "Unknown error" }); }
+                    var (success, error) = await ProcessRow(uploadType, header, rowData, productVersionId, row);
+                    if (success) processedRows++; else { errorRows++; errors.Add(new ExcelUploadRowError { ExcelUploadBatchId = batch.Id, RowNumber = row, ErrorMessage = error ?? "Unknown error" }); }
                 }
             }
 
