@@ -1,21 +1,31 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Models;
+using InsuranceEngine.Api.Swagger;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 
 namespace InsuranceEngine.Api.Controllers;
 
+/// <summary>Bulk upload endpoints for importing data from Excel or CSV files.</summary>
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class UploadController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
 
     public UploadController(InsuranceDbContext db) => _db = db;
 
+    /// <summary>Upload an Excel (.xlsx) or CSV (.csv) file for bulk creation of parameters or formulas.</summary>
+    /// <param name="file">The file to upload (.xlsx or .csv).</param>
+    /// <param name="uploadType">Type of data: Parameters or Formulas.</param>
+    /// <param name="productVersionId">Target product version ID.</param>
     [HttpPost]
+    [SwaggerFileUpload]
     [RequestSizeLimit(10 * 1024 * 1024)] // 10MB
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string uploadType, [FromQuery] int productVersionId)
     {
         if (file == null || file.Length == 0)
@@ -128,7 +138,9 @@ public class UploadController : ControllerBase
         }
     }
 
+    /// <summary>List all upload batches with their row errors.</summary>
     [HttpGet("batches")]
+    [ProducesResponseType(typeof(IEnumerable<ExcelUploadBatch>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBatches()
     {
         return Ok(await _db.ExcelUploadBatches.Include(b => b.RowErrors).OrderByDescending(b => b.CreatedAt).ToListAsync());

@@ -1,7 +1,9 @@
+using System.Reflection;
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,7 +12,31 @@ builder.Services.AddControllers().AddJsonOptions(opts =>
     opts.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Insurance Engine API",
+        Version = "v1",
+        Description = "Dynamic formula-driven insurance calculation engine. " +
+                      "Supports product management, formula evaluation, condition rules, " +
+                      "traditional product calculations, and bulk Excel/CSV uploads.",
+        Contact = new OpenApiContact
+        {
+            Name = "Insurance Engine",
+            Url = new Uri("https://github.com/abhiezytek/insurance-engine")
+        }
+    });
+
+    // Include XML comments from the generated documentation file
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        c.IncludeXmlComments(xmlPath);
+
+    // Support multipart/form-data file uploads
+    c.OperationFilter<InsuranceEngine.Api.Swagger.FileUploadOperationFilter>();
+});
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Server=localhost;Database=InsuranceEngineDb;TrustServerCertificate=True;Integrated Security=True";
@@ -34,11 +60,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Swagger is available in all environments
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Insurance Engine API v1");
+    c.RoutePrefix = "swagger";
+    c.DocumentTitle = "Insurance Engine API";
+    c.DisplayRequestDuration();
+    c.EnableDeepLinking();
+});
 
 app.UseCors();
 app.MapControllers();

@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InsuranceEngine.Api.Controllers;
 
+/// <summary>Insurance benefit calculation endpoints.</summary>
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class CalculationController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
@@ -19,7 +21,28 @@ public class CalculationController : ControllerBase
         _formulaEngine = formulaEngine;
     }
 
+    /// <summary>Run a traditional product calculation.</summary>
+    /// <remarks>
+    /// Evaluates all formulas for the specified product version in execution order.
+    /// Formulas can reference input parameters and results of earlier formulas.
+    ///
+    /// **Sample request:**
+    /// ```json
+    /// {
+    ///   "productCode": "CENTURY_INCOME",
+    ///   "parameters": {
+    ///     "AP": 10000, "SA": 100000, "PPT": 10, "PT": 20,
+    ///     "Age": 35, "TotalPremiumPaid": 50000, "SurrenderValue": 40000
+    ///   }
+    /// }
+    /// ```
+    /// </remarks>
+    /// <param name="request">Product code, optional version, and input parameters.</param>
+    /// <returns>Computed formula results keyed by formula name.</returns>
     [HttpPost("traditional")]
+    [ProducesResponseType(typeof(TraditionalCalculationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TraditionalCalculationResponse>> Calculate([FromBody] TraditionalCalculationRequest request)
     {
         var product = await _db.Products
