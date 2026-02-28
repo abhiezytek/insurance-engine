@@ -13,3 +13,11 @@
 # Secrets
 appsettings.*.json
 !appsettings.Development.json
+
+# Node.js
+src/insurance-engine-ui/node_modules/
+src/insurance-engine-ui/dist/
+
+# Old test folder artifacts
+InsuranceEngine.Tests/bin/
+InsuranceEngine.Tests/obj/
