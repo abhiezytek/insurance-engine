@@ -63,3 +63,56 @@ export const uploadFile = (file: File, uploadType: string, productVersionId: num
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
+
+export interface UploadBatch {
+  id: number;
+  uploadType: string;
+  fileName: string;
+  totalRows: number;
+  processedRows: number;
+  errorRows: number;
+  uploadedAt: string;
+}
+
+export interface BenefitIllustrationRequest {
+  annualPremium: number;
+  ppt: number;
+  policyTerm: number;
+  entryAge: number;
+  option: 'Immediate' | 'Deferred' | 'Twin';
+  channel: 'Online' | 'StaffDirect' | 'Other';
+  premiumsPaid?: number;
+}
+
+export interface BenefitIllustrationRow {
+  policyYear: number;
+  annualPremium: number;
+  totalPremiumsPaid: number;
+  guaranteedIncome: number;
+  loyaltyIncome: number;
+  totalIncome: number;
+  cumulativeSurvivalBenefits: number;
+  gsv: number;
+  ssv: number;
+  surrenderValue: number;
+  deathBenefit: number;
+  maturityBenefit: number;
+  isPaidUp: boolean;
+}
+
+export interface BenefitIllustrationResult {
+  annualPremium: number;
+  ppt: number;
+  policyTerm: number;
+  entryAge: number;
+  option: string;
+  channel: string;
+  sumAssuredOnDeath: number;
+  guaranteedMaturityBenefit: number;
+  maxLoanAmount: number;
+  yearlyTable: BenefitIllustrationRow[];
+}
+
+export const getBatches = () => api.get<UploadBatch[]>('/api/upload/batches');
+export const runBenefitIllustration = (req: BenefitIllustrationRequest) =>
+  api.post<BenefitIllustrationResult>('/api/benefit-illustration/calculate', req);

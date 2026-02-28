@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BarChart3, AlertCircle } from 'lucide-react';
 import { getProducts, runCalculation } from '../api';
 import type { Product, CalculationResult } from '../api';
 
@@ -11,6 +12,8 @@ const DEFAULT_PARAMS: Record<string, number> = {
   TotalPremiumPaid: 50000,
   SurrenderValue: 40000,
 };
+
+const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 export default function Calculator() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,9 +30,7 @@ export default function Calculator() {
   }, []);
 
   const handleCalculate = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
+    setLoading(true); setError(null); setResult(null);
     try {
       const numParams = Object.fromEntries(
         Object.entries(params).map(([k, v]) => [k, parseFloat(v) || 0])
@@ -38,60 +39,116 @@ export default function Calculator() {
       setResult(resp.data);
     } catch (e: any) {
       setError(e.response?.data?.error || e.message || 'Calculation failed');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
-    <div>
-      <h2>Traditional Product Calculation</h2>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ fontWeight: 600 }}>Product: </label>
-        <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}
-          style={{ marginLeft: 8, padding: '4px 8px' }}>
-          {products.map(p => <option key={p.code} value={p.code}>{p.name} ({p.code})</option>)}
-          {products.length === 0 && <option value="CENTURY_INCOME">Century Income Plan (CENTURY_INCOME)</option>}
-        </select>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-[#004282]">
+          Traditional Product Calculation
+          <span className="block mt-1 w-12 h-1 rounded-full bg-[#007bff]" />
+        </h2>
+        <p className="mt-2 text-slate-500 text-sm">Evaluate all product formulas in execution order.</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        {Object.entries(params).map(([key, val]) => (
-          <div key={key}>
-            <label style={{ fontWeight: 500, display: 'block', marginBottom: 2 }}>{key}</label>
-            <input type="number" value={val}
-              onChange={e => setParams(prev => ({ ...prev, [key]: e.target.value }))}
-              style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid #ccc' }} />
-          </div>
-        ))}
-      </div>
-      <button onClick={handleCalculate} disabled={loading}
-        style={{ padding: '10px 24px', background: '#1a237e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 15 }}>
-        {loading ? 'Calculating...' : 'Calculate'}
-      </button>
-      {error && <div style={{ marginTop: 16, color: '#c62828', background: '#ffebee', padding: 12, borderRadius: 4 }}>{error}</div>}
-      {result && (
-        <div style={{ marginTop: 24 }}>
-          <h3>Results for {result.productCode} (v{result.version})</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#e8eaf6' }}>
-                <th style={{ padding: 10, textAlign: 'left', border: '1px solid #c5cae9' }}>Formula</th>
-                <th style={{ padding: 10, textAlign: 'right', border: '1px solid #c5cae9' }}>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(result.results).map(([name, value]) => (
-                <tr key={name}>
-                  <td style={{ padding: 10, border: '1px solid #e0e0e0', fontWeight: 600 }}>{name}</td>
-                  <td style={{ padding: 10, border: '1px solid #e0e0e0', textAlign: 'right' }}>
-                    {value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                  </td>
-                </tr>
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Input card */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-5">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Parameters</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Product</label>
+              <select
+                value={selectedProduct}
+                onChange={e => setSelectedProduct(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]"
+              >
+                {products.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                {products.length === 0 && <option value="CENTURY_INCOME">Century Income Plan</option>}
+              </select>
+            </div>
+
+            <div className="space-y-4">
+              {Object.entries(params).map(([key, val]) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">{key}</label>
+                  <input
+                    type="number"
+                    value={val}
+                    onChange={e => setParams(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]"
+                  />
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <button
+              onClick={handleCalculate}
+              disabled={loading}
+              className="w-full py-3 bg-[#004282] text-white rounded-xl font-semibold text-sm
+                         hover:bg-[#003370] disabled:opacity-50 transition-colors
+                         flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <BarChart3 size={16} />
+              )}
+              {loading ? 'Calculating…' : 'Run Calculation'}
+            </button>
+
+            {error && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Results card */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-base font-bold text-[#004282]">
+                {result ? `Results — ${result.productCode} v${result.version}` : 'Calculation Results'}
+                <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
+              </h3>
+            </div>
+            {!result && !loading && (
+              <div className="px-6 py-16 text-center text-slate-400 text-sm">
+                Enter parameters and click <strong>Run Calculation</strong> to see results.
+              </div>
+            )}
+            {result && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-blue-50/50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left">Formula</th>
+                      <th className="px-6 py-3 text-right">Value (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {Object.entries(result.results).map(([name, value]) => (
+                      <tr key={name} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3 font-semibold text-slate-700">{name}</td>
+                        <td className="px-6 py-3 text-right font-mono text-[#004282] font-bold text-base">
+                          {INR(value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
