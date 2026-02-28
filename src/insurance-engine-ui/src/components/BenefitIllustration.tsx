@@ -26,7 +26,10 @@ export default function BenefitIllustration() {
       const resp = await runBenefitIllustration(form);
       setResult(resp.data);
     } catch (e: any) {
-      setError(e.response?.data || e.message || 'Calculation failed');
+      const msg = e.response?.data || e.message;
+      setError(typeof msg === 'string' && msg
+        ? msg
+        : 'Unable to generate illustration. Please verify all fields are valid and try again.');
     } finally { setLoading(false); }
   };
 
@@ -61,7 +64,10 @@ export default function BenefitIllustration() {
                 <input
                   type="number"
                   value={form[f.key] ?? ''}
-                  onChange={e => set(f.key, e.target.value ? parseFloat(e.target.value) : undefined)}
+                  onChange={e => {
+                    const parsed = parseFloat(e.target.value);
+                    set(f.key, e.target.value === '' || isNaN(parsed) ? undefined : parsed);
+                  }}
                   placeholder={f.key === 'premiumsPaid' ? 'Leave blank if fully paid' : undefined}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]
@@ -116,7 +122,7 @@ export default function BenefitIllustration() {
             {error && (
               <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
                 <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-                <span>{typeof error === 'string' ? error : 'Calculation failed'}</span>
+                <span>{error}</span>
               </div>
             )}
           </div>
