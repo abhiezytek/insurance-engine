@@ -116,3 +116,91 @@ export interface BenefitIllustrationResult {
 export const getBatches = () => api.get<UploadBatch[]>('/api/upload/batches');
 export const runBenefitIllustration = (req: BenefitIllustrationRequest) =>
   api.post<BenefitIllustrationResult>('/api/benefit-illustration/calculate', req);
+
+// ---------------------------------------------------------------------------
+// ULIP — Unit Linked Insurance Plan
+// ---------------------------------------------------------------------------
+
+export interface UlipFundAllocation {
+  fundType: string;
+  allocationPercent: number;
+}
+
+export interface UlipCalculationRequest {
+  policyNumber: string;
+  customerName: string;
+  productCode: string;
+  gender: 'Male' | 'Female';
+  dateOfBirth: string;        // ISO date string
+  entryAge: number;
+  policyTerm: number;
+  ppt: number;
+  annualizedPremium: number;
+  sumAssured: number;
+  premiumFrequency: 'Yearly' | 'HalfYearly' | 'Quarterly' | 'Monthly';
+  fundAllocations: UlipFundAllocation[];
+}
+
+export interface UlipIllustrationRow {
+  year: number;
+  age: number;
+  annualPremium: number;
+  premiumInvested: number;
+  mortalityCharge: number;
+  policyCharge: number;
+  fundValue4: number;
+  deathBenefit4: number;
+  fundValue8: number;
+  deathBenefit8: number;
+}
+
+export interface UlipCalculationResult {
+  policyNumber: string;
+  customerName: string;
+  productCode: string;
+  productName: string;
+  gender: string;
+  entryAge: number;
+  policyTerm: number;
+  ppt: number;
+  annualizedPremium: number;
+  sumAssured: number;
+  premiumFrequency: string;
+  maturityBenefit4: number;
+  maturityBenefit8: number;
+  irdaiDisclaimer: string;
+  yearlyTable: UlipIllustrationRow[];
+}
+
+export interface UlipProduct {
+  id: number;
+  code: string;
+  name: string;
+  productType: string;
+}
+
+export const getUlipProducts = () =>
+  api.get<UlipProduct[]>('/api/ulip/products');
+
+export const runUlipCalculation = (req: UlipCalculationRequest) =>
+  api.post<UlipCalculationResult>('/api/ulip/calculate', req);
+
+export const getUlipIllustration = (policyNumber: string) =>
+  api.get<UlipCalculationResult>(`/api/ulip/illustration/${encodeURIComponent(policyNumber)}`);
+
+export const uploadUlipMortality = (file: File, gender: string = 'Male') => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post(`/api/ulip/upload-mortality?gender=${gender}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
+export const uploadUlipCharges = (file: File, productCode: string = 'EWEALTH-ROYALE') => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post(`/api/ulip/upload-charges?productCode=${productCode}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+

@@ -21,6 +21,9 @@ public class InsuranceDbContext : DbContext
     public DbSet<SsvFactor> SsvFactors => Set<SsvFactor>();
     public DbSet<LoyaltyFactor> LoyaltyFactors => Set<LoyaltyFactor>();
     public DbSet<DeferredIncomeFactor> DeferredIncomeFactors => Set<DeferredIncomeFactor>();
+    public DbSet<MortalityRate> MortalityRates => Set<MortalityRate>();
+    public DbSet<UlipCharge> UlipCharges => Set<UlipCharge>();
+    public DbSet<UlipIllustrationResult> UlipIllustrationResults => Set<UlipIllustrationResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,5 +92,26 @@ public class InsuranceDbContext : DbContext
         modelBuilder.Entity<SsvFactor>(e => e.HasKey(x => x.Id));
         modelBuilder.Entity<LoyaltyFactor>(e => e.HasKey(x => x.Id));
         modelBuilder.Entity<DeferredIncomeFactor>(e => e.HasKey(x => x.Id));
+
+        modelBuilder.Entity<MortalityRate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Gender).HasMaxLength(10);
+        });
+
+        modelBuilder.Entity<UlipCharge>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ChargeType).HasMaxLength(100).IsRequired();
+            e.Property(x => x.ChargeFrequency).HasMaxLength(50).IsRequired();
+            e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+        });
+
+        modelBuilder.Entity<UlipIllustrationResult>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PolicyNumber).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => x.PolicyNumber);
+        });
     }
 }

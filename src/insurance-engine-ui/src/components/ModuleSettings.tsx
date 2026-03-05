@@ -93,6 +93,7 @@ function ModuleRow({ id, label, description, enabled, userToggleable, onToggle }
   const colorMap: Record<ModuleId, string> = {
     bi:       'bg-indigo-100 text-indigo-600',
     ypyg:     'bg-emerald-100 text-emerald-600',
+    ulip:     'bg-violet-100 text-violet-600',
     products: 'bg-amber-100 text-amber-600',
     upload:   'bg-blue-100 text-blue-600',
     audit:    'bg-rose-100 text-rose-600',
@@ -101,6 +102,7 @@ function ModuleRow({ id, label, description, enabled, userToggleable, onToggle }
   const abbreviationMap: Record<ModuleId, string> = {
     bi:       'BI',
     ypyg:     'YG',
+    ulip:     'UL',
     products: 'PF',
     upload:   'UP',
     audit:    'AL',

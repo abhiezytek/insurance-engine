@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 
-export type ModuleId = 'bi' | 'ypyg' | 'products' | 'upload' | 'audit';
+export type ModuleId = 'bi' | 'ypyg' | 'ulip' | 'products' | 'upload' | 'audit';
 
 export interface ModuleDefinition {
   id: ModuleId;
@@ -43,7 +43,7 @@ function getEnvAllowlist(): Set<ModuleId> | null {
 /** Collect modules that are hard-disabled via  VITE_MODULE_<ID>=false|0. */
 function getEnvForcedDisabled(): Set<ModuleId> {
   const disabled = new Set<ModuleId>();
-  const ALL_IDS: ModuleId[] = ['bi', 'ypyg', 'products', 'upload', 'audit'];
+  const ALL_IDS: ModuleId[] = ['bi', 'ypyg', 'ulip', 'products', 'upload', 'audit'];
   for (const id of ALL_IDS) {
     const key = `VITE_MODULE_${id.toUpperCase()}`;
     const val = (import.meta.env as Record<string, string>)[key];
@@ -81,6 +81,12 @@ const MODULE_META: { id: ModuleId; label: string; description: string }[] = [
     label: 'YPYG',
     description:
       'You Pay You Get — formula-driven calculation engine showing policy benefit outputs.',
+  },
+  {
+    id: 'ulip',
+    label: 'ULIP Illustration',
+    description:
+      'Unit Linked Insurance Plan — IRDAI-compliant benefit illustration at 4% and 8% assumed returns.',
   },
   {
     id: 'products',

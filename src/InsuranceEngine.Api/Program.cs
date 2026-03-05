@@ -47,6 +47,7 @@ builder.Services.AddDbContext<InsuranceDbContext>(options =>
 builder.Services.AddScoped<FormulaEngine>();
 builder.Services.AddScoped<ConditionEvaluator>();
 builder.Services.AddScoped<IBenefitCalculationService, BenefitCalculationService>();
+builder.Services.AddScoped<IUlipCalculationService, UlipCalculationService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<InsuranceDbContext>("database");

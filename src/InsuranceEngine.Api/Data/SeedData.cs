@@ -236,5 +236,73 @@ public static class SeedData
             );
             await context.SaveChangesAsync();
         }
+
+        // Seed ULIP product and default data
+        await SeedUlipAsync(context);
+    }
+
+    private static async Task SeedUlipAsync(InsuranceDbContext context)
+    {
+        // Only seed once
+        if (await context.Products.AnyAsync(p => p.ProductType == "ULIP")) return;
+
+        // Re-use the first insurer
+        var insurer = await context.Insurers.FirstAsync();
+
+        var ulipProduct = new Product
+        {
+            InsurerId   = insurer.Id,
+            Name        = "e-Wealth Royale",
+            Code        = "EWEALTH-ROYALE",
+            ProductType = "ULIP",
+        };
+        context.Products.Add(ulipProduct);
+        await context.SaveChangesAsync();
+
+        // Default ULIP charges for e-Wealth Royale
+        context.UlipCharges.AddRange(
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PremiumAllocation", ChargeValue = 5.0m,  ChargeFrequency = "PercentOfPremium" },
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "FMC",               ChargeValue = 1.35m, ChargeFrequency = "PercentOfFund"    },
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PolicyAdmin",        ChargeValue = 1200m, ChargeFrequency = "Annual"           }
+        );
+        await context.SaveChangesAsync();
+
+        // Default Indian LIC-based mortality rates for both genders
+        if (!await context.MortalityRates.AnyAsync())
+        {
+            var maleRates = new (int Age, decimal Rate)[]
+            {
+                (18, 0.72m), (19, 0.74m), (20, 0.78m), (21, 0.80m), (22, 0.82m),
+                (23, 0.84m), (24, 0.87m), (25, 0.90m), (26, 0.93m), (27, 0.96m),
+                (28, 1.00m), (29, 1.05m), (30, 1.10m), (31, 1.15m), (32, 1.20m),
+                (33, 1.25m), (34, 1.30m), (35, 1.35m), (36, 1.42m), (37, 1.50m),
+                (38, 1.60m), (39, 1.70m), (40, 1.79m), (41, 1.95m), (42, 2.10m),
+                (43, 2.25m), (44, 2.38m), (45, 2.50m), (46, 2.70m), (47, 2.90m),
+                (48, 3.10m), (49, 3.32m), (50, 3.55m), (51, 3.85m), (52, 4.15m),
+                (53, 4.50m), (54, 4.84m), (55, 5.20m), (56, 5.65m), (57, 6.12m),
+                (58, 6.62m), (59, 7.13m), (60, 7.65m), (61, 8.35m), (62, 9.05m),
+                (63, 9.85m), (64, 10.55m),(65, 11.25m),
+            };
+            var femaleRates = new (int Age, decimal Rate)[]
+            {
+                (18, 0.55m), (19, 0.57m), (20, 0.60m), (21, 0.62m), (22, 0.64m),
+                (23, 0.66m), (24, 0.68m), (25, 0.71m), (26, 0.74m), (27, 0.77m),
+                (28, 0.80m), (29, 0.84m), (30, 0.88m), (31, 0.92m), (32, 0.96m),
+                (33, 1.00m), (34, 1.04m), (35, 1.08m), (36, 1.14m), (37, 1.20m),
+                (38, 1.28m), (39, 1.36m), (40, 1.43m), (41, 1.56m), (42, 1.68m),
+                (43, 1.80m), (44, 1.90m), (45, 2.00m), (46, 2.16m), (47, 2.32m),
+                (48, 2.48m), (49, 2.66m), (50, 2.84m), (51, 3.08m), (52, 3.32m),
+                (53, 3.60m), (54, 3.87m), (55, 4.16m), (56, 4.52m), (57, 4.90m),
+                (58, 5.30m), (59, 5.70m), (60, 6.12m), (61, 6.68m), (62, 7.24m),
+                (63, 7.88m), (64, 8.44m), (65, 9.00m),
+            };
+
+            var effDate = new DateTime(2024, 1, 1);
+            context.MortalityRates.AddRange(
+                maleRates.Select(x   => new MortalityRate { Age = x.Age, Rate = x.Rate, Gender = "Male",   EffectiveDate = effDate }));
+            context.MortalityRates.AddRange(
+                femaleRates.Select(x => new MortalityRate { Age = x.Age, Rate = x.Rate, Gender = "Female", EffectiveDate = effDate }));
+            await context.SaveChangesAsync();
+        }
     }
 }

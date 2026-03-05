@@ -6,12 +6,14 @@ import {
   TrendingUp,
   ClipboardList,
   Settings,
+  LineChart,
 } from 'lucide-react';
 import Calculator from './components/Calculator';
 import Products from './components/Products';
 import Upload from './components/Upload';
 import BenefitIllustration from './components/BenefitIllustration';
 import AuditLog from './components/AuditLog';
+import UlipIllustration from './components/UlipIllustration';
 import ModuleSettings from './components/ModuleSettings';
 import { ModuleProvider, useModules, type ModuleId } from './context/ModuleContext';
 
@@ -21,6 +23,7 @@ import { ModuleProvider, useModules, type ModuleId } from './context/ModuleConte
 const MODULE_ICONS: Record<ModuleId, React.ReactNode> = {
   bi:       <TrendingUp size={16} />,
   ypyg:     <BarChart3 size={16} />,
+  ulip:     <LineChart size={16} />,
   products: <Package size={16} />,
   upload:   <UploadIcon size={16} />,
   audit:    <ClipboardList size={16} />,
@@ -131,6 +134,7 @@ function AppInner() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'bi'       && <BenefitIllustration />}
         {activeTab === 'ypyg'     && <Calculator />}
+        {activeTab === 'ulip'     && <UlipIllustration />}
         {activeTab === 'products' && <Products />}
         {activeTab === 'upload'   && <Upload />}
         {activeTab === 'audit'    && <AuditLog />}
