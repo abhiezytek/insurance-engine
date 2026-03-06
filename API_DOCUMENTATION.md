@@ -1,39 +1,92 @@
-# API Documentation for Insurance Engine
+# API Documentation for Insurance Benefit Calculation Endpoints
 
 ## Introduction
-This documentation provides a comprehensive overview of the API endpoints available in the Insurance Engine repository, including request/response examples, authentication requirements, error codes, and rate limiting details.
+This API provides access to insurance benefit calculation services for both traditional and ULIP (Unit Linked Insurance Plan) policies.
 
-## Authentication
-- **Method**: API Key
-- **Header**: `Authorization: Bearer YOUR_API_KEY`
+## Endpoints
 
-## Rate Limiting
-The API allows for a maximum of 100 requests per minute. Exceeding this limit will result in a rate limit error.
+### Traditional Calculation Endpoint
+- **URL**: `/api/v1/benefits/traditional`
+- **Method**: `POST`
 
-## Endpoints Overview
-### 1. Endpoint Name
-**URL**: `/api/endpoint`
-- **Method**: GET
-- **Description**: Retrieves data from the specified endpoint.
-
-### Request Example
+**Request Example**:
 ```json
 {
-    "exampleKey": "exampleValue"
+  "policy_id": "123456",
+  "age": 30,
+  "premium": 5000
 }
 ```
 
-### Response Example
+**Response Example**:
 ```json
 {
-    "data": "exampleData"
+  "benefit_amount": 100000,
+  "status": "success"
 }
 ```
 
-### Error Codes
-- **400**: Bad Request - Invalid request parameters.
-- **401**: Unauthorized - Invalid API key.
-- **429**: Too Many Requests - Rate limit exceeded.
+---
 
-## Additional Endpoints
-(Add more endpoints similarly)
+### ULIP Calculation Endpoint
+- **URL**: `/api/v1/benefits/ulip`
+- **Method**: `POST`
+
+**Request Example**:
+```json
+{
+  "policy_id": "654321",
+  "age": 35,
+  "investment": 10000,
+  "term": 15
+}
+```
+
+**Response Example**:
+```json
+{
+  "net_value": 150000,
+  "status": "success"
+}
+```
+
+---
+
+## Formula Testing
+- **Traditional Calculation Formula**: Formula description here.
+- **ULIP Calculation Formula**: Formula description here.
+
+### Example test cases and expected results
+
+---
+
+## Parameter Validation
+- **Required Parameters**:
+  - `policy_id`
+  - `age`
+- **Optional Parameters** for ULIP:
+  - `investment`
+  - `term`
+
+### Error Handling Responses for Invalid Parameters
+- Example for missing parameter:
+```json
+{
+  "error": "Missing required parameter: age"
+}
+```
+
+---
+
+## Audit Logs
+The API logs all calls made for monitoring and auditing purposes.
+
+### Example Log Entries
+```
+2026-02-24 16:38:09 API Call: /api/v1/benefits/traditional, User: abhiezytek, Parameters: {policy_id: "123456", age: 30, premium: 5000}, Response: {benefit_amount: 100000, status: "success"}
+```
+
+---
+
+## Conclusion
+This API allows for comprehensive insurance benefit calculations, with detailed logging for audit purposes. For more information, please contact support.
