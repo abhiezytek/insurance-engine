@@ -1,169 +1,257 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-  BarChart3,
-  Upload as UploadIcon,
-  Package,
+  LayoutDashboard,
   TrendingUp,
-  ClipboardList,
-  Settings,
-  LineChart,
+  BarChart3,
+  ClipboardCheck,
+  Package,
+  LogOut,
+  ShieldCheck,
+  ChevronDown,
 } from 'lucide-react';
-import Calculator from './components/Calculator';
-import Products from './components/Products';
-import Upload from './components/Upload';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginPage from './components/LoginPage';
+import Dashboard from './components/Dashboard';
 import BenefitIllustration from './components/BenefitIllustration';
-import AuditLog from './components/AuditLog';
 import UlipIllustration from './components/UlipIllustration';
-import ModuleSettings from './components/ModuleSettings';
-import { ModuleProvider, useModules, type ModuleId } from './context/ModuleContext';
+import YpygModule from './components/YpygModule';
+import AuditModule from './components/AuditModule';
+import Products from './components/Products';
 
 // ---------------------------------------------------------------------------
-// Icon map — one icon per module ID
+// View IDs
 // ---------------------------------------------------------------------------
-const MODULE_ICONS: Record<ModuleId, React.ReactNode> = {
-  bi:       <TrendingUp size={16} />,
-  ypyg:     <BarChart3 size={16} />,
-  ulip:     <LineChart size={16} />,
-  products: <Package size={16} />,
-  upload:   <UploadIcon size={16} />,
-  audit:    <ClipboardList size={16} />,
-};
+type ViewId =
+  | 'dashboard'
+  | 'bi-century'
+  | 'bi-ulip'
+  | 'ypyg-policy'
+  | 'ypyg-input'
+  | 'audit-payout'
+  | 'audit-bonus'
+  | 'masters';
 
 // ---------------------------------------------------------------------------
-// Inner app — consumes ModuleContext
+// Dropdown nav item
 // ---------------------------------------------------------------------------
-function AppInner() {
-  const { enabledModules } = useModules();
-  const [activeTab, setActiveTab] = useState<ModuleId | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+interface DropdownItem {
+  id: ViewId;
+  label: string;
+}
 
-  // Keep activeTab pointing at a visible, enabled tab
+interface NavItem {
+  id: ViewId | string;          // group id (not a view) or leaf view id
+  label: string;
+  icon: React.ReactNode;
+  children?: DropdownItem[];    // if present → dropdown
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={15} /> },
+  {
+    id: 'bi',
+    label: 'Benefit Illustration',
+    icon: <TrendingUp size={15} />,
+    children: [
+      { id: 'bi-century', label: 'Century Income' },
+      { id: 'bi-ulip',    label: 'ULIP' },
+    ],
+  },
+  {
+    id: 'ypyg',
+    label: 'YPYG',
+    icon: <BarChart3 size={15} />,
+    children: [
+      { id: 'ypyg-policy', label: 'Policy Number' },
+      { id: 'ypyg-input',  label: 'Input Value' },
+    ],
+  },
+  {
+    id: 'audit',
+    label: 'Audit',
+    icon: <ClipboardCheck size={15} />,
+    children: [
+      { id: 'audit-payout', label: 'Payout Verification' },
+      { id: 'audit-bonus',  label: 'Addition / Bonus' },
+    ],
+  },
+  { id: 'masters', label: 'Masters', icon: <Package size={15} /> },
+];
+
+// ---------------------------------------------------------------------------
+// Dropdown component
+// ---------------------------------------------------------------------------
+function NavDropdown({
+  item,
+  activeView,
+  onSelect,
+}: {
+  item: NavItem;
+  activeView: ViewId;
+  onSelect: (id: ViewId) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = item.children?.some(c => c.id === activeView) ?? false;
+
+  // Close on outside click
   useEffect(() => {
-    const ids = enabledModules.map(m => m.id);
-    if (ids.length === 0) {
-      setActiveTab(null);
-      return;
-    }
-    // If current tab is still enabled, keep it
-    if (activeTab && ids.includes(activeTab)) return;
-    // Otherwise default to first enabled module
-    setActiveTab(ids[0]);
-  }, [enabledModules, activeTab]);
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* ------------------------------------------------------------------ */}
-      {/* Top header                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <header className="bg-[#004282] text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-[#004282] font-extrabold text-sm">SI</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight">SUD Life Insurance Engine</h1>
-              <p className="text-blue-200 text-xs">Century Income — Benefit Illustration System</p>
-            </div>
-          </div>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`
+          flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
+          whitespace-nowrap transition-all duration-200 select-none
+          ${isActive
+            ? 'bg-[#004282] text-white shadow-md'
+            : 'bg-white text-[#004282] border border-[#004282] hover:bg-blue-50'}
+        `}
+      >
+        {item.icon}
+        {item.label}
+        <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
 
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-white/10
-                             text-blue-100 text-xs font-medium border border-white/20">
-              Non-Linked · Non-Participating · Savings
-            </span>
-
-            {/* Module settings gear */}
+      {open && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 min-w-[170px] overflow-hidden">
+          {item.children!.map(child => (
             <button
-              onClick={() => setSettingsOpen(true)}
-              title="Module Settings"
-              aria-label="Open module settings"
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+              key={child.id}
+              onClick={() => { onSelect(child.id); setOpen(false); }}
+              className={`
+                w-full text-left px-4 py-2.5 text-sm transition-colors
+                ${activeView === child.id
+                  ? 'bg-[#004282] text-white font-semibold'
+                  : 'hover:bg-blue-50 text-slate-700'}
+              `}
             >
-              <Settings size={18} />
+              {child.label}
             </button>
-          </div>
+          ))}
         </div>
-        {/* Red→Navy gradient accent bar */}
-        <div className="h-1" style={{ background: 'linear-gradient(to right, #d32f2f 40%, #004282 100%)' }} />
-      </header>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Navigation — only enabled modules                                   */}
-      {/* ------------------------------------------------------------------ */}
-      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6">
-          {enabledModules.length > 0 ? (
-            <div className="flex gap-2 py-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {enabledModules.map(mod => (
-                <button
-                  key={mod.id}
-                  onClick={() => setActiveTab(mod.id)}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
-                    whitespace-nowrap transition-all duration-200 select-none
-                    ${activeTab === mod.id
-                      ? 'bg-[#004282] text-white shadow-md'
-                      : 'bg-white text-[#004282] border border-[#004282] hover:bg-blue-50'
-                    }
-                  `}
-                >
-                  {MODULE_ICONS[mod.id]}
-                  {mod.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="py-4 text-center text-sm text-slate-400">
-              All modules are disabled.{' '}
-              <button
-                onClick={() => setSettingsOpen(true)}
-                className="text-[#007bff] underline"
-              >
-                Open Module Settings
-              </button>{' '}
-              to enable one.
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Page content                                                        */}
-      {/* ------------------------------------------------------------------ */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {activeTab === 'bi'       && <BenefitIllustration />}
-        {activeTab === 'ypyg'     && <Calculator />}
-        {activeTab === 'ulip'     && <UlipIllustration />}
-        {activeTab === 'products' && <Products />}
-        {activeTab === 'upload'   && <Upload />}
-        {activeTab === 'audit'    && <AuditLog />}
-        {activeTab === null && enabledModules.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-32 text-slate-400 space-y-4">
-            <Settings size={48} className="text-slate-200" />
-            <p className="text-lg font-semibold">No modules enabled</p>
-            <p className="text-sm">Use the ⚙ settings button in the header to enable modules.</p>
-          </div>
-        )}
-      </main>
-
-      <footer className="border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} SUD Life Insurance Engine · All calculations are illustrative only
-      </footer>
-
-      {/* Module settings drawer */}
-      <ModuleSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Root export — wraps with ModuleProvider
+// Main app (requires auth)
 // ---------------------------------------------------------------------------
+function AppInner() {
+  const { user, logout } = useAuth();
+  const [activeView, setActiveView] = useState<ViewId>('dashboard');
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* ── Header ── */}
+      <header className="bg-[#004282] text-white">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow">
+              <ShieldCheck size={20} className="text-[#004282]" />
+            </div>
+            <div>
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight">PrecisionPro</h1>
+              <p className="text-blue-200 text-xs">Precision-driven Insurance Calculations</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-white/10
+                             text-blue-100 text-xs font-medium border border-white/20">
+              {user?.username} · {user?.role}
+            </span>
+            <button
+              onClick={logout}
+              title="Logout"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10
+                         hover:bg-white/20 text-white text-xs font-semibold transition"
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </div>
+        </div>
+        {/* Red→Navy accent bar */}
+        <div className="h-1" style={{ background: 'linear-gradient(to right, #d32f2f 40%, #004282 100%)' }} />
+      </header>
+
+      {/* ── Navigation ── */}
+      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-2 py-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {NAV_ITEMS.map(item => {
+              if (item.children) {
+                return (
+                  <NavDropdown
+                    key={item.id}
+                    item={item}
+                    activeView={activeView}
+                    onSelect={setActiveView}
+                  />
+                );
+              }
+              const viewId = item.id as ViewId;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(viewId)}
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
+                    whitespace-nowrap transition-all duration-200 select-none
+                    ${activeView === viewId
+                      ? 'bg-[#004282] text-white shadow-md'
+                      : 'bg-white text-[#004282] border border-[#004282] hover:bg-blue-50'}
+                  `}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Page content ── */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {activeView === 'dashboard'     && <Dashboard />}
+        {activeView === 'bi-century'    && <BenefitIllustration />}
+        {activeView === 'bi-ulip'       && <UlipIllustration />}
+        {activeView === 'ypyg-policy'   && <YpygModule mode="policy-number" />}
+        {activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
+        {activeView === 'audit-payout'  && <AuditModule sub="payout-verification" />}
+        {activeView === 'audit-bonus'   && <AuditModule sub="addition-bonus" />}
+        {activeView === 'masters'       && <Products />}
+      </main>
+
+      <footer className="border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">
+        © {new Date().getFullYear()} PrecisionPro · All calculations are illustrative only
+      </footer>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Root — login gate
+// ---------------------------------------------------------------------------
+function AppWithAuth() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <AppInner /> : <LoginPage />;
+}
+
 export default function App() {
   return (
-    <ModuleProvider>
-      <AppInner />
-    </ModuleProvider>
+    <AuthProvider>
+      <AppWithAuth />
+    </AuthProvider>
   );
 }

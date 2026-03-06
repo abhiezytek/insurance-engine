@@ -24,6 +24,8 @@ public class InsuranceDbContext : DbContext
     public DbSet<MortalityRate> MortalityRates => Set<MortalityRate>();
     public DbSet<UlipCharge> UlipCharges => Set<UlipCharge>();
     public DbSet<UlipIllustrationResult> UlipIllustrationResults => Set<UlipIllustrationResult>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<CalculationLog> CalculationLogs => Set<CalculationLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -112,6 +114,23 @@ public class InsuranceDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.PolicyNumber).HasMaxLength(100).IsRequired();
             e.HasIndex(x => x.PolicyNumber);
+        });
+
+        modelBuilder.Entity<AppUser>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Username).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => x.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<CalculationLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Module).HasMaxLength(100);
+            e.Property(x => x.ProductType).HasMaxLength(100);
+            e.Property(x => x.PolicyNumber).HasMaxLength(100);
+            e.Property(x => x.RequestedBy).HasMaxLength(200);
+            e.Property(x => x.Status).HasMaxLength(50);
         });
     }
 }
