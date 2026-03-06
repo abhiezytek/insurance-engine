@@ -51,7 +51,9 @@ public class AuthController : ControllerBase
 
     private string GenerateJwtToken(string username, string role)
     {
-        var key = _config["Jwt:Key"] ?? "PrecisionProDefaultSecretKey2026!";
+        var key = _config["Jwt:Key"]
+            ?? throw new InvalidOperationException(
+                "JWT key is not configured. Set Jwt:Key in appsettings or environment variables.");
         var issuer = _config["Jwt:Issuer"] ?? "PrecisionPro";
         var audience = _config["Jwt:Audience"] ?? "PrecisionProUsers";
 

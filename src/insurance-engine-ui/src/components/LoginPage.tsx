@@ -131,12 +131,14 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Demo hint */}
+          {/* Demo hint — only shown in development */}
+          {import.meta.env.DEV && (
           <div className="px-8 pb-7">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-slate-500 text-center">
               Demo credentials: <span className="font-semibold text-[#004282]">admin</span> / <span className="font-semibold text-[#004282]">admin123</span>
             </div>
           </div>
+          )}
         </div>
 
         <p className="text-center text-blue-200/60 text-xs mt-6">

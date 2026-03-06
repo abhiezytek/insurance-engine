@@ -20,6 +20,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const STORAGE_KEY = 'precision_pro_auth';
+// Note: localStorage is used here for SPA convenience. In a production environment with
+// stricter XSS requirements, consider migrating to httpOnly cookies via a BFF (Backend For Frontend).
 
 function loadStoredAuth(): AuthUser | null {
   try {

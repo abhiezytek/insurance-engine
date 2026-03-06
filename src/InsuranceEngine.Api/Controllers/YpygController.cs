@@ -111,7 +111,7 @@ public class YpygController : ControllerBase
             }).ToList()
         };
 
-        // Log the calculation
+        // Log the calculation (only non-sensitive summary fields)
         try
         {
             _db.CalculationLogs.Add(new Models.CalculationLog
@@ -119,7 +119,7 @@ public class YpygController : ControllerBase
                 Module = "YPYG",
                 ProductType = req.ProductCode,
                 PolicyNumber = req.PolicyNumber,
-                InputJson = System.Text.Json.JsonSerializer.Serialize(req),
+                InputJson = $"{{\"annualPremium\":{req.AnnualPremium},\"policyTerm\":{req.PolicyTerm},\"ppt\":{req.PremiumPayingTerm}}}",
                 ResultJson = $"{{\"maturityValue\":{response.MaturityValue},\"surrenderValue\":{response.SurrenderValue}}}",
                 RequestedBy = User.Identity?.Name ?? "Anonymous",
                 Status = "Completed"
