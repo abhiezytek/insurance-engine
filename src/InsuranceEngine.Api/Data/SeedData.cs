@@ -1,3 +1,4 @@
+using InsuranceEngine.Api.Controllers;
 using InsuranceEngine.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,19 @@ public static class SeedData
 {
     public static async Task SeedAsync(InsuranceDbContext context)
     {
+        // Seed default admin user (independent of insurer seed guard)
+        if (!await context.AppUsers.AnyAsync())
+        {
+            context.AppUsers.Add(new AppUser
+            {
+                Username = "admin",
+                PasswordHash = AuthController.HashPassword("admin123"),
+                Role = "Admin",
+                CreatedDate = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+        }
+
         if (await context.Insurers.AnyAsync()) return;
 
         var insurer = new Insurer { Name = "Sample Life Insurance Co.", Code = "SLIC" };
