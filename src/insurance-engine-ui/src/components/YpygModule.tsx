@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, BarChart3, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 // ─── Types ──────────────────────────────────────────────────────────────────

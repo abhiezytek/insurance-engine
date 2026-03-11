@@ -114,7 +114,7 @@ export default function UlipIllustration() {
   // ---- PDF download ----
   const handleDownload = () => {
     if (!result) return;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com'}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
     window.open(url, '_blank');
   };
 
