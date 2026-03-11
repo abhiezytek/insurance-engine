@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Search, BarChart3, AlertCircle } from 'lucide-react';
+import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
 import axios from 'axios';
+import { downloadYpygPdf, type YpygPdfResult } from '../utils/pdfExport';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -202,6 +203,7 @@ const DEFAULT_INPUTS = {
   channel: 'Other',
   fundValue: 0,
   surrenderFactor: 0.8,
+  riskCommencementDate: '' as string,
 };
 
 function InputValueMode() {
@@ -282,6 +284,13 @@ function InputValueMode() {
               onChange={e => set('surrenderFactor', +e.target.value)}
               className={INPUT_CLS} />
           </Field>
+          <Field label="Risk Commencement Date">
+            <input type="date" value={form.riskCommencementDate}
+              onChange={e => set('riskCommencementDate', e.target.value)}
+              className={INPUT_CLS}
+              title="Date when risk cover started (YPYG mode). Leave blank for pre-issuance." />
+            <p className="mt-1 text-xs text-slate-400">Used to determine elapsed policy years</p>
+          </Field>
           <Field label="Option">
             <select value={form.option}
               onChange={e => set('option', e.target.value)}
@@ -356,11 +365,19 @@ function ResultSection({ result }: { result: YpygResult }) {
 
       {/* Yearly table */}
       <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <h3 className="text-base font-bold text-[#004282]">
             Yearly Benefit Table
             <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
           </h3>
+          <button
+            onClick={() => downloadYpygPdf(result as YpygPdfResult, result.policyNumber)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
+                       bg-[#004282] text-white rounded-lg hover:bg-[#003370] transition"
+          >
+            <FileDown size={13} />
+            Download PDF
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">

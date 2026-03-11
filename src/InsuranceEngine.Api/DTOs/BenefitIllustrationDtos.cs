@@ -26,9 +26,25 @@ public class BenefitIllustrationRequest
     /// When null, assumed equal to PPT (fully paid-up policy).
     /// </summary>
     public int? PremiumsPaid { get; set; }
+    /// <summary>
+    /// Optional explicit Sum Assured override. When null, SAD is derived as Max(10 × AP, GMB).
+    /// </summary>
+    public decimal? SumAssured { get; set; }
+
+    /// <summary>
+    /// When true the illustration is pre-issuance (no policy/issuance date logic applied).
+    /// When false (YPYG mode) the Risk Commencement Date is used.
+    /// </summary>
+    public bool IsPreIssuance { get; set; } = true;
+
+    /// <summary>
+    /// Risk Commencement Date — used in YPYG mode (IsPreIssuance = false).
+    /// Null means today's date (pre-issuance / BI mode).
+    /// </summary>
+    public DateTime? RiskCommencementDate { get; set; }
 }
 
-/// <summary>Full yearly Benefit Illustration table for a Century Income policy.</summary>
+/// <summary>Full yearly Benefit Illustration table for an Endowment policy.</summary>
 public class BenefitIllustrationResponse
 {
     public decimal AnnualPremium { get; set; }

@@ -82,6 +82,9 @@ export interface BenefitIllustrationRequest {
   option: 'Immediate' | 'Deferred' | 'Twin';
   channel: 'Online' | 'StaffDirect' | 'Other';
   premiumsPaid?: number;
+  sumAssured?: number;
+  isPreIssuance?: boolean;
+  riskCommencementDate?: string | null;
 }
 
 export interface BenefitIllustrationRow {

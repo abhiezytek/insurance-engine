@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, AlertCircle, Info, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
+import { TrendingUp, AlertCircle, Info, ChevronDown, ChevronUp, FileDown, User, Settings2 } from 'lucide-react';
 import {
   getUlipProducts,
   runUlipCalculation,
@@ -7,6 +7,7 @@ import {
   type UlipCalculationResult,
   type UlipProduct,
 } from '../api';
+import { downloadUlipBiPdf } from '../utils/pdfExport';
 
 // ---------------------------------------------------------------------------
 // Abbreviations displayed in the UI:
@@ -114,7 +115,7 @@ export default function UlipIllustration() {
   // ---- PDF download ----
   const handleDownload = () => {
     if (!result) return;
-    const url = `${import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com'}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
     window.open(url, '_blank');
   };
 
@@ -138,14 +139,15 @@ export default function UlipIllustration() {
 
       <div className="grid lg:grid-cols-4 gap-8">
         {/* ---------------------------------------------------------------- */}
-        {/* Input panel                                                       */}
+        {/* Input panel — 2-section layout                                   */}
         {/* ---------------------------------------------------------------- */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Policy Inputs */}
+          {/* Section 1: Policyholder Details */}
           <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-              Policy Inputs
-            </h3>
+            <div className="flex items-center gap-2">
+              <User size={15} className="text-[#004282]" />
+              <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
+            </div>
 
             {/* Product */}
             <div>
@@ -160,7 +162,7 @@ export default function UlipIllustration() {
                   ? products.map(p => (
                       <option key={p.code} value={p.code}>{p.name}</option>
                     ))
-                  : <option value="EWEALTH-ROYALE">e-Wealth Royale</option>
+                  : <option value="EWEALTH-ROYALE">ULIP</option>
                 }
               </select>
             </div>
@@ -227,6 +229,15 @@ export default function UlipIllustration() {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
                            focus:outline-none focus:ring-2 focus:ring-[#007bff]"
               />
+            </div>
+
+          </div>
+
+          {/* Section 2: Plan Parameters (Product + term + premium) */}
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Settings2 size={15} className="text-[#004282]" />
+              <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Plan Parameters</h3>
             </div>
 
             {/* Policy Term (PT) */}

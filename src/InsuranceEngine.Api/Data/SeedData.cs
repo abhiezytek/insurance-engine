@@ -30,7 +30,7 @@ public static class SeedData
         var product = new Product
         {
             InsurerId = insurer.Id,
-            Name = "Century Income Plan",
+            Name = "Endowment Plan",
             Code = "CENTURY_INCOME",
             ProductType = "Traditional"
         };
@@ -266,18 +266,18 @@ public static class SeedData
         var ulipProduct = new Product
         {
             InsurerId   = insurer.Id,
-            Name        = "e-Wealth Royale",
+            Name        = "ULIP",
             Code        = "EWEALTH-ROYALE",
             ProductType = "ULIP",
         };
         context.Products.Add(ulipProduct);
         await context.SaveChangesAsync();
 
-        // Default ULIP charges for e-Wealth Royale
+        // Default ULIP charges — PAC 0%, Policy Admin ₹100/month (stored as monthly value), FMC 1.35%
         context.UlipCharges.AddRange(
-            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PremiumAllocation", ChargeValue = 5.0m,  ChargeFrequency = "PercentOfPremium" },
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PremiumAllocation", ChargeValue = 0m,    ChargeFrequency = "PercentOfPremium" },
             new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "FMC",               ChargeValue = 1.35m, ChargeFrequency = "PercentOfFund"    },
-            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PolicyAdmin",        ChargeValue = 1200m, ChargeFrequency = "Annual"           }
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PolicyAdmin",        ChargeValue = 100m,  ChargeFrequency = "Monthly"          }
         );
         await context.SaveChangesAsync();
 
