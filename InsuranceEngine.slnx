@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/InsuranceEngine.Api/InsuranceEngine.Api.csproj" />
+    <Project Path="src/InsuranceEngine.Tests/InsuranceEngine.Tests.csproj" />
+  </Folder>
+</Solution>
