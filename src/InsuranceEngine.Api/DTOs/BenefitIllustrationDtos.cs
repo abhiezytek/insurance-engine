@@ -27,6 +27,11 @@ public class BenefitIllustrationRequest
     /// </summary>
     public int? PremiumsPaid { get; set; }
     /// <summary>
+    /// Optional explicit Sum Assured override. When null, SAD is derived as Max(10 × AP, GMB).
+    /// </summary>
+    public decimal? SumAssured { get; set; }
+
+    /// <summary>
     /// When true the illustration is pre-issuance (no policy/issuance date logic applied).
     /// When false (YPYG mode) the Risk Commencement Date is used.
     /// </summary>

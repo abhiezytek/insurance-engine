@@ -75,8 +75,8 @@ export default function BenefitIllustration() {
           </Field>
 
           <Field label="Sum Assured (₹) — optional override">
-            <input type="number" value={(form as any).sumAssured ?? ''} placeholder="Auto-derived from GMB"
-              onChange={e => set('sumAssured' as any, e.target.value === '' ? undefined : +e.target.value)}
+            <input type="number" value={form.sumAssured ?? ''} placeholder="Auto-derived from GMB"
+              onChange={e => set('sumAssured', e.target.value === '' ? undefined : +e.target.value)}
               className={INPUT_CLS} />
           </Field>
 

@@ -208,8 +208,30 @@ export function downloadEndowmentBiPdf(result: BenefitIllustrationResult) {
 
 // ---------------------------------------------------------------------------
 // YPYG PDF (Annexure Part B)
+// Interface compatible with both BenefitIllustrationResult and YpygResult
 // ---------------------------------------------------------------------------
-export function downloadYpygPdf(result: BenefitIllustrationResult, policyNumber: string) {
+export interface YpygPdfResult {
+  policyNumber: string;
+  annualPremium: number;
+  ppt?: number;
+  policyTerm: number;
+  guaranteedMaturityBenefit?: number;
+  maturityValue?: number;
+  maxLoanAmount?: number;
+  yearlyTable: Array<{
+    policyYear: number;
+    annualPremium: number;
+    totalPremiumsPaid: number;
+    guaranteedIncome: number;
+    loyaltyIncome: number;
+    totalIncome: number;
+    surrenderValue: number;
+    deathBenefit: number;
+    maturityBenefit: number;
+  }>;
+}
+
+export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
   addPageHeader(
@@ -221,10 +243,10 @@ export function downloadYpygPdf(result: BenefitIllustrationResult, policyNumber:
   const summaryY = addSummaryGrid(doc, [
     ['Policy Number', policyNumber || 'N/A'],
     ['Annual Premium', `₹ ${INR(result.annualPremium)}`],
-    ['PPT', `${result.ppt} yrs`],
+    ['PPT', result.ppt ? `${result.ppt} yrs` : 'N/A'],
     ['Policy Term', `${result.policyTerm} yrs`],
-    ['Maturity Value', `₹ ${INR(result.guaranteedMaturityBenefit)}`],
-    ['Max Loan Amount', `₹ ${INR(result.maxLoanAmount)}`],
+    ['Maturity Value', `₹ ${INR(result.guaranteedMaturityBenefit ?? result.maturityValue ?? 0)}`],
+    ['Max Loan Amount', `₹ ${INR(result.maxLoanAmount ?? 0)}`],
   ], 38);
 
   addTable(

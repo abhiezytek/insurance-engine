@@ -40,8 +40,10 @@ public class BenefitCalculationService : IBenefitCalculationService
         var finalGmb = gmb1 * (1 + channelPct);
         finalGmb = Round(finalGmb);
 
-        // 7. SAD = Max(10 × AP, GMB) per Endowment product specification
-        var sad = Round(Math.Max(10m * ap, finalGmb));
+        // 7. SAD = Max(10 × AP, GMB); optional explicit SA override from request
+        var sad = request.SumAssured.HasValue
+            ? Round(Math.Max(request.SumAssured.Value, Round(Math.Max(10m * ap, finalGmb))))
+            : Round(Math.Max(10m * ap, finalGmb));
 
         // Load factor tables up front
         var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt).ToListAsync();

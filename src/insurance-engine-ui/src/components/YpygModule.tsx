@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
 import axios from 'axios';
-import { downloadYpygPdf } from '../utils/pdfExport';
+import { downloadYpygPdf, type YpygPdfResult } from '../utils/pdfExport';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -371,7 +371,7 @@ function ResultSection({ result }: { result: YpygResult }) {
             <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
           </h3>
           <button
-            onClick={() => downloadYpygPdf(result as any, result.policyNumber)}
+            onClick={() => downloadYpygPdf(result as YpygPdfResult, result.policyNumber)}
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
                        bg-[#004282] text-white rounded-lg hover:bg-[#003370] transition"
           >
