@@ -77,10 +77,13 @@ public class BenefitCalculationTests
         new() { AnnualPremium = annualPremium, Ppt = ppt, PolicyTerm = pt, EntryAge = age, Option = "Immediate", Channel = channel };
 
     [Test]
-    public async Task ImmediateIncome_SAD_Is10TimesAP()
+    public async Task ImmediateIncome_SAD_IsMaxOf10xAPAndGMB()
     {
-        var result = await _svc.CalculateAsync(ImmediateRequest(50000m));
-        Assert.AreEqual(500000m, result.SumAssuredOnDeath);
+        var ap = 50000m;
+        var result = await _svc.CalculateAsync(ImmediateRequest(ap));
+        // SAD = Max(10 × AP, GMB)
+        var expected = Math.Round(Math.Max(10m * ap, result.GuaranteedMaturityBenefit), 2, MidpointRounding.AwayFromZero);
+        Assert.AreEqual(expected, result.SumAssuredOnDeath);
     }
 
     [Test]
@@ -164,10 +167,12 @@ public class BenefitCalculationTests
     {
         var ap = 50000m;
         var result = await _svc.CalculateAsync(ImmediateRequest(ap));
+        // SAD = Max(10×AP, GMB)
+        var sad = result.SumAssuredOnDeath;
         foreach (var row in result.YearlyTable)
         {
             var expected = Math.Round(
-                Math.Max(10m * ap, Math.Max(row.SurrenderValue, 1.05m * row.TotalPremiumsPaid)),
+                Math.Max(sad, Math.Max(row.SurrenderValue, 1.05m * row.TotalPremiumsPaid)),
                 2, MidpointRounding.AwayFromZero);
             Assert.AreEqual(expected, row.DeathBenefit, $"PY={row.PolicyYear}");
         }

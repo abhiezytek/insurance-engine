@@ -256,4 +256,101 @@ public class AdminController : ControllerBase
         await _db.SaveChangesAsync();
         return StatusCode(StatusCodes.Status201Created, insurer);
     }
+
+    // -----------------------------------------------------------------------
+    // Factor table read/update endpoints (Admin Master UI)
+    // -----------------------------------------------------------------------
+
+    [HttpGet("factors/gmb")]
+    public async Task<IActionResult> GetGmbFactors() =>
+        Ok(await _db.GmbFactors.OrderBy(x => x.Ppt).ThenBy(x => x.Pt).ThenBy(x => x.EntryAgeMin).ToListAsync());
+
+    [HttpPut("factors/gmb/{id:int}")]
+    public async Task<IActionResult> UpdateGmbFactor(int id, [FromBody] GmbUpdateDto dto)
+    {
+        var row = await _db.GmbFactors.FindAsync(id);
+        if (row is null) return NotFound();
+        row.Factor = dto.Factor;
+        await _db.SaveChangesAsync();
+        return Ok(row);
+    }
+
+    [HttpGet("factors/gsv")]
+    public async Task<IActionResult> GetGsvFactors() =>
+        Ok(await _db.GsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync());
+
+    [HttpPut("factors/gsv/{id:int}")]
+    public async Task<IActionResult> UpdateGsvFactor(int id, [FromBody] GsvUpdateDto dto)
+    {
+        var row = await _db.GsvFactors.FindAsync(id);
+        if (row is null) return NotFound();
+        row.FactorPercent = dto.FactorPercent;
+        await _db.SaveChangesAsync();
+        return Ok(row);
+    }
+
+    [HttpGet("factors/ssv")]
+    public async Task<IActionResult> GetSsvFactors() =>
+        Ok(await _db.SsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync());
+
+    [HttpPut("factors/ssv/{id:int}")]
+    public async Task<IActionResult> UpdateSsvFactor(int id, [FromBody] SsvUpdateDto dto)
+    {
+        var row = await _db.SsvFactors.FindAsync(id);
+        if (row is null) return NotFound();
+        row.Factor1 = dto.SsvFactor1Percent;
+        row.Factor2 = dto.SsvFactor2Percent;
+        await _db.SaveChangesAsync();
+        return Ok(row);
+    }
+
+    [HttpGet("factors/ulip-charges")]
+    public async Task<IActionResult> GetUlipCharges() =>
+        Ok(await _db.UlipCharges.OrderBy(x => x.ProductId).ThenBy(x => x.ChargeType).ToListAsync());
+
+    [HttpPut("factors/ulip-charges/{id:int}")]
+    public async Task<IActionResult> UpdateUlipCharge(int id, [FromBody] UlipChargeUpdateDto dto)
+    {
+        var row = await _db.UlipCharges.FindAsync(id);
+        if (row is null) return NotFound();
+        row.ChargeValue = dto.ChargeValue;
+        await _db.SaveChangesAsync();
+        return Ok(row);
+    }
+
+    [HttpGet("factors/mortality")]
+    public async Task<IActionResult> GetMortalityRates() =>
+        Ok(await _db.MortalityRates.OrderBy(x => x.Gender).ThenBy(x => x.Age).ToListAsync());
+
+    [HttpPut("factors/mortality/{id:int}")]
+    public async Task<IActionResult> UpdateMortalityRate(int id, [FromBody] MortalityUpdateDto dto)
+    {
+        var row = await _db.MortalityRates.FindAsync(id);
+        if (row is null) return NotFound();
+        row.Rate = dto.Rate;
+        await _db.SaveChangesAsync();
+        return Ok(row);
+    }
+
+    [HttpGet("factors/loyalty")]
+    public async Task<IActionResult> GetLoyaltyFactors() =>
+        Ok(await _db.LoyaltyFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYearFrom).ToListAsync());
+
+    [HttpPut("factors/loyalty/{id:int}")]
+    public async Task<IActionResult> UpdateLoyaltyFactor(int id, [FromBody] LoyaltyUpdateDto dto)
+    {
+        var row = await _db.LoyaltyFactors.FindAsync(id);
+        if (row is null) return NotFound();
+        row.RatePercent = dto.RatePercent;
+        await _db.SaveChangesAsync();
+        return Ok(row);
+    }
 }
+
+// DTO records for factor updates
+public record GmbUpdateDto(decimal Factor);
+public record GsvUpdateDto(decimal FactorPercent);
+public record SsvUpdateDto(decimal SsvFactor1Percent, decimal SsvFactor2Percent);
+public record UlipChargeUpdateDto(decimal ChargeValue);
+public record MortalityUpdateDto(decimal Rate);
+public record LoyaltyUpdateDto(decimal RatePercent);

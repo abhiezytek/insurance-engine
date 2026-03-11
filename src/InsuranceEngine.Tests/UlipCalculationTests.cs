@@ -53,13 +53,13 @@ public class UlipCalculationTests
         var insurer = new Insurer { Id = 1, Name = "Test Insurer", Code = "TI" };
         _db.Insurers.Add(insurer);
 
-        var product = new Product { Id = 1, InsurerId = 1, Name = "e-Wealth Royale", Code = "EWEALTH-ROYALE", ProductType = "ULIP" };
+        var product = new Product { Id = 1, InsurerId = 1, Name = "ULIP", Code = "EWEALTH-ROYALE", ProductType = "ULIP" };
         _db.Products.Add(product);
 
         _db.UlipCharges.AddRange(
-            new UlipCharge { Id = 1, ProductId = 1, ChargeType = "PremiumAllocation", ChargeValue = 5.0m,  ChargeFrequency = "PercentOfPremium" },
+            new UlipCharge { Id = 1, ProductId = 1, ChargeType = "PremiumAllocation", ChargeValue = 0m,    ChargeFrequency = "PercentOfPremium" },
             new UlipCharge { Id = 2, ProductId = 1, ChargeType = "FMC",               ChargeValue = 1.35m, ChargeFrequency = "PercentOfFund"    },
-            new UlipCharge { Id = 3, ProductId = 1, ChargeType = "PolicyAdmin",        ChargeValue = 1200m, ChargeFrequency = "Annual"           }
+            new UlipCharge { Id = 3, ProductId = 1, ChargeType = "PolicyAdmin",        ChargeValue = 100m,  ChargeFrequency = "Monthly"          }
         );
 
         // Seed simplified mortality table
@@ -128,21 +128,27 @@ public class UlipCalculationTests
     }
 
     [Test]
-    public async Task Calculate_PremiumInvested_Is95PercentOfAP()
+    public async Task Calculate_PremiumInvested_IsFullAPWithZeroPAC()
     {
-        // PAC = 5% → PremiumInvested = AP × 0.95
+        // PAC = 0% → PremiumInvested = AP × 1.0 (full premium invested)
         var req = DefaultRequest(ap: 100_000m, pt: 1, ppt: 1);
         var result = await _svc.CalculateAsync(req);
-        var expected = Math.Round(100_000m * 0.95m, 2, MidpointRounding.AwayFromZero);
+        var expected = Math.Round(100_000m * 1.0m, 2, MidpointRounding.AwayFromZero);
         Assert.AreEqual(expected, result.YearlyTable[0].PremiumInvested);
     }
 
     [Test]
-    public async Task Calculate_PolicyChargeIs1200PerYear()
+    public async Task Calculate_PolicyChargeIs1200PerYear_First10Years()
     {
         var result = await _svc.CalculateAsync(DefaultRequest());
+        // Policy Admin ₹100/month = ₹1200/year for years 1-10 only
         foreach (var row in result.YearlyTable)
-            Assert.AreEqual(1200m, row.PolicyCharge, $"Year {row.Year}");
+        {
+            if (row.Year <= 10)
+                Assert.AreEqual(1200m, row.PolicyCharge, $"Year {row.Year} should be ₹1200");
+            else
+                Assert.AreEqual(0m, row.PolicyCharge, $"Year {row.Year} should be ₹0 (no admin charge after yr 10)");
+        }
     }
 
     [Test]
@@ -188,14 +194,19 @@ public class UlipCalculationTests
     // -----------------------------------------------------------------------
 
     [Test]
-    public async Task Calculate_DeathBenefit4_IsMaxOfSaAndFV4()
+    public async Task Calculate_DeathBenefit4_IsMaxOfSaFV4And105PctPremiums()
     {
         var req = DefaultRequest(sa: 1_000_000m);
         var result = await _svc.CalculateAsync(req);
-        foreach (var row in result.YearlyTable)
+        decimal cumPremiums = 0m;
+        int ppt = req.Ppt;
+        for (int i = 0; i < result.YearlyTable.Count; i++)
         {
-            var expected = Math.Round(Math.Max(req.SumAssured, row.FundValue4), 2, MidpointRounding.AwayFromZero);
-            Assert.AreEqual(expected, row.DeathBenefit4, $"Year {row.Year}: DB4 = max(SA, FV4)");
+            var row = result.YearlyTable[i];
+            if (i < ppt) cumPremiums += req.AnnualizedPremium;
+            var minDeath = Math.Round(1.05m * cumPremiums, 2, MidpointRounding.AwayFromZero);
+            var expected = Math.Round(Math.Max(req.SumAssured, Math.Max(row.FundValue4, minDeath)), 2, MidpointRounding.AwayFromZero);
+            Assert.AreEqual(expected, row.DeathBenefit4, $"Year {row.Year}: DB4 = max(SA, FV4, 105%×premiums)");
         }
     }
 

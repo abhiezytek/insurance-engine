@@ -77,7 +77,9 @@ public class YpygController : ControllerBase
             EntryAge = req.EntryAge,
             Option = req.Option,
             Channel = req.Channel,
-            PremiumsPaid = req.PremiumsPaid
+            PremiumsPaid = req.PremiumsPaid,
+            IsPreIssuance = false,
+            RiskCommencementDate = req.RiskCommencementDate
         };
 
         var result = await _calcService.CalculateAsync(biReq);
@@ -165,6 +167,8 @@ public class YpygCalculationRequest
     public decimal FundValue { get; set; }
     public decimal BonusRate { get; set; }
     public decimal SurrenderFactor { get; set; } = 0.8m;
+    /// <summary>Risk Commencement Date — used to determine elapsed policy years in YPYG mode.</summary>
+    public DateTime? RiskCommencementDate { get; set; }
 }
 
 public class YpygCalculationResponse

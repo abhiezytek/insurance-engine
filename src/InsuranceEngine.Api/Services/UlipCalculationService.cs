@@ -13,19 +13,27 @@ namespace InsuranceEngine.Api.Services;
 ///   SA  = Sum Assured
 ///   PT  = Policy Term
 ///   PPT = Premium Payment Term
-///   FV  = Fund Value
-///   FMC = Fund Management Charge  (% of FV, annual)
+///   FV  = Fund Value (NAV)
+///   FMC = Fund Management Charge  (1.35% p.a. = 0.00111809 monthly equivalent)
 ///   MC  = Mortality Charge         (SumAtRisk × MortalityRate / 1000)
-///   PC  = Policy Administration Charge (monthly, charged annually)
-///   PAC = Premium Allocation Charge (% of AP deducted before investment)
-///   DB  = Death Benefit             = max(SA, FV)
+///   PC  = Policy Administration Charge (₹100/month for first 10 yrs)
+///   PAC = Premium Allocation Charge (0% — full premium invested)
+///   SAR = Sum At Risk (SA - FV)
+///   DB  = Death Benefit = Max(SA - PartialWithdrawals, FV, 105% × TotalPremiumsPaid)
+///   LA  = Loyalty Addition (0.1% of FV after year 6)
+///   WB  = Wealth Booster  (3% of FV at year 10, 15, 20, ...)
 /// </summary>
 public class UlipCalculationService : IUlipCalculationService
 {
-    // Default charge parameters used when no rows exist in the database
-    private const decimal DefaultPremiumAllocationChargePct = 5.0m;   // 5 %
-    private const decimal DefaultPolicyAdminChargeMonthly   = 100m;    // ₹ 100 / month → ₹ 1200 / year
-    private const decimal DefaultFmcPct                     = 1.35m;   // 1.35 % of FV per annum
+    // Default charge parameters — aligned to product specification
+    private const decimal DefaultPremiumAllocationChargePct = 0m;     // 0% — full premium invested
+    private const decimal DefaultPolicyAdminChargeMonthly   = 100m;   // ₹100/month for first 10 years
+    private const decimal DefaultFmcPct                     = 1.35m;  // 1.35% p.a.
+
+    // Loyalty Addition rate (% of FV per year after year 6)
+    private const decimal LoyaltyAdditionPct = 0.1m;
+    // Wealth Booster rate (% of FV at milestone years 10, 15, 20, ...)
+    private const decimal WealthBoosterPct = 3.0m;
 
     private const decimal AssumedReturn4 = 0.04m;
     private const decimal AssumedReturn8 = 0.08m;
@@ -50,14 +58,17 @@ public class UlipCalculationService : IUlipCalculationService
             ? await _db.UlipCharges.Where(c => c.ProductId == product.Id).ToListAsync()
             : new List<UlipCharge>();
 
-        var pacPct  = GetCharge(charges, "PremiumAllocation",  DefaultPremiumAllocationChargePct);
-        var fmcPct  = GetCharge(charges, "FMC",               DefaultFmcPct);
-        var pcAnnual = GetCharge(charges, "PolicyAdmin",       DefaultPolicyAdminChargeMonthly * 12);
+        var pacPct   = GetCharge(charges, "PremiumAllocation", DefaultPremiumAllocationChargePct);
+        var fmcPct   = GetCharge(charges, "FMC",              DefaultFmcPct);
+        var pcMonthly = GetCharge(charges, "PolicyAdmin",     DefaultPolicyAdminChargeMonthly);
 
         // 3. Load mortality rates for gender
         var mortalityRates = await _db.MortalityRates
             .Where(m => m.Gender == req.Gender)
             .ToDictionaryAsync(m => m.Age, m => m.Rate);
+
+        // Cumulative premiums paid (for death benefit calculation)
+        decimal cumulativePremiumsPaid = 0m;
 
         // 4. Generate yearly rows
         var rows = new List<UlipIllustrationRow>();
@@ -69,54 +80,61 @@ public class UlipCalculationService : IUlipCalculationService
 
             // AP is paid only during PPT years
             var ap = py <= req.Ppt ? req.AnnualizedPremium : 0m;
+            cumulativePremiumsPaid += ap;
 
-            // Premium invested = AP × (1 − PAC%)
-            var premiumInvested = Round(ap * (1 - pacPct / 100m));
+            // Premium invested = AP × (1 − PAC%)  — PAC is 0% so full premium is invested
+            var premiumInvested = Round(ap * (1m - pacPct / 100m));
 
             // Opening FV (carried over from prior year)
             var openFv4 = fv4;
             var openFv8 = fv8;
 
+            // --- Policy Admin Charge: ₹100/month only for first 10 years ---
+            var pcAnnual = py <= 10 ? Round(pcMonthly * 12m) : 0m;
+            var pc = pcAnnual;
+
             // --- Mortality Charge ---
-            // Sum at Risk = max(SA − FV, 0)
-            // MC = (SumAtRisk × MortalityRate) / 1000
+            // SAR = Max(SA − FV, 0);  MC = (SAR × MortalityRate) / 1000
             var mortalityRate = GetMortalityRate(mortalityRates, age);
             var sumAtRisk4 = Math.Max(req.SumAssured - openFv4, 0m);
             var sumAtRisk8 = Math.Max(req.SumAssured - openFv8, 0m);
             var mc4 = Round((sumAtRisk4 * mortalityRate) / 1000m);
             var mc8 = Round((sumAtRisk8 * mortalityRate) / 1000m);
+            var mc  = Round((mc4 + mc8) / 2m);
 
-            // For the row we report the average of both scenarios
-            var mc = Round((mc4 + mc8) / 2m);
+            // --- Net amount for growth ---
+            var net4 = Math.Max(0m, openFv4 + premiumInvested - mc4 - pc);
+            var net8 = Math.Max(0m, openFv8 + premiumInvested - mc8 - pc);
 
-            // --- Policy Admin Charge ---
-            var pc = Round(pcAnnual);
+            // Fund growth at assumed rates
+            fv4 = Round(net4 * (1m + AssumedReturn4));
+            fv8 = Round(net8 * (1m + AssumedReturn8));
 
-            // --- Net amount available for growth (4%) ---
-            // Net = Opening FV + Premium Invested − MC − PC
-            // Then apply FMC (deducted from fund at year end after growth)
-            var net4 = openFv4 + premiumInvested - mc4 - pc;
-            var net8 = openFv8 + premiumInvested - mc8 - pc;
+            // Apply FMC after growth (1.35% p.a.)
+            fv4 = Round(fv4 * (1m - fmcPct / 100m));
+            fv8 = Round(fv8 * (1m - fmcPct / 100m));
 
-            // Ensure net is non-negative (policy lapses otherwise — we clamp)
-            net4 = Math.Max(0m, net4);
-            net8 = Math.Max(0m, net8);
+            // --- Loyalty Addition: +0.1% of FV from year 7 onwards ---
+            if (py >= 7)
+            {
+                fv4 = Round(fv4 * (1m + LoyaltyAdditionPct / 100m));
+                fv8 = Round(fv8 * (1m + LoyaltyAdditionPct / 100m));
+            }
 
-            // Fund growth
-            fv4 = Round(net4 * (1 + AssumedReturn4));
-            fv8 = Round(net8 * (1 + AssumedReturn8));
+            // --- Wealth Booster: +3% of FV at year 10, 15, 20, ... ---
+            if (py >= 10 && (py - 10) % 5 == 0)
+            {
+                fv4 = Round(fv4 * (1m + WealthBoosterPct / 100m));
+                fv8 = Round(fv8 * (1m + WealthBoosterPct / 100m));
+            }
 
-            // Apply FMC after growth
-            fv4 = Round(fv4 * (1 - fmcPct / 100m));
-            fv8 = Round(fv8 * (1 - fmcPct / 100m));
-
-            // Ensure non-negative
             fv4 = Math.Max(0m, fv4);
             fv8 = Math.Max(0m, fv8);
 
-            // Death Benefit = max(SA, FV)
-            var db4 = Round(Math.Max(req.SumAssured, fv4));
-            var db8 = Round(Math.Max(req.SumAssured, fv8));
+            // Death Benefit = Max(SA, FV, 105% × Cumulative Premiums Paid)
+            var minDeath = Round(1.05m * cumulativePremiumsPaid);
+            var db4 = Round(Math.Max(req.SumAssured, Math.Max(fv4, minDeath)));
+            var db8 = Round(Math.Max(req.SumAssured, Math.Max(fv8, minDeath)));
 
             rows.Add(new UlipIllustrationRow
             {

@@ -4,7 +4,7 @@ import {
   TrendingUp,
   BarChart3,
   ClipboardCheck,
-  Package,
+  Settings,
   LogOut,
   ShieldCheck,
   ChevronDown,
@@ -16,20 +16,20 @@ import BenefitIllustration from './components/BenefitIllustration';
 import UlipIllustration from './components/UlipIllustration';
 import YpygModule from './components/YpygModule';
 import AuditModule from './components/AuditModule';
-import Products from './components/Products';
+import AdminMaster from './components/AdminMaster';
 
 // ---------------------------------------------------------------------------
 // View IDs
 // ---------------------------------------------------------------------------
 type ViewId =
   | 'dashboard'
-  | 'bi-century'
+  | 'bi-endowment'
   | 'bi-ulip'
   | 'ypyg-policy'
   | 'ypyg-input'
   | 'audit-payout'
   | 'audit-bonus'
-  | 'masters';
+  | 'admin-master';
 
 // ---------------------------------------------------------------------------
 // Dropdown nav item
@@ -40,10 +40,10 @@ interface DropdownItem {
 }
 
 interface NavItem {
-  id: ViewId | string;          // group id (not a view) or leaf view id
+  id: ViewId | string;
   label: string;
   icon: React.ReactNode;
-  children?: DropdownItem[];    // if present → dropdown
+  children?: DropdownItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -53,8 +53,8 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Benefit Illustration',
     icon: <TrendingUp size={15} />,
     children: [
-      { id: 'bi-century', label: 'Century Income' },
-      { id: 'bi-ulip',    label: 'ULIP' },
+      { id: 'bi-endowment', label: 'Endowment' },
+      { id: 'bi-ulip',      label: 'ULIP' },
     ],
   },
   {
@@ -75,7 +75,7 @@ const NAV_ITEMS: NavItem[] = [
       { id: 'audit-bonus',  label: 'Addition / Bonus' },
     ],
   },
-  { id: 'masters', label: 'Masters', icon: <Package size={15} /> },
+  { id: 'admin-master', label: 'Admin Master', icon: <Settings size={15} /> },
 ];
 
 // ---------------------------------------------------------------------------
@@ -94,7 +94,6 @@ function NavDropdown({
   const ref = useRef<HTMLDivElement>(null);
   const isActive = item.children?.some(c => c.id === activeView) ?? false;
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -180,7 +179,6 @@ function AppInner() {
             </button>
           </div>
         </div>
-        {/* Red→Navy accent bar */}
         <div className="h-1" style={{ background: 'linear-gradient(to right, #d32f2f 40%, #004282 100%)' }} />
       </header>
 
@@ -224,13 +222,13 @@ function AppInner() {
       {/* ── Page content ── */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeView === 'dashboard'     && <Dashboard />}
-        {activeView === 'bi-century'    && <BenefitIllustration />}
+        {activeView === 'bi-endowment'  && <BenefitIllustration />}
         {activeView === 'bi-ulip'       && <UlipIllustration />}
         {activeView === 'ypyg-policy'   && <YpygModule mode="policy-number" />}
         {activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
         {activeView === 'audit-payout'  && <AuditModule sub="payout-verification" />}
         {activeView === 'audit-bonus'   && <AuditModule sub="addition-bonus" />}
-        {activeView === 'masters'       && <Products />}
+        {activeView === 'admin-master'  && <AdminMaster />}
       </main>
 
       <footer className="border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">

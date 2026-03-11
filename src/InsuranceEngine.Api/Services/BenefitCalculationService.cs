@@ -40,8 +40,8 @@ public class BenefitCalculationService : IBenefitCalculationService
         var finalGmb = gmb1 * (1 + channelPct);
         finalGmb = Round(finalGmb);
 
-        // 7. SAD
-        var sad = Round(10m * ap);
+        // 7. SAD = Max(10 × AP, GMB) per Endowment product specification
+        var sad = Round(Math.Max(10m * ap, finalGmb));
 
         // Load factor tables up front
         var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt).ToListAsync();
@@ -93,8 +93,8 @@ public class BenefitCalculationService : IBenefitCalculationService
             // SV
             var sv = Math.Max(0m, Math.Max(gsv, ssv));
 
-            // Death benefit
-            var deathBenefit = Round(Math.Max(10m * ap, Math.Max(sv, 1.05m * totalPremiumsPaid)));
+            // Death benefit = Max(SAD, SV, 105% × Total Premiums Paid)
+            var deathBenefit = Round(Math.Max(sad, Math.Max(sv, 1.05m * totalPremiumsPaid)));
 
             // Maturity benefit
             var maturityBenefit = py == pt ? finalGmb : 0m;
@@ -200,8 +200,28 @@ public class BenefitCalculationService : IBenefitCalculationService
         };
     }
 
+    /// <summary>
+    /// Returns the exact Twin Income payout years per product circular.
+    /// PPT 7 / PT 15:  years 5, 6, 10, 11
+    /// PPT 10 / PT 20: years 8, 9, 14, 15
+    /// PPT 12 / PT 25: years 10, 11, 15, 16, 20, 21
+    /// PPT 15 / PT 25: years 13, 14, 18, 19, 23, 24
+    /// All other combinations: 2 years before PPT end and 3 years after PPT end.
+    /// </summary>
     private static HashSet<int> GetTwinYears(int ppt, int pt)
     {
+        // Exact product-circular mapping
+        HashSet<int>? exact = (ppt, pt) switch
+        {
+            (7,  15) => new HashSet<int> { 5, 6, 10, 11 },
+            (10, 20) => new HashSet<int> { 8, 9, 14, 15 },
+            (12, 25) => new HashSet<int> { 10, 11, 15, 16, 20, 21 },
+            (15, 25) => new HashSet<int> { 13, 14, 18, 19, 23, 24 },
+            _ => null
+        };
+        if (exact != null) return exact;
+
+        // Fallback: generic two-pair heuristic
         var firstPairStart = Math.Max(1, ppt - 2);
         var secondPairStart = ppt + 3;
         var years = new HashSet<int>();
