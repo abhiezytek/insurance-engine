@@ -26,7 +26,7 @@ function addPageHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.text('Precision-driven Insurance Calculations', MARGIN, 14.5);
 
   doc.setTextColor(255, 200, 200);
-  doc.text(new Date().toLocaleDateString('en-IN'), PAGE_W - MARGIN, 10, { align: 'right' });
+  //doc.text(new Date().toLocaleDateString('en-IN'), PAGE_W - MARGIN, 10, { align: 'right' });
 
   // Red accent line
   doc.setFillColor(COL_RED);
@@ -162,18 +162,18 @@ export function downloadEndowmentBiPdf(result: BenefitIllustrationResult) {
   addPageHeader(
     doc,
     'Endowment Plan — Benefit Illustration (Annexure Part A)',
-    'Pre-issuance illustration. All values in ₹. Figures are illustrative only.',
+    'Pre-issuance illustration. All values in Rs. Figures are illustrative only.',
   );
 
   const summaryY = addSummaryGrid(doc, [
-    ['Annual Premium (AP)', `₹ ${INR(result.annualPremium)}`],
+    ['Annual Premium (AP)', `Rs. ${INR(result.annualPremium)}`],
     ['PPT', `${result.ppt} yrs`],
     ['Policy Term', `${result.policyTerm} yrs`],
     ['Entry Age', `${result.entryAge} yrs`],
     ['Option', result.option],
     ['Channel', result.channel],
-    ['Sum Assured on Death', `₹ ${INR(result.sumAssuredOnDeath)}`],
-    ['Guaranteed Maturity Benefit', `₹ ${INR(result.guaranteedMaturityBenefit)}`],
+    ['Sum Assured on Death', `Rs. ${INR(result.sumAssuredOnDeath)}`],
+    ['Guaranteed Maturity Benefit', `Rs. ${INR(result.guaranteedMaturityBenefit)}`],
   ], 38);
 
   // Section header
@@ -184,7 +184,7 @@ export function downloadEndowmentBiPdf(result: BenefitIllustrationResult) {
 
   addTable(
     doc,
-    ['Yr', 'AP (₹)', 'Total Paid (₹)', 'GI (₹)', 'LI (₹)', 'Total Inc (₹)', 'Cumul. SB (₹)', 'GSV (₹)', 'SSV (₹)', 'SV (₹)', 'Death Benefit (₹)', 'Maturity (₹)'],
+    ['Yr','AP (Rs.)' ,'Total Paid (Rs.)', 'GI (Rs.)', 'LI (Rs.)', 'Total Inc (Rs.)', 'Cumul. SB (Rs.)', 'GSV (Rs.)', 'SSV (Rs.)', 'SV (Rs.)', 'Death Benefit (Rs.)', 'Maturity (Rs.)'],
     (result.yearlyTable as BenefitIllustrationRow[]).map(r => [
       String(r.policyYear),
       INR(r.annualPremium),
@@ -237,21 +237,21 @@ export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string) {
   addPageHeader(
     doc,
     'YPYG — You Pay You Get (Annexure Part B)',
-    `Policy Number: ${policyNumber || 'N/A'}. All values in ₹.`,
+    `Policy Number: ${policyNumber || 'N/A'}. All values in Rs.`,
   );
 
   const summaryY = addSummaryGrid(doc, [
     ['Policy Number', policyNumber || 'N/A'],
-    ['Annual Premium', `₹ ${INR(result.annualPremium)}`],
+    ['Annual Premium', `Rs. ${INR(result.annualPremium)}`],
     ['PPT', result.ppt ? `${result.ppt} yrs` : 'N/A'],
     ['Policy Term', `${result.policyTerm} yrs`],
-    ['Maturity Value', `₹ ${INR(result.guaranteedMaturityBenefit ?? result.maturityValue ?? 0)}`],
-    ['Max Loan Amount', `₹ ${INR(result.maxLoanAmount ?? 0)}`],
+    ['Maturity Value', `Rs. ${INR(result.guaranteedMaturityBenefit ?? result.maturityValue ?? 0)}`],
+    ['Max Loan Amount', `Rs. ${INR(result.maxLoanAmount ?? 0)}`],
   ], 38);
 
   addTable(
     doc,
-    ['Yr', 'AP (₹)', 'Total Paid (₹)', 'GI (₹)', 'LI (₹)', 'Total Inc (₹)', 'SV (₹)', 'Death Benefit (₹)', 'Maturity (₹)'],
+    ['Yr', 'AP (Rs.)', 'Total Paid (Rs.)', 'GI (Rs.)', 'LI (Rs.)', 'Total Inc (Rs.)', 'SV (Rs.)', 'Death Benefit (Rs.)', 'Maturity (Rs.)'],
     (result.yearlyTable as BenefitIllustrationRow[]).map(r => [
       String(r.policyYear),
       INR(r.annualPremium),
@@ -307,7 +307,7 @@ export function downloadUlipBiPdf(data: UlipPdfData) {
   addPageHeader(
     doc,
     'ULIP — Benefit Illustration (Annexure Part A)',
-    'Two scenarios shown: 4% p.a. (conservative) and 8% p.a. (optimistic). Not guaranteed.',
+    'Two scenarios shown: 4% p.a. (conservative) and 8% p.a. (optimistic). All values in Rs. Not guaranteed.',
   );
 
   const summaryY = addSummaryGrid(doc, [
@@ -315,17 +315,17 @@ export function downloadUlipBiPdf(data: UlipPdfData) {
     ['Product', data.productCode],
     ['Gender', data.gender],
     ['Entry Age', `${data.entryAge} yrs`],
-    ['Annual Premium', `₹ ${INR(data.annualizedPremium)}`],
+    ['Annual Premium', `Rs. ${INR(data.annualizedPremium)}`],
     ['PPT', `${data.ppt} yrs`],
     ['Policy Term', `${data.policyTerm} yrs`],
-    ['Sum Assured', `₹ ${INR(data.sumAssured)}`],
-    ['Maturity (4%)', `₹ ${INR(data.maturityBenefit4)}`],
-    ['Maturity (8%)', `₹ ${INR(data.maturityBenefit8)}`],
+    ['Sum Assured', `Rs. ${INR(data.sumAssured)}`],
+    ['Maturity (4%)', `Rs. ${INR(data.maturityBenefit4)}`],
+    ['Maturity (8%)', `Rs. ${INR(data.maturityBenefit8)}`],
   ], 38);
 
   addTable(
     doc,
-    ['Yr', 'Age', 'AP (₹)', 'Invested (₹)', 'MC (₹)', 'PC (₹)', 'FV @4% (₹)', 'DB @4% (₹)', 'FV @8% (₹)', 'DB @8% (₹)'],
+    ['Yr', 'Age', 'AP (Rs.)', 'Invested (Rs.)', 'MC (Rs.)', 'PC (Rs.)', 'FV @4% (Rs.)', 'DB @4% (Rs.)', 'FV @8% (Rs.)', 'DB @8% (Rs.)'],
     data.yearlyTable.map(r => [
       String(r.year),
       String(r.age),

@@ -7,7 +7,8 @@ import {
   type UlipCalculationResult,
   type UlipProduct,
 } from '../api';
-import { downloadUlipBiPdf } from '../utils/pdfExport';
+
+//  import { downloadUlipBiPdf } from '../utils/pdfExport';
 
 // ---------------------------------------------------------------------------
 // Abbreviations displayed in the UI:
