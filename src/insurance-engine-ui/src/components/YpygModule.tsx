@@ -3,7 +3,7 @@ import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
 import axios from 'axios';
 import { downloadYpygPdf, type YpygPdfResult } from '../utils/pdfExport';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 // ─── Types ──────────────────────────────────────────────────────────────────

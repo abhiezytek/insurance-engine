@@ -91,21 +91,48 @@ function NavDropdown({
   onSelect: (id: ViewId) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const isActive = item.children?.some(c => c.id === activeView) ?? false;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      const isClickedInsideButton = buttonRef.current?.contains(target);
+      const isClickedInsideDropdown = dropdownRef.current?.contains(target);
+      
+      if (!isClickedInsideButton && !isClickedInsideDropdown) {
+        setOpen(false);
+      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    if (open) {
+      document.addEventListener('mousedown', handler);
+      return () => document.removeEventListener('mousedown', handler);
+    }
+  }, [open]);
+
+  const handleClick = () => {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 8,
+        left: rect.left,
+      });
+    }
+    setOpen(v => !v);
+  };
+
+  const handleMenuClick = (childId: ViewId) => {
+    onSelect(childId);
+    setOpen(false);
+  };
 
   return (
-    <div ref={ref} className="relative">
+    <div>
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={buttonRef}
+        onClick={handleClick}
         className={`
           flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
           whitespace-nowrap transition-all duration-200 select-none
@@ -120,11 +147,19 @@ function NavDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 min-w-[170px] overflow-hidden">
+        <div 
+          ref={dropdownRef}
+          className="fixed bg-white border border-slate-200 rounded-xl shadow-2xl min-w-[170px] overflow-hidden"
+          style={{
+            top: `${dropdownPos.top}px`,
+            left: `${dropdownPos.left}px`,
+            zIndex: 9999,
+          }}
+        >
           {item.children!.map(child => (
             <button
               key={child.id}
-              onClick={() => { onSelect(child.id); setOpen(false); }}
+              onClick={() => handleMenuClick(child.id)}
               className={`
                 w-full text-left px-4 py-2.5 text-sm transition-colors
                 ${activeView === child.id
@@ -183,7 +218,7 @@ function AppInner() {
       </header>
 
       {/* ── Navigation ── */}
-      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-2 py-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {NAV_ITEMS.map(item => {

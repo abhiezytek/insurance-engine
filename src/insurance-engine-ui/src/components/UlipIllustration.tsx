@@ -7,7 +7,8 @@ import {
   type UlipCalculationResult,
   type UlipProduct,
 } from '../api';
-import { downloadUlipBiPdf } from '../utils/pdfExport';
+
+//  import { downloadUlipBiPdf } from '../utils/pdfExport';
 
 // ---------------------------------------------------------------------------
 // Abbreviations displayed in the UI:
@@ -115,20 +116,8 @@ export default function UlipIllustration() {
   // ---- PDF download ----
   const handleDownload = () => {
     if (!result) return;
-    downloadUlipBiPdf({
-      policyNumber:      result.policyNumber,
-      customerName:      form.customerName,
-      productCode:       result.productCode,
-      gender:            form.gender,
-      entryAge:          form.entryAge,
-      policyTerm:        form.policyTerm,
-      ppt:               form.ppt,
-      annualizedPremium: form.annualizedPremium,
-      sumAssured:        form.sumAssured,
-      maturityBenefit4:  result.maturityBenefit4,
-      maturityBenefit8:  result.maturityBenefit8,
-      yearlyTable:       result.yearlyTable,
-    });
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
+    window.open(url, '_blank');
   };
 
   // ---------------------------------------------------------------------------

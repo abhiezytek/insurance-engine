@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ShieldCheck, PlusCircle, AlertCircle, CheckCircle2, XCircle, Upload } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const INPUT_CLS = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#007bff]';
 
