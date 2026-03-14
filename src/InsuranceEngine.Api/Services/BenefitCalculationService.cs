@@ -46,8 +46,8 @@ public class BenefitCalculationService : IBenefitCalculationService
             : Round(Math.Max(10m * ap, finalGmb));
 
         // Load factor tables up front
-        var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt).ToListAsync();
-        var ssvFactors = await _db.SsvFactors.Where(x => x.Ppt == ppt).ToListAsync();
+        var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
+        var ssvFactors = await _db.SsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt && x.Option == option).ToListAsync();
         var loyaltyFactors = await _db.LoyaltyFactors.Where(x => x.Ppt == ppt).ToListAsync();
         var deferredFactors = option == "Deferred"
             ? await _db.DeferredIncomeFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync()

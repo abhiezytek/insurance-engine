@@ -98,22 +98,35 @@ public static class SeedData
         if (!await context.GsvFactors.AnyAsync())
         {
             var gsvRows = new List<Models.GsvFactor>();
-            // PPT=7
-            var gsv7 = new[] { 0m,30m,35m,40m,45m,50m,55m,58m,61m,64m,67m,70m,75m,80m,90m };
-            for (int i = 0; i < gsv7.Length; i++)
-                gsvRows.Add(new Models.GsvFactor { Ppt=7, PolicyYear=i+1, FactorPercent=gsv7[i] });
-            // PPT=10
-            var gsv10 = new[] { 0m,0m,30m,35m,40m,45m,50m,55m,57m,60m,63m,66m,69m,72m,75m,78m,81m,84m,87m,90m };
-            for (int i = 0; i < gsv10.Length; i++)
-                gsvRows.Add(new Models.GsvFactor { Ppt=10, PolicyYear=i+1, FactorPercent=gsv10[i] });
-            // PPT=12
-            var gsv12 = new[] { 0m,0m,0m,30m,35m,40m,45m,50m,55m,60m,62m,65m,68m,71m,74m,77m,80m,83m,86m,89m,91m,93m,95m,97m,100m };
-            for (int i = 0; i < gsv12.Length; i++)
-                gsvRows.Add(new Models.GsvFactor { Ppt=12, PolicyYear=i+1, FactorPercent=gsv12[i] });
-            // PPT=15
-            var gsv15 = new[] { 0m,0m,0m,0m,30m,35m,40m,45m,50m,55m,58m,61m,64m,67m,70m,73m,76m,79m,82m,85m,88m,91m,93m,96m,100m };
-            for (int i = 0; i < gsv15.Length; i++)
-                gsvRows.Add(new Models.GsvFactor { Ppt=15, PolicyYear=i+1, FactorPercent=gsv15[i] });
+
+            // All factor values stored as percentages (CSV decimal × 100).
+            // Source: docs/annexure2_gsv.csv
+
+            // PPT=7, PT=15
+            decimal[] gsv_7_15 = { 0,35,35,50,50,50,50,55.71m,61.43m,67.14m,72.86m,78.57m,84.29m,90,90 };
+            for (int i = 0; i < gsv_7_15.Length; i++)
+                gsvRows.Add(new Models.GsvFactor { Ppt=7, Pt=15, PolicyYear=i+1, FactorPercent=gsv_7_15[i] });
+
+            // PPT=7, PT=20
+            decimal[] gsv_7_20 = { 0,35,35,50,50,50,50,53.33m,56.67m,60,63.33m,66.67m,70,73.33m,76.67m,80,83.33m,86.67m,90,90 };
+            for (int i = 0; i < gsv_7_20.Length; i++)
+                gsvRows.Add(new Models.GsvFactor { Ppt=7, Pt=20, PolicyYear=i+1, FactorPercent=gsv_7_20[i] });
+
+            // PPT=10, PT=20
+            decimal[] gsv_10_20 = { 0,35,35,50,50,50,50,53.33m,56.67m,60,63.33m,66.67m,70,73.33m,76.67m,80,83.33m,86.67m,90,90 };
+            for (int i = 0; i < gsv_10_20.Length; i++)
+                gsvRows.Add(new Models.GsvFactor { Ppt=10, Pt=20, PolicyYear=i+1, FactorPercent=gsv_10_20[i] });
+
+            // PPT=10, PT=25
+            decimal[] gsv_10_25 = { 0,35,35,50,50,50,50,52.35m,54.71m,57.06m,59.41m,61.76m,64.12m,66.47m,68.82m,71.18m,73.53m,75.88m,78.24m,80.59m,82.94m,85.29m,87.65m,90,90 };
+            for (int i = 0; i < gsv_10_25.Length; i++)
+                gsvRows.Add(new Models.GsvFactor { Ppt=10, Pt=25, PolicyYear=i+1, FactorPercent=gsv_10_25[i] });
+
+            // PPT=12, PT=25
+            decimal[] gsv_12_25 = { 0,35,35,50,50,50,50,52.35m,54.71m,57.06m,59.41m,61.76m,64.12m,66.47m,68.82m,71.18m,73.53m,75.88m,78.24m,80.59m,82.94m,85.29m,87.65m,90,90 };
+            for (int i = 0; i < gsv_12_25.Length; i++)
+                gsvRows.Add(new Models.GsvFactor { Ppt=12, Pt=25, PolicyYear=i+1, FactorPercent=gsv_12_25[i] });
+
             context.GsvFactors.AddRange(gsvRows);
             await context.SaveChangesAsync();
         }
@@ -121,26 +134,65 @@ public static class SeedData
         if (!await context.SsvFactors.AnyAsync())
         {
             var ssvRows = new List<Models.SsvFactor>();
-            // PPT=7
-            decimal[] ssv7f1 = { 0,40,45,50,55,60,65,68,71,74,77,80,84,90,100 };
-            decimal[] ssv7f2 = { 0,20,25,30,35,40,45,48,51,54,57,60,64,70,80 };
-            for (int i = 0; i < ssv7f1.Length; i++)
-                ssvRows.Add(new Models.SsvFactor { Ppt=7, PolicyYear=i+1, Factor1=ssv7f1[i], Factor2=ssv7f2[i] });
-            // PPT=10
-            decimal[] ssv10f1 = { 0,0,35,40,45,50,55,60,63,66,69,72,75,78,81,84,87,90,95,100 };
-            decimal[] ssv10f2 = { 0,0,15,20,25,30,35,40,43,46,49,52,55,58,61,64,67,70,75,80 };
-            for (int i = 0; i < ssv10f1.Length; i++)
-                ssvRows.Add(new Models.SsvFactor { Ppt=10, PolicyYear=i+1, Factor1=ssv10f1[i], Factor2=ssv10f2[i] });
-            // PPT=12
-            decimal[] ssv12f1 = { 0,0,0,35,40,45,50,55,60,63,66,69,72,75,78,81,84,87,90,93,95,97,98,99,100 };
-            decimal[] ssv12f2 = { 0,0,0,15,20,25,30,35,40,43,46,49,52,55,58,61,64,67,70,73,75,77,78,79,80 };
-            for (int i = 0; i < ssv12f1.Length; i++)
-                ssvRows.Add(new Models.SsvFactor { Ppt=12, PolicyYear=i+1, Factor1=ssv12f1[i], Factor2=ssv12f2[i] });
-            // PPT=15
-            decimal[] ssv15f1 = { 0,0,0,0,35,40,45,50,55,60,63,66,69,72,75,78,81,84,87,90,92,94,96,98,100 };
-            decimal[] ssv15f2 = { 0,0,0,0,15,20,25,30,35,40,43,46,49,52,55,58,61,64,67,70,72,74,76,78,80 };
-            for (int i = 0; i < ssv15f1.Length; i++)
-                ssvRows.Add(new Models.SsvFactor { Ppt=15, PolicyYear=i+1, Factor1=ssv15f1[i], Factor2=ssv15f2[i] });
+
+            // Factor values stored as percentages (CSV decimal × 100).
+            // Source: docs/annexure3_ssv.csv
+            // Factor1 is common across options; Factor2 differs per income option.
+            // Rows are per (PPT, PT, Option, PolicyYear).
+
+            // --- Helper: add rows for one (PPT, PT, Option) combination ---
+            void AddSsvRows(int ppt, int pt, string option, decimal[] f1, decimal[] f2)
+            {
+                for (int i = 0; i < f1.Length; i++)
+                    if (f1[i] != 0 || f2[i] != 0)
+                        ssvRows.Add(new Models.SsvFactor { Ppt=ppt, Pt=pt, Option=option, PolicyYear=i+1, Factor1=f1[i], Factor2=f2[i] });
+            }
+
+            // ── PPT=7, PT=15 ────────────────────────────────────────────
+            decimal[] f1_7_15  = { 0,37.13m,39.82m,42.70m,45.80m,49.13m,52.71m,56.56m,60.69m,65.13m,69.90m,75.05m,80.59m,86.57m,93.02m };
+            decimal[] f2i_7_15 = { 0,835.88m,799.98m,761.46m,720.11m,675.72m,628.06m,576.88m,521.90m,462.83m,399.31m,330.97m,257.38m,178.06m,92.46m };
+            decimal[] f2d_7_15 = { 0,483.79m,520.89m,560.92m,604.12m,650.78m,701.18m,755.69m,714.67m,660.71m,592.79m,509.79m,410.47m,293.45m,157.19m };
+            decimal[] f2t_7_15 = { 0,241.67m,260.21m,280.20m,301.78m,225.09m,142.52m,153.60m,165.59m,178.58m,92.65m,0,0,0,0 };
+            AddSsvRows(7, 15, "Immediate", f1_7_15, f2i_7_15);
+            AddSsvRows(7, 15, "Deferred",  f1_7_15, f2d_7_15);
+            AddSsvRows(7, 15, "Twin",      f1_7_15, f2t_7_15);
+
+            // ── PPT=7, PT=20 ────────────────────────────────────────────
+            decimal[] f1_7_20  = { 0,26.74m,28.63m,30.66m,32.84m,35.16m,37.66m,40.33m,43.20m,46.27m,49.56m,53.09m,56.88m,60.95m,65.33m,70.05m,75.14m,80.64m,86.59m,93.02m };
+            decimal[] f2i_7_20 = { 0,973.29m,947.94m,920.78m,891.70m,860.56m,827.22m,791.52m,753.30m,712.37m,668.52m,621.53m,571.12m,517.00m,458.83m,396.23m,328.76m,255.96m,177.30m,92.19m };
+            decimal[] f2d_7_20 = { 0,756.41m,814.42m,877.01m,944.56m,1017.50m,1096.31m,1181.53m,1173.75m,1155.79m,1126.90m,1086.25m,1032.92m,965.91m,884.05m,786.10m,670.65m,536.13m,380.83m,202.82m };
+            decimal[] f2t_7_20 = { 0,308.40m,332.05m,357.57m,385.11m,314.85m,239.24m,257.84m,277.96m,299.76m,223.38m,141.10m,152.36m,164.60m,177.91m,92.41m,0,0,0,0 };
+            AddSsvRows(7, 20, "Immediate", f1_7_20, f2i_7_20);
+            AddSsvRows(7, 20, "Deferred",  f1_7_20, f2d_7_20);
+            AddSsvRows(7, 20, "Twin",      f1_7_20, f2t_7_20);
+
+            // ── PPT=10, PT=20 ────────────────────────────────────────────
+            decimal[] f1_10_20 = { 0,26.74m,28.63m,30.66m,32.84m,35.16m,37.66m,40.33m,43.20m,46.27m,49.56m,53.09m,56.88m,60.95m,65.33m,70.05m,75.14m,80.64m,86.59m,93.02m };
+            decimal[] f2i_10_20= { 0,973.29m,947.94m,920.78m,891.70m,860.56m,827.22m,791.52m,753.30m,712.37m,668.52m,621.53m,571.12m,517.00m,458.83m,396.23m,328.76m,255.96m,177.30m,92.19m };
+            decimal[] f2d_10_20= { 0,472.83m,509.10m,548.22m,590.44m,636.04m,685.30m,738.57m,796.22m,858.65m,926.34m,899.79m,861.59m,810.80m,746.40m,667.24m,572.02m,459.35m,327.64m,175.17m };
+            decimal[] f2t_10_20= { 0,245.03m,263.82m,284.09m,305.97m,329.60m,355.13m,382.74m,312.61m,237.12m,255.81m,276.10m,298.13m,222.08m,140.05m,151.46m,163.90m,177.46m,92.25m,0 };
+            AddSsvRows(10, 20, "Immediate", f1_10_20, f2i_10_20);
+            AddSsvRows(10, 20, "Deferred",  f1_10_20, f2d_10_20);
+            AddSsvRows(10, 20, "Twin",      f1_10_20, f2t_10_20);
+
+            // ── PPT=10, PT=25 ────────────────────────────────────────────
+            decimal[] f1_10_25 = { 0,19.82m,21.19m,22.64m,24.20m,25.86m,27.63m,29.53m,31.55m,33.70m,36.01m,38.46m,41.08m,43.89m,46.89m,50.11m,53.56m,57.27m,61.27m,65.58m,70.23m,75.26m,80.70m,86.61m,93.02m };
+            decimal[] f2i_10_25= { 0,1064.52m,1046.16m,1026.56m,1005.62m,983.28m,959.44m,934.02m,906.92m,878.04m,847.25m,814.43m,779.42m,742.03m,702.07m,659.29m,613.42m,564.17m,511.20m,454.15m,392.61m,326.14m,254.23m,176.34m,91.84m };
+            decimal[] f2d_10_25= { 0,672.01m,723.55m,779.16m,839.17m,903.97m,973.99m,1049.70m,1131.63m,1220.37m,1316.56m,1320.96m,1316.36m,1302.11m,1277.46m,1241.58m,1193.52m,1132.26m,1056.65m,965.42m,857.18m,730.38m,583.30m,414.03m,220.41m };
+            decimal[] f2t_10_25= { 0,279.83m,301.29m,324.44m,349.43m,376.42m,405.57m,437.10m,371.21m,300.32m,324.00m,349.69m,377.59m,307.92m,232.84m,251.81m,272.49m,295.03m,219.63m,138.08m,149.77m,162.56m,176.57m,91.92m,0 };
+            AddSsvRows(10, 25, "Immediate", f1_10_25, f2i_10_25);
+            AddSsvRows(10, 25, "Deferred",  f1_10_25, f2d_10_25);
+            AddSsvRows(10, 25, "Twin",      f1_10_25, f2t_10_25);
+
+            // ── PPT=12, PT=25 ────────────────────────────────────────────
+            decimal[] f1_12_25 = { 0,19.82m,21.19m,22.64m,24.20m,25.86m,27.63m,29.53m,31.55m,33.70m,36.01m,38.46m,41.08m,43.89m,46.89m,50.11m,53.56m,57.27m,61.27m,65.58m,70.23m,75.26m,80.70m,86.61m,93.02m };
+            decimal[] f2i_12_25= { 0,1064.52m,1046.16m,1026.56m,1005.62m,983.28m,959.44m,934.02m,906.92m,878.04m,847.25m,814.43m,779.42m,742.03m,702.07m,659.29m,613.42m,564.17m,511.20m,454.15m,392.61m,326.14m,254.23m,176.34m,91.84m };
+            decimal[] f2d_12_25= { 0,508.27m,547.25m,589.31m,634.69m,683.71m,736.66m,793.93m,855.89m,923.01m,995.77m,1074.72m,1160.48m,1154.80m,1137.05m,1109.72m,1071.52m,1019.43m,951.22m,874.59m,778.66m,665.15m,532.45m,379.76m,202.04m };
+            decimal[] f2t_12_25= { 0,209.71m,225.79m,243.15m,261.87m,282.10m,303.95m,327.57m,353.14m,380.83m,310.85m,235.50m,254.29m,274.72m,296.95m,221.15m,139.31m,150.83m,163.40m,177.13m,92.13m,92.21m,0,0,0 };
+            AddSsvRows(12, 25, "Immediate", f1_12_25, f2i_12_25);
+            AddSsvRows(12, 25, "Deferred",  f1_12_25, f2d_12_25);
+            AddSsvRows(12, 25, "Twin",      f1_12_25, f2t_12_25);
+
             context.SsvFactors.AddRange(ssvRows);
             await context.SaveChangesAsync();
         }
