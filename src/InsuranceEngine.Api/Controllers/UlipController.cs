@@ -321,62 +321,147 @@ public class UlipController : ControllerBase
     {
         var sb = new StringBuilder();
         sb.AppendLine("<!DOCTYPE html><html><head><meta charset='utf-8'/>");
-        sb.AppendLine("<title>ULIP Benefit Illustration</title>");
+        sb.AppendLine("<title>ULIP Benefit Illustration – SUD Life e-Wealth Royale</title>");
         sb.AppendLine("<style>");
-        sb.AppendLine("body{font-family:Arial,sans-serif;font-size:13px;color:#222;padding:24px}");
-        sb.AppendLine("h1{color:#004282;font-size:20px}h2{color:#004282;font-size:15px;margin-top:24px}");
-        sb.AppendLine("table{border-collapse:collapse;width:100%;margin-top:8px}");
-        sb.AppendLine("th{background:#004282;color:#fff;padding:6px 8px;text-align:right;font-size:11px}");
+        sb.AppendLine("@media print{.page-break{page-break-before:always}}");
+        sb.AppendLine("body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px}");
+        sb.AppendLine("h1{color:#004282;font-size:18px;margin-bottom:4px}");
+        sb.AppendLine("h2{color:#004282;font-size:13px;margin-top:20px;margin-bottom:4px}");
+        sb.AppendLine("table{border-collapse:collapse;width:100%;margin-top:6px}");
+        sb.AppendLine("th{background:#004282;color:#fff;padding:5px 6px;text-align:right;font-size:10px;border:1px solid #003070}");
         sb.AppendLine("th:first-child{text-align:center}");
-        sb.AppendLine("td{border:1px solid #ddd;padding:5px 8px;text-align:right;font-size:12px}");
+        sb.AppendLine("td{border:1px solid #ccc;padding:4px 6px;text-align:right;font-size:11px}");
         sb.AppendLine("td:first-child{text-align:center}");
         sb.AppendLine("tr:nth-child(even){background:#f5f8fc}");
-        sb.AppendLine(".disclaimer{font-size:10px;color:#555;margin-top:24px;border-top:1px solid #ccc;padding-top:12px}");
+        sb.AppendLine(".glance{width:auto;margin-bottom:16px}");
+        sb.AppendLine(".glance td{text-align:left;padding:3px 8px}");
+        sb.AppendLine(".glance td:first-child{font-weight:bold;color:#333}");
+        sb.AppendLine(".disclaimer{font-size:9px;color:#555;margin-top:20px;border-top:1px solid #ccc;padding-top:10px}");
+        sb.AppendLine(".note{font-size:9px;color:#555;margin-top:6px}");
+        sb.AppendLine(".section-hdr{background:#e8effa;font-weight:bold;text-align:center;padding:4px;font-size:11px;border:1px solid #ccc;margin-top:10px}");
         sb.AppendLine("</style></head><body>");
 
-        sb.AppendLine("<h1>ULIP Benefit Illustration</h1>");
+        // ---- Page 1: Part A ----
+        sb.AppendLine("<h1>Benefit Illustration for Linked Insurance Products – Life</h1>");
         sb.AppendLine("<h2>Policy At A Glance</h2>");
-        sb.AppendLine("<table style='width:auto;margin-bottom:16px'>");
-        void row2(string k, string v) => sb.AppendLine($"<tr><td style='text-align:left;font-weight:bold'>{k}</td><td style='text-align:left'>{v}</td></tr>");
-        row2("Policy Number",      r.PolicyNumber);
-        row2("Customer Name",      r.CustomerName);
-        row2("Product",            r.ProductName);
-        row2("Gender",             r.Gender);
-        row2("Entry Age",          $"{r.EntryAge} years");
-        row2("Policy Term (PT)",   $"{r.PolicyTerm} years");
-        row2("Premium Payment Term (PPT)", $"{r.Ppt} years");
-        row2("Annualized Premium (AP)", $"₹{r.AnnualizedPremium:N0}");
-        row2("Sum Assured (SA)",   $"₹{r.SumAssured:N0}");
-        row2("Premium Frequency",  r.PremiumFrequency);
-        row2("Maturity Benefit @ 4%", $"₹{r.MaturityBenefit4:N2}");
-        row2("Maturity Benefit @ 8%", $"₹{r.MaturityBenefit8:N2}");
+        sb.AppendLine("<table class='glance'>");
+        void gl(string k, string v) => sb.AppendLine($"<tr><td>{k}</td><td>{v}</td></tr>");
+        gl("Name of the Product",          "SUD Life e-Wealth Royale");
+        gl("Plan Option",                  r.Option);
+        gl("Policy Number",                r.PolicyNumber);
+        gl("Customer Name",                r.CustomerName);
+        gl("Entry Age",                    $"{r.EntryAge} years");
+        gl("Policy Term (PT)",             $"{r.PolicyTerm} years");
+        gl("Premium Payment Term (PPT)",   $"{r.Ppt} years");
+        gl("Annualized Premium (AP)",      $"₹{r.AnnualizedPremium:N0}");
+        gl("Sum Assured (SA)",             $"₹{r.SumAssured:N0}");
+        gl("Premium Frequency",            r.PremiumFrequency);
+        gl("GST Rate",                     "0%");
         sb.AppendLine("</table>");
 
-        sb.AppendLine("<h2>Benefit Illustration Table</h2>");
+        sb.AppendLine("<div class='section-hdr'>Part A &nbsp;(Amount in Rupees)</div>");
         sb.AppendLine("<table>");
-        sb.AppendLine("<thead><tr>");
-        sb.AppendLine("<th>Year</th><th>Age</th><th>Annual Premium (AP)</th><th>Premium Invested</th>");
-        sb.AppendLine("<th>Mortality Charges (MC)</th><th>Policy Charges (PC)</th>");
-        sb.AppendLine("<th>Fund Value @ 4%</th><th>Death Benefit @ 4%</th>");
-        sb.AppendLine("<th>Fund Value @ 8%</th><th>Death Benefit @ 8%</th>");
-        sb.AppendLine("</tr></thead><tbody>");
-
-        foreach (var row in r.YearlyTable)
+        sb.AppendLine("<thead>");
+        sb.AppendLine("<tr>");
+        sb.AppendLine("  <th rowspan='2'>Policy<br/>Year</th>");
+        sb.AppendLine("  <th rowspan='2'>Annualized<br/>Premium</th>");
+        sb.AppendLine("  <th colspan='7'>At 4% p.a. Gross Investment Return</th>");
+        sb.AppendLine("  <th colspan='7'>At 8% p.a. Gross Investment Return</th>");
+        sb.AppendLine("</tr>");
+        sb.AppendLine("<tr>");
+        foreach (var _ in new[] { 0, 1 })
+        {
+            sb.AppendLine("  <th>Mortality<br/>Charges</th>");
+            sb.AppendLine("  <th>ARB<br/>Charges</th>");
+            sb.AppendLine("  <th>Other<br/>Charges*</th>");
+            sb.AppendLine("  <th>GST</th>");
+            sb.AppendLine("  <th>Fund at End<br/>of Year</th>");
+            sb.AppendLine("  <th>Surrender<br/>Value</th>");
+            sb.AppendLine("  <th>Death<br/>Benefit</th>");
+        }
+        sb.AppendLine("</tr>");
+        sb.AppendLine("</thead><tbody>");
+        foreach (var row in r.PartARows)
         {
             sb.AppendLine("<tr>");
-            sb.AppendLine($"<td>{row.Year}</td><td>{row.Age}</td>");
-            sb.AppendLine($"<td>₹{row.AnnualPremium:N2}</td><td>₹{row.PremiumInvested:N2}</td>");
-            sb.AppendLine($"<td>₹{row.MortalityCharge:N2}</td><td>₹{row.PolicyCharge:N2}</td>");
-            sb.AppendLine($"<td>₹{row.FundValue4:N2}</td><td>₹{row.DeathBenefit4:N2}</td>");
-            sb.AppendLine($"<td>₹{row.FundValue8:N2}</td><td>₹{row.DeathBenefit8:N2}</td>");
+            sb.AppendLine($"<td>{row.Year}</td><td>₹{row.AnnualizedPremium:N0}</td>");
+            sb.AppendLine($"<td>₹{row.MortalityCharges4:N0}</td><td>₹{row.ArbCharges4:N0}</td><td>₹{row.OtherCharges4:N0}</td><td>₹{row.Gst4:N0}</td>");
+            sb.AppendLine($"<td>₹{row.FundAtEndOfYear4:N0}</td><td>₹{row.SurrenderValue4:N0}</td><td>₹{row.DeathBenefit4:N0}</td>");
+            sb.AppendLine($"<td>₹{row.MortalityCharges8:N0}</td><td>₹{row.ArbCharges8:N0}</td><td>₹{row.OtherCharges8:N0}</td><td>₹{row.Gst8:N0}</td>");
+            sb.AppendLine($"<td>₹{row.FundAtEndOfYear8:N0}</td><td>₹{row.SurrenderValue8:N0}</td><td>₹{row.DeathBenefit8:N0}</td>");
             sb.AppendLine("</tr>");
         }
-
         sb.AppendLine("</tbody></table>");
+        sb.AppendLine("<p class='note'>* Other Charges = Policy Administration Charge + Fund Management Charge.<br/>");
+        sb.AppendLine("Surrender Value = Fund Value minus Discontinuance Charge (as per IRDAI regulations, applicable in years 1–4).</p>");
 
         sb.AppendLine("<div class='disclaimer'>");
-        sb.AppendLine("<strong>IRDAI Disclaimer:</strong><br/>");
-        sb.AppendLine(System.Net.WebUtility.HtmlEncode(r.IrdaiDisclaimer));
+        sb.AppendLine("<strong>Note:</strong> This benefit illustration is intended to show what charges are deducted from your premiums and how the unit fund, net of charges and taxes, may grow over the years of the policy term if the fund earns a gross return of 8% p.a. or 4% p.a. These rates are assumed only for the purpose of illustrating the flow of benefits. It should not be interpreted that the returns under the plan are going to be either 8% p.a. or 4% p.a.<br/><br/>");
+        sb.AppendLine("<strong>IRDAI Disclosure:</strong> " + System.Net.WebUtility.HtmlEncode(r.IrdaiDisclaimer));
+        sb.AppendLine("</div>");
+
+        // ---- Page 2: Part B ----
+        sb.AppendLine("<div class='page-break'></div>");
+        sb.AppendLine("<h2>Part B — Detailed Charge Break-up</h2>");
+
+        void renderPartB(List<PartBRow> rows, string rateLabel, string netYield)
+        {
+            sb.AppendLine($"<div class='section-hdr'>Gross yield: {rateLabel} &nbsp;|&nbsp; Net Yield: {netYield} &nbsp;(Amount in Rupees)</div>");
+            sb.AppendLine("<table>");
+            sb.AppendLine("<thead><tr>");
+            sb.AppendLine("<th>Policy<br/>Year</th>");
+            sb.AppendLine("<th>Annualised<br/>Premium (AP)</th>");
+            sb.AppendLine("<th>Premium<br/>Alloc.<br/>Charge</th>");
+            sb.AppendLine("<th>AP − PAC</th>");
+            sb.AppendLine("<th>Mortality<br/>Charges</th>");
+            sb.AppendLine("<th>ARB<br/>Charges</th>");
+            sb.AppendLine("<th>GST</th>");
+            sb.AppendLine("<th>Policy<br/>Admin<br/>Charge</th>");
+            sb.AppendLine("<th>Extra<br/>Alloc.</th>");
+            sb.AppendLine("<th>Fund<br/>Before<br/>FMC</th>");
+            sb.AppendLine("<th>FMC</th>");
+            sb.AppendLine("<th>Loyalty<br/>Addition</th>");
+            sb.AppendLine("<th>Wealth<br/>Booster</th>");
+            sb.AppendLine("<th>Return<br/>of<br/>Charges</th>");
+            sb.AppendLine("<th>Fund at<br/>End of Year</th>");
+            sb.AppendLine("<th>Surrender<br/>Value</th>");
+            sb.AppendLine("<th>Death<br/>Benefit</th>");
+            sb.AppendLine("</tr></thead><tbody>");
+            foreach (var row in rows)
+            {
+                sb.AppendLine("<tr>");
+                sb.AppendLine($"<td>{row.Year}</td>");
+                sb.AppendLine($"<td>₹{row.AnnualizedPremium:N0}</td>");
+                sb.AppendLine($"<td>₹{row.PremiumAllocationCharge:N0}</td>");
+                sb.AppendLine($"<td>₹{row.AnnualizedPremiumAfterPac:N0}</td>");
+                sb.AppendLine($"<td>₹{row.MortalityCharges:N0}</td>");
+                sb.AppendLine($"<td>₹{row.ArbCharges:N0}</td>");
+                sb.AppendLine($"<td>₹{row.Gst:N0}</td>");
+                sb.AppendLine($"<td>₹{row.PolicyAdministrationCharges:N0}</td>");
+                sb.AppendLine($"<td>₹{row.ExtraPremiumAllocation:N0}</td>");
+                sb.AppendLine($"<td>₹{row.FundBeforeFmc:N0}</td>");
+                sb.AppendLine($"<td>₹{row.FundManagementCharge:N0}</td>");
+                sb.AppendLine($"<td>₹{row.LoyaltyAddition:N0}</td>");
+                sb.AppendLine($"<td>₹{row.WealthBooster:N0}</td>");
+                sb.AppendLine($"<td>₹{row.ReturnOfCharges:N0}</td>");
+                sb.AppendLine($"<td>₹{row.FundAtEndOfYear:N0}</td>");
+                sb.AppendLine($"<td>₹{row.SurrenderValue:N0}</td>");
+                sb.AppendLine($"<td>₹{row.DeathBenefit:N0}</td>");
+                sb.AppendLine("</tr>");
+            }
+            sb.AppendLine("</tbody></table>");
+        }
+
+        renderPartB(r.PartBRows8, "8% p.a.", "7.037%");
+        sb.AppendLine("<div style='margin-top:16px'></div>");
+        renderPartB(r.PartBRows4, "4% p.a.", "3.068%");
+
+        sb.AppendLine("<div class='disclaimer'>");
+        sb.AppendLine("<strong>Legend:</strong> PAC = Premium Allocation Charge; FMC = Fund Management Charge (0.1118% p.m.); ");
+        sb.AppendLine("ARB = Additional Risk Benefit (Platinum Plus only); LA = Loyalty Addition; WB = Wealth Booster; ");
+        sb.AppendLine("Return of Charges = Return of Policy Admin Charges (Year 10) + Return of Mortality Charges (Maturity).<br/><br/>");
+        sb.AppendLine("Star Union Dai-ichi Life Insurance Company Limited | IRDAI Regn. No: 142 | UIN: 142L082V03<br/>");
+        sb.AppendLine("Registered Office: 11th Floor, Vishwaroop I.T. Park, Vashi, Navi Mumbai – 400 703 | 1800 266 8833 (Toll Free)");
         sb.AppendLine("</div>");
 
         sb.AppendLine("</body></html>");

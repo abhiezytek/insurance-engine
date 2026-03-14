@@ -6,37 +6,58 @@ using Microsoft.EntityFrameworkCore;
 namespace InsuranceEngine.Api.Services;
 
 /// <summary>
-/// ULIP Benefit Illustration calculation service.
+/// ULIP Benefit Illustration calculation service for SUD Life e-Wealth Royale.
 ///
-/// Abbreviations used throughout:
-///   AP  = Annualized Premium
-///   SA  = Sum Assured
-///   PT  = Policy Term
-///   PPT = Premium Payment Term
-///   FV  = Fund Value (NAV)
-///   FMC = Fund Management Charge  (1.35% p.a. = 0.00111809 monthly equivalent)
-///   MC  = Mortality Charge         (SumAtRisk × MortalityRate / 1000)
-///   PC  = Policy Administration Charge (₹100/month for first 10 yrs)
-///   PAC = Premium Allocation Charge (0% — full premium invested)
-///   SAR = Sum At Risk (SA - FV)
-///   DB  = Death Benefit = Max(SA - PartialWithdrawals, FV, 105% × TotalPremiumsPaid)
-///   LA  = Loyalty Addition (0.1% of FV after year 6)
-///   WB  = Wealth Booster  (3% of FV at year 10, 15, 20, ...)
+/// Implements a month-by-month projection engine aligned with the product's
+/// File &amp; Use document and IRDAI ULIP disclosure requirements.
+///
+/// Key product rules implemented:
+/// - PAC: ₹100/month for first 10 years.
+/// - FMC: 0.1118% per month (effective; used for Self-Managed strategy).
+/// - Monthly gross return: effective monthly = (1 + annual_rate)^(1/12) − 1.
+/// - Mortality: monthly MC = SAR × annual_rate[age] / 12000.
+///   SAR = max(SA − FV, 105% × TPP − FV, 0).
+/// - Loyalty Addition: 0.10% × avg(last 12 months' FV) at end of years 6..PPT.
+/// - Wealth Booster: 3% × avg(last 24 months' FV) at end of years 10, 15, 20, ...
+/// - RoPAC: total PAC paid, credited at end of year 10.
+/// - RoMC: total MC paid, credited at maturity.
+/// - Surrender Value: FV − Discontinuance Charge (years 1–4, IRDAI tiered schedule).
+/// - Death Benefit: max(SA, FV, 105% × total premiums paid).
+/// - No intermediate rounding; results rounded for output display only.
 /// </summary>
 public class UlipCalculationService : IUlipCalculationService
 {
-    // Default charge parameters — aligned to product specification
-    private const decimal DefaultPremiumAllocationChargePct = 0m;     // 0% — full premium invested
-    private const decimal DefaultPolicyAdminChargeMonthly   = 100m;   // ₹100/month for first 10 years
-    private const decimal DefaultFmcPct                     = 1.35m;  // 1.35% p.a.
+    // -----------------------------------------------------------------------
+    // Product constants — align with File & Use / workbook
+    // -----------------------------------------------------------------------
 
-    // Loyalty Addition rate (% of FV per year after year 6)
-    private const decimal LoyaltyAdditionPct = 0.1m;
-    // Wealth Booster rate (% of FV at milestone years 10, 15, 20, ...)
-    private const decimal WealthBoosterPct = 3.0m;
+    /// <summary>Premium Allocation Charge (%): 0% — full AP is invested.</summary>
+    private const decimal PacPercent = 0m;
 
-    private const decimal AssumedReturn4 = 0.04m;
-    private const decimal AssumedReturn8 = 0.08m;
+    /// <summary>Fund Management Charge per month: 0.1118%.</summary>
+    private const decimal FmcMonthly = 0.001118m;
+
+    /// <summary>Policy Administration Charge per month in rupees (first 10 years only).</summary>
+    private const decimal PacMonthly = 100m;
+
+    /// <summary>Policy year through which PAC is charged.</summary>
+    private const int PacEndYear = 10;
+
+    /// <summary>Loyalty Addition rate: 0.10% of average 12-month fund value.</summary>
+    private const decimal LoyaltyAdditionRate = 0.001m;
+
+    /// <summary>Wealth Booster rate: 3% of average 24-month fund value.</summary>
+    private const decimal WealthBoosterRate = 0.03m;
+
+    /// <summary>Loyalty Addition credited from this policy year (inclusive).</summary>
+    private const int LoyaltyStartYear = 6;
+
+    /// <summary>Wealth Booster milestone cadence (every N-th year starting from year 10).</summary>
+    private const int WealthBoosterStartYear = 10;
+    private const int WealthBoosterCadence = 5;
+
+    /// <summary>Return of PAC at end of this policy year.</summary>
+    private const int RoPacYear = 10;
 
     private readonly InsuranceDbContext _db;
 
@@ -48,114 +69,79 @@ public class UlipCalculationService : IUlipCalculationService
 
     public async Task<UlipCalculationResponse> CalculateAsync(UlipCalculationRequest req)
     {
-        // 1. Load product
         var product = await _db.Products
             .FirstOrDefaultAsync(p => p.Code == req.ProductCode && p.ProductType == "ULIP");
         var productName = product?.Name ?? req.ProductCode;
 
-        // 2. Load charges for this product (or defaults)
-        var charges = product != null
-            ? await _db.UlipCharges.Where(c => c.ProductId == product.Id).ToListAsync()
-            : new List<UlipCharge>();
-
-        var pacPct   = GetCharge(charges, "PremiumAllocation", DefaultPremiumAllocationChargePct);
-        var fmcPct   = GetCharge(charges, "FMC",              DefaultFmcPct);
-        var pcMonthly = GetCharge(charges, "PolicyAdmin",     DefaultPolicyAdminChargeMonthly);
-
-        // 3. Load mortality rates for gender
+        // Load mortality rates for the life assured's gender
         var mortalityRates = await _db.MortalityRates
             .Where(m => m.Gender == req.Gender)
             .ToDictionaryAsync(m => m.Age, m => m.Rate);
 
-        // Cumulative premiums paid (for death benefit calculation)
-        decimal cumulativePremiumsPaid = 0m;
+        // Determine months-since-last-birthday at policy commencement
+        // (used to correctly shift the age in each month of the projection)
+        var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
+        var birthMonth = req.DateOfBirth != default ? req.DateOfBirth.Month : effectiveDate.Month;
+        var monthsSinceLastBirthday = ((effectiveDate.Month - birthMonth) % 12 + 12) % 12;
 
-        // 4. Generate yearly rows
-        var rows = new List<UlipIllustrationRow>();
-        decimal fv4 = 0m, fv8 = 0m;
+        // Run month-by-month projection for both rate scenarios
+        var rows4 = RunMonthlyProjection(req, 0.04m, mortalityRates, monthsSinceLastBirthday);
+        var rows8 = RunMonthlyProjection(req, 0.08m, mortalityRates, monthsSinceLastBirthday);
+
+        // Build output lists
+        var partARows = new List<PartARow>();
+        var partBRows4 = new List<PartBRow>();
+        var partBRows8 = new List<PartBRow>();
+        var legacyRows = new List<UlipIllustrationRow>();
 
         for (int py = 1; py <= req.PolicyTerm; py++)
         {
-            int age = req.EntryAge + py - 1;   // age at start of policy year
-
-            // AP is paid only during PPT years
+            var r4 = rows4[py - 1];
+            var r8 = rows8[py - 1];
             var ap = py <= req.Ppt ? req.AnnualizedPremium : 0m;
-            cumulativePremiumsPaid += ap;
 
-            // Premium invested = AP × (1 − PAC%)  — PAC is 0% so full premium is invested
-            var premiumInvested = Round(ap * (1m - pacPct / 100m));
-
-            // Opening FV (carried over from prior year)
-            var openFv4 = fv4;
-            var openFv8 = fv8;
-
-            // --- Policy Admin Charge: ₹100/month only for first 10 years ---
-            var pcAnnual = py <= 10 ? Round(pcMonthly * 12m) : 0m;
-            var pc = pcAnnual;
-
-            // --- Mortality Charge ---
-            // SAR = Max(SA − FV, 0);  MC = (SAR × MortalityRate) / 1000
-            var mortalityRate = GetMortalityRate(mortalityRates, age);
-            var sumAtRisk4 = Math.Max(req.SumAssured - openFv4, 0m);
-            var sumAtRisk8 = Math.Max(req.SumAssured - openFv8, 0m);
-            var mc4 = Round((sumAtRisk4 * mortalityRate) / 1000m);
-            var mc8 = Round((sumAtRisk8 * mortalityRate) / 1000m);
-            var mc  = Round((mc4 + mc8) / 2m);
-
-            // --- Net amount for growth ---
-            var net4 = Math.Max(0m, openFv4 + premiumInvested - mc4 - pc);
-            var net8 = Math.Max(0m, openFv8 + premiumInvested - mc8 - pc);
-
-            // Fund growth at assumed rates
-            fv4 = Round(net4 * (1m + AssumedReturn4));
-            fv8 = Round(net8 * (1m + AssumedReturn8));
-
-            // Apply FMC after growth (1.35% p.a.)
-            fv4 = Round(fv4 * (1m - fmcPct / 100m));
-            fv8 = Round(fv8 * (1m - fmcPct / 100m));
-
-            // --- Loyalty Addition: +0.1% of FV from year 7 onwards ---
-            if (py >= 7)
+            partARows.Add(new PartARow
             {
-                fv4 = Round(fv4 * (1m + LoyaltyAdditionPct / 100m));
-                fv8 = Round(fv8 * (1m + LoyaltyAdditionPct / 100m));
-            }
+                Year = py,
+                AnnualizedPremium = ap,
+                MortalityCharges4 = Round2(r4.TotalMc),
+                ArbCharges4 = 0m,
+                OtherCharges4 = Round2(r4.TotalPac + r4.TotalFmc),
+                Gst4 = 0m,
+                FundAtEndOfYear4 = Round2(r4.FundEnd),
+                SurrenderValue4 = Round2(r4.SurrenderValue),
+                DeathBenefit4 = Round2(r4.DeathBenefit),
+                MortalityCharges8 = Round2(r8.TotalMc),
+                ArbCharges8 = 0m,
+                OtherCharges8 = Round2(r8.TotalPac + r8.TotalFmc),
+                Gst8 = 0m,
+                FundAtEndOfYear8 = Round2(r8.FundEnd),
+                SurrenderValue8 = Round2(r8.SurrenderValue),
+                DeathBenefit8 = Round2(r8.DeathBenefit),
+            });
 
-            // --- Wealth Booster: +3% of FV at year 10, 15, 20, ... ---
-            if (py >= 10 && (py - 10) % 5 == 0)
+            partBRows4.Add(BuildPartBRow(py, ap, req.AnnualizedPremium, r4));
+            partBRows8.Add(BuildPartBRow(py, ap, req.AnnualizedPremium, r8));
+
+            legacyRows.Add(new UlipIllustrationRow
             {
-                fv4 = Round(fv4 * (1m + WealthBoosterPct / 100m));
-                fv8 = Round(fv8 * (1m + WealthBoosterPct / 100m));
-            }
-
-            fv4 = Math.Max(0m, fv4);
-            fv8 = Math.Max(0m, fv8);
-
-            // Death Benefit = Max(SA, FV, 105% × Cumulative Premiums Paid)
-            var minDeath = Round(1.05m * cumulativePremiumsPaid);
-            var db4 = Round(Math.Max(req.SumAssured, Math.Max(fv4, minDeath)));
-            var db8 = Round(Math.Max(req.SumAssured, Math.Max(fv8, minDeath)));
-
-            rows.Add(new UlipIllustrationRow
-            {
-                Year             = py,
-                Age              = age,
-                AnnualPremium    = Round(ap),
-                PremiumInvested  = Round(premiumInvested),
-                MortalityCharge  = mc,
-                PolicyCharge     = pc,
-                FundValue4       = fv4,
-                DeathBenefit4    = db4,
-                FundValue8       = fv8,
-                DeathBenefit8    = db8,
+                Year = py,
+                Age = req.EntryAge + py - 1,
+                AnnualPremium = ap,
+                PremiumInvested = ap * (1m - PacPercent / 100m),
+                MortalityCharge = Round2((r4.TotalMc + r8.TotalMc) / 2.0),
+                PolicyCharge = Round2(r4.TotalPac),
+                FundValue4 = Round2(r4.FundEnd),
+                DeathBenefit4 = Round2(r4.DeathBenefit),
+                FundValue8 = Round2(r8.FundEnd),
+                DeathBenefit8 = Round2(r8.DeathBenefit),
             });
         }
 
-        // 5. Maturity benefits = FV at end of PT
-        var lastRow = rows.Count > 0 ? rows[^1] : null;
+        var lastR4 = rows4[req.PolicyTerm - 1];
+        var lastR8 = rows8[req.PolicyTerm - 1];
 
-        // 6. Persist results (upsert — remove old rows first)
-        await PersistResultsAsync(req, rows);
+        await PersistResultsAsync(req, legacyRows);
 
         return new UlipCalculationResponse
         {
@@ -163,16 +149,20 @@ public class UlipCalculationService : IUlipCalculationService
             CustomerName       = req.CustomerName,
             ProductCode        = req.ProductCode,
             ProductName        = productName,
+            Option             = req.Option,
             Gender             = req.Gender,
             EntryAge           = req.EntryAge,
             PolicyTerm         = req.PolicyTerm,
             Ppt                = req.Ppt,
-            AnnualizedPremium  = Round(req.AnnualizedPremium),
-            SumAssured         = Round(req.SumAssured),
+            AnnualizedPremium  = req.AnnualizedPremium,
+            SumAssured         = req.SumAssured,
             PremiumFrequency   = req.PremiumFrequency,
-            MaturityBenefit4   = lastRow?.FundValue4 ?? 0m,
-            MaturityBenefit8   = lastRow?.FundValue8 ?? 0m,
-            YearlyTable        = rows,
+            MaturityBenefit4   = Round2(lastR4.FundEnd),
+            MaturityBenefit8   = Round2(lastR8.FundEnd),
+            PartARows          = partARows,
+            PartBRows4         = partBRows4,
+            PartBRows8         = partBRows8,
+            YearlyTable        = legacyRows,
         };
     }
 
@@ -200,12 +190,9 @@ public class UlipCalculationService : IUlipCalculationService
         }).ToList();
 
         var last = rows[^1];
-
         return new UlipCalculationResponse
         {
             PolicyNumber      = policyNumber,
-            CustomerName      = string.Empty,
-            ProductCode       = string.Empty,
             YearlyTable       = rows,
             MaturityBenefit4  = last.FundValue4,
             MaturityBenefit8  = last.FundValue8,
@@ -213,12 +200,324 @@ public class UlipCalculationService : IUlipCalculationService
     }
 
     // -----------------------------------------------------------------------
+    // Monthly projection engine
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Holds per-policy-year accumulated results for one rate scenario,
+    /// as computed by the monthly projection loop.
+    /// </summary>
+    private sealed record YearlyAccumulator(
+        double TotalMc,            // Annual sum of monthly mortality charges
+        double TotalPac,           // Annual sum of monthly policy admin charges
+        double TotalFmc,           // Annual sum of monthly FMC charges
+        double FundBeforeFmc,      // Fund value at anniversary month BEFORE that month's FMC
+        double LastMonthFmc,       // FMC deducted in the anniversary month
+        double LoyaltyAddition,    // LA credited at this anniversary
+        double WealthBooster,      // WB credited at this anniversary
+        double ReturnOfCharges,    // RoPAC or RoMC credited at this anniversary
+        double FundEnd,            // Fund value at end of year (after FMC + additions)
+        double SurrenderValue,     // FundEnd − Discontinuance Charge
+        double DeathBenefit        // max(SA, FundEnd, 105% × cumTPP)
+    );
+
+    private List<YearlyAccumulator> RunMonthlyProjection(
+        UlipCalculationRequest req,
+        decimal annualRate,
+        Dictionary<int, decimal> mortalityRates,
+        int monthsSinceLastBirthday)
+    {
+        var policyTerm = req.PolicyTerm;
+        var ppt        = req.Ppt;
+        var sa         = (double)req.SumAssured;
+        var ap         = (double)req.AnnualizedPremium;
+
+        // Effective monthly gross return: (1 + annual)^(1/12) − 1
+        var monthlyRate = Math.Pow(1.0 + (double)annualRate, 1.0 / 12.0) - 1.0;
+        var fmcMonthly  = (double)FmcMonthly;
+        var pacMonthly  = (double)PacMonthly;
+
+        // Installment premium for each premium month
+        var installment = FrequencyInstallment(ap, req.PremiumFrequency);
+
+        // Which month-within-year are premium months for this frequency?
+        var premiumMonths = PremiumMonthsInYear(req.PremiumFrequency); // e.g. {1} for Yearly
+
+        // Running state
+        double fv          = 0.0;
+        double cumTpp      = 0.0;   // cumulative total premiums paid (for 105% floor)
+        double cumMc       = 0.0;   // cumulative mortality charges paid (for RoMC at maturity)
+        double cumPac      = 0.0;   // cumulative policy admin charges (for RoPAC at year 10)
+
+        // History of end-of-month fund values (for LA and WB averaging)
+        var fvHistory = new List<double>();
+
+        var yearlyResults = new List<YearlyAccumulator>();
+
+        for (int py = 1; py <= policyTerm; py++)
+        {
+            double yearMc  = 0.0;
+            double yearPac = 0.0;
+            double yearFmc = 0.0;
+            double fundBeforeFmcAtAnniv = 0.0;
+            double lastMonthFmc = 0.0;
+
+            for (int miy = 1; miy <= 12; miy++)
+            {
+                int globalMonth = (py - 1) * 12 + miy;
+
+                // --- Determine current age of LA in this month ---
+                int currentAge = req.EntryAge + (globalMonth - 1 + monthsSinceLastBirthday) / 12;
+
+                // --- Premium received (if premium month and within PPT) ---
+                if (py <= ppt && premiumMonths.Contains(miy))
+                {
+                    fv += installment;
+                    cumTpp += installment;
+                }
+
+                // --- Deduct Policy Admin Charge ---
+                double pac = py <= PacEndYear ? pacMonthly : 0.0;
+                fv -= pac;
+                yearPac += pac;
+                cumPac  += pac;
+
+                // --- Mortality Charge ---
+                double sar = Math.Max(sa - fv, Math.Max(1.05 * cumTpp - fv, 0.0));
+                double annualMortalityRate = GetMortalityRate(mortalityRates, currentAge);
+                double mc = sar * annualMortalityRate / 12000.0;
+                fv -= mc;
+                yearMc += mc;
+                cumMc  += mc;
+
+                // --- Monthly gross return ---
+                fv += fv * monthlyRate;
+
+                // --- FMC ---
+                double fmc = fv * fmcMonthly;
+                if (miy == 12)
+                {
+                    fundBeforeFmcAtAnniv = fv;   // capture BEFORE deducting this month's FMC
+                    lastMonthFmc = fmc;
+                }
+                fv -= fmc;
+                yearFmc += fmc;
+
+                // Record end-of-month FV (after FMC, before anniversary additions)
+                fvHistory.Add(fv);
+            }
+
+            // === Policy anniversary (month 12 of this year) ===
+
+            double la  = 0.0;
+            double wb  = 0.0;
+            double roc = 0.0;
+
+            // Loyalty Addition: from year 6 up to end of PPT
+            if (py >= LoyaltyStartYear && py <= ppt)
+            {
+                // Average of last 12 months' end-of-month FV values
+                var last12 = fvHistory.Skip(fvHistory.Count - 12).Take(12).ToList();
+                la = last12.Average() * (double)LoyaltyAdditionRate;
+                fv += la;
+            }
+
+            // Wealth Booster: years 10, 15, 20, ...
+            if (py >= WealthBoosterStartYear && (py - WealthBoosterStartYear) % WealthBoosterCadence == 0)
+            {
+                int take = Math.Min(24, fvHistory.Count);
+                var last24 = fvHistory.Skip(fvHistory.Count - take).Take(take).ToList();
+                wb = last24.Average() * (double)WealthBoosterRate;
+                fv += wb;
+            }
+
+            // Return of Policy Admin Charges at year 10
+            if (py == RoPacYear)
+            {
+                roc += cumPac;
+                fv  += cumPac;
+            }
+
+            // Return of Mortality Charges at maturity
+            if (py == policyTerm && policyTerm != RoPacYear)
+            {
+                roc += cumMc;
+                fv  += cumMc;
+            }
+            else if (py == policyTerm && policyTerm == RoPacYear)
+            {
+                // Both RoPAC and RoMC at the same year (e.g., if PT=10)
+                roc += cumMc;
+                fv  += cumMc;
+            }
+
+            fv = Math.Max(0.0, fv);
+
+            // Death Benefit
+            double minDeathFloor = 1.05 * cumTpp;
+            double db = Math.Max(sa, Math.Max(fv, minDeathFloor));
+
+            // Surrender Value (IRDAI discontinuance charges apply years 1–4)
+            double dc = GetDiscontinuanceCharge(py, ap);
+            double sv = Math.Max(0.0, fv - dc);
+
+            yearlyResults.Add(new YearlyAccumulator(
+                TotalMc:           yearMc,
+                TotalPac:          yearPac,
+                TotalFmc:          yearFmc,
+                FundBeforeFmc:     fundBeforeFmcAtAnniv,
+                LastMonthFmc:      lastMonthFmc,
+                LoyaltyAddition:   la,
+                WealthBooster:     wb,
+                ReturnOfCharges:   roc,
+                FundEnd:           fv,
+                SurrenderValue:    sv,
+                DeathBenefit:      db
+            ));
+        }
+
+        return yearlyResults;
+    }
+
+    // -----------------------------------------------------------------------
     // Private helpers
     // -----------------------------------------------------------------------
 
+    private static PartBRow BuildPartBRow(int year, decimal ap, decimal annPremium, YearlyAccumulator r)
+    {
+        var pac = ap * (PacPercent / 100m);
+        return new PartBRow
+        {
+            Year = year,
+            AnnualizedPremium          = ap,
+            PremiumAllocationCharge    = Round2(pac),
+            AnnualizedPremiumAfterPac  = Round2(ap - pac),
+            MortalityCharges           = Round2((decimal)r.TotalMc),
+            ArbCharges                 = 0m,
+            Gst                        = 0m,
+            PolicyAdministrationCharges= Round2((decimal)r.TotalPac),
+            ExtraPremiumAllocation     = 0m,
+            FundBeforeFmc              = Round2((decimal)r.FundBeforeFmc),
+            FundManagementCharge       = Round2((decimal)r.TotalFmc),
+            LoyaltyAddition            = Round2((decimal)r.LoyaltyAddition),
+            WealthBooster              = Round2((decimal)r.WealthBooster),
+            ReturnOfCharges            = Round2((decimal)r.ReturnOfCharges),
+            FundAtEndOfYear            = Round2((decimal)r.FundEnd),
+            SurrenderValue             = Round2((decimal)r.SurrenderValue),
+            DeathBenefit               = Round2((decimal)r.DeathBenefit),
+        };
+    }
+
+    /// <summary>Installment premium amount per payment event given frequency.</summary>
+    private static double FrequencyInstallment(double annualizedPremium, string frequency) =>
+        frequency switch
+        {
+            "Half Yearly" or "HalfYearly"  => annualizedPremium / 2.0,
+            "Quarterly"                     => annualizedPremium / 4.0,
+            "Monthly"                       => annualizedPremium / 12.0,
+            _                               => annualizedPremium,   // Yearly / default
+        };
+
+    /// <summary>
+    /// Returns the set of month-within-year indices (1–12) on which a premium
+    /// installment is due, given the payment frequency.
+    /// </summary>
+    private static HashSet<int> PremiumMonthsInYear(string frequency) =>
+        frequency switch
+        {
+            "Half Yearly" or "HalfYearly" => new HashSet<int> { 1, 7 },
+            "Quarterly"                    => new HashSet<int> { 1, 4, 7, 10 },
+            "Monthly"                      => new HashSet<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 },
+            _                              => new HashSet<int> { 1 },   // Yearly
+        };
+
+    /// <summary>
+    /// IRDAI-mandated Discontinuance Charge for years 1–4
+    /// (zero from year 5 onwards or once locked-in period ends).
+    /// Bands follow IRDAI 2019 ULIP circular.
+    /// </summary>
+    private static double GetDiscontinuanceCharge(int policyYear, double ap)
+    {
+        if (policyYear >= 5) return 0.0;
+
+        double dc = policyYear switch
+        {
+            1 => ap <= 25000 ? Math.Min(0.20 * ap, 3000) : ap <= 50000 ? Math.Min(0.06 * ap, 6000) : 6000,
+            2 => ap <= 25000 ? Math.Min(0.15 * ap, 2000) : ap <= 50000 ? Math.Min(0.04 * ap, 5000) : 5000,
+            3 => ap <= 25000 ? Math.Min(0.10 * ap, 1500) : ap <= 50000 ? Math.Min(0.03 * ap, 4000) : 4000,
+            4 => ap <= 25000 ? Math.Min(0.05 * ap, 1000) : ap <= 50000 ? Math.Min(0.02 * ap, 2000) : 2000,
+            _ => 0.0,
+        };
+        return dc;
+    }
+
+    private static double GetMortalityRate(Dictionary<int, decimal> rates, int age)
+    {
+        if (rates.TryGetValue(age, out var rate)) return (double)rate;
+        if (rates.Count == 0) return (double)FallbackMortalityRate(age);
+        var nearest = rates.MinBy(kv => Math.Abs(kv.Key - age));
+        return (double)nearest.Value;
+    }
+
+    /// <summary>
+    /// IALM 2012-14 Ultimate Male approximate mortality rates (per 1000 per year).
+    /// Used only when the DB mortality table is empty.
+    /// </summary>
+    private static decimal FallbackMortalityRate(int age) => age switch
+    {
+        <= 1  => 5.15m,
+        <= 4  => 0.69m,
+        <= 9  => 0.40m,
+        <= 14 => 0.46m,
+        <= 19 => 1.01m,
+        <= 24 => 1.32m,
+        <= 29 => 1.43m,
+        <= 34 => 1.58m,
+        35    => 1.59m,
+        36    => 1.61m,
+        37    => 1.63m,
+        38    => 1.74m,
+        39    => 1.87m,
+        40    => 2.02m,
+        41    => 2.18m,
+        42    => 2.36m,
+        43    => 2.57m,
+        44    => 2.81m,
+        45    => 3.08m,
+        46    => 3.42m,
+        47    => 3.78m,
+        48    => 4.18m,
+        49    => 4.60m,
+        50    => 5.06m,
+        51    => 5.55m,
+        52    => 6.06m,
+        53    => 6.60m,
+        54    => 7.17m,
+        55    => 7.77m,
+        56    => 8.41m,
+        57    => 9.09m,
+        58    => 9.81m,
+        59    => 10.57m,
+        60    => 11.37m,
+        61    => 12.22m,
+        62    => 13.12m,
+        63    => 14.07m,
+        64    => 15.07m,
+        65    => 16.13m,
+        66    => 17.24m,
+        67    => 18.41m,
+        68    => 19.65m,
+        69    => 20.95m,
+        70    => 22.31m,
+        71    => 23.75m,
+        72    => 25.26m,
+        73    => 26.84m,
+        74    => 28.50m,
+        _     => 30.25m,
+    };
+
     private async Task PersistResultsAsync(UlipCalculationRequest req, List<UlipIllustrationRow> rows)
     {
-        // Remove any existing rows for this policy number
         var existing = _db.UlipIllustrationResults.Where(r => r.PolicyNumber == req.PolicyNumber);
         _db.UlipIllustrationResults.RemoveRange(existing);
 
@@ -243,43 +542,8 @@ public class UlipCalculationService : IUlipCalculationService
         await _db.SaveChangesAsync();
     }
 
-    private static decimal GetCharge(List<UlipCharge> charges, string chargeType, decimal defaultValue)
-    {
-        var match = charges.FirstOrDefault(c =>
-            string.Equals(c.ChargeType, chargeType, StringComparison.OrdinalIgnoreCase));
-        return match?.ChargeValue ?? defaultValue;
-    }
-
-    private static decimal GetMortalityRate(Dictionary<int, decimal> rates, int age)
-    {
-        if (rates.TryGetValue(age, out var rate)) return rate;
-
-        // Nearest available age
-        if (rates.Count == 0) return FallbackMortalityRate(age);
-
-        var nearest = rates.MinBy(kv => Math.Abs(kv.Key - age));
-        return nearest.Value;
-    }
-
-    /// <summary>
-    /// Fallback Indian LIC-based approximate mortality rates (per 1000 sum at risk).
-    /// Used when no mortality table is loaded in the database.
-    /// </summary>
-    private static decimal FallbackMortalityRate(int age) => age switch
-    {
-        <= 20 => 0.78m,
-        <= 25 => 0.90m,
-        <= 30 => 1.10m,
-        <= 35 => 1.35m,
-        <= 40 => 1.79m,
-        <= 45 => 2.50m,
-        <= 50 => 3.55m,
-        <= 55 => 5.20m,
-        <= 60 => 7.65m,
-        <= 65 => 11.25m,
-        _ => 16.00m,
-    };
-
-    private static decimal Round(decimal value) =>
+    private static decimal Round2(decimal value) =>
         Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    private static decimal Round2(double value) =>
+        Math.Round((decimal)value, 2, MidpointRounding.AwayFromZero);
 }
