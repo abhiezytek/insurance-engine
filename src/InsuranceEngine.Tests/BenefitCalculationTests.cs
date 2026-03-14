@@ -33,16 +33,37 @@ public class BenefitCalculationTests
             new GmbFactor { Id=8,  Ppt=10, Pt=20, EntryAgeMin=41, EntryAgeMax=65, Option="Immediate", Factor=11.20m }
         );
 
-        // Seed GSV factors for PPT=7
-        decimal[] gsv7 = { 0,30,35,40,45,50,55,58,61,64,67,70,75,80,90 };
-        for (int i = 0; i < gsv7.Length; i++)
-            _db.GsvFactors.Add(new GsvFactor { Id=100+i, Ppt=7, PolicyYear=i+1, FactorPercent=gsv7[i] });
+        // Seed GSV factors for PPT=7, PT=15
+        decimal[] gsv7_15 = { 0,35,35,50,50,50,50,55.71m,61.43m,67.14m,72.86m,78.57m,84.29m,90,90 };
+        for (int i = 0; i < gsv7_15.Length; i++)
+            _db.GsvFactors.Add(new GsvFactor { Id=100+i, Ppt=7, Pt=15, PolicyYear=i+1, FactorPercent=gsv7_15[i] });
 
-        // Seed SSV factors for PPT=7
-        decimal[] ssv7f1 = { 0,40,45,50,55,60,65,68,71,74,77,80,84,90,100 };
-        decimal[] ssv7f2 = { 0,20,25,30,35,40,45,48,51,54,57,60,64,70,80 };
-        for (int i = 0; i < ssv7f1.Length; i++)
-            _db.SsvFactors.Add(new SsvFactor { Id=200+i, Ppt=7, PolicyYear=i+1, Factor1=ssv7f1[i], Factor2=ssv7f2[i] });
+        // Seed GSV factors for PPT=7, PT=20 (different from PT=15 starting at PY8)
+        decimal[] gsv7_20 = { 0,35,35,50,50,50,50,53.33m,56.67m,60,63.33m,66.67m,70,73.33m,76.67m,80,83.33m,86.67m,90,90 };
+        for (int i = 0; i < gsv7_20.Length; i++)
+            _db.GsvFactors.Add(new GsvFactor { Id=150+i, Ppt=7, Pt=20, PolicyYear=i+1, FactorPercent=gsv7_20[i] });
+
+        // Seed SSV factors for PPT=7, PT=15, Immediate
+        decimal[] ssv7_15_f1   = { 0,37.13m,39.82m,42.70m,45.80m,49.13m,52.71m,56.56m,60.69m,65.13m,69.90m,75.05m,80.59m,86.57m,93.02m };
+        decimal[] ssv7_15_f2im = { 0,835.88m,799.98m,761.46m,720.11m,675.72m,628.06m,576.88m,521.90m,462.83m,399.31m,330.97m,257.38m,178.06m,92.46m };
+        decimal[] ssv7_15_f2de = { 0,483.79m,520.89m,560.92m,604.12m,650.78m,701.18m,755.69m,714.67m,660.71m,592.79m,509.79m,410.47m,293.45m,157.19m };
+        decimal[] ssv7_15_f2tw = { 0,241.67m,260.21m,280.20m,301.78m,225.09m,142.52m,153.60m,165.59m,178.58m,92.65m,0,0,0,0 };
+        for (int i = 0; i < ssv7_15_f1.Length; i++)
+        {
+            if (ssv7_15_f1[i] != 0 || ssv7_15_f2im[i] != 0)
+                _db.SsvFactors.Add(new SsvFactor { Id=200+i, Ppt=7, Pt=15, Option="Immediate", PolicyYear=i+1, Factor1=ssv7_15_f1[i], Factor2=ssv7_15_f2im[i] });
+            if (ssv7_15_f1[i] != 0 || ssv7_15_f2de[i] != 0)
+                _db.SsvFactors.Add(new SsvFactor { Id=220+i, Ppt=7, Pt=15, Option="Deferred",  PolicyYear=i+1, Factor1=ssv7_15_f1[i], Factor2=ssv7_15_f2de[i] });
+            if (ssv7_15_f1[i] != 0 || ssv7_15_f2tw[i] != 0)
+                _db.SsvFactors.Add(new SsvFactor { Id=240+i, Ppt=7, Pt=15, Option="Twin",      PolicyYear=i+1, Factor1=ssv7_15_f1[i], Factor2=ssv7_15_f2tw[i] });
+        }
+
+        // Seed SSV factors for PPT=7, PT=20 (to validate PT-specific selection)
+        decimal[] ssv7_20_f1   = { 0,26.74m,28.63m,30.66m,32.84m,35.16m,37.66m,40.33m,43.20m,46.27m,49.56m,53.09m,56.88m,60.95m,65.33m,70.05m,75.14m,80.64m,86.59m,93.02m };
+        decimal[] ssv7_20_f2im = { 0,973.29m,947.94m,920.78m,891.70m,860.56m,827.22m,791.52m,753.30m,712.37m,668.52m,621.53m,571.12m,517.00m,458.83m,396.23m,328.76m,255.96m,177.30m,92.19m };
+        for (int i = 0; i < ssv7_20_f1.Length; i++)
+            if (ssv7_20_f1[i] != 0 || ssv7_20_f2im[i] != 0)
+                _db.SsvFactors.Add(new SsvFactor { Id=300+i, Ppt=7, Pt=20, Option="Immediate", PolicyYear=i+1, Factor1=ssv7_20_f1[i], Factor2=ssv7_20_f2im[i] });
 
         // Seed Loyalty factors for PPT=7
         _db.LoyaltyFactors.AddRange(
@@ -219,5 +240,58 @@ public class BenefitCalculationTests
             else
                 Assert.AreEqual(0m, row.GuaranteedIncome, $"PY={row.PolicyYear} should not be a twin income year");
         }
+    }
+
+    /// <summary>
+    /// Validates that when PPT=7 has two PTs (15 and 20), the correct GSV/SSV factor set is
+    /// selected based on the requested PT.  PY8 differs: PT=15 → 55.71%, PT=20 → 53.33%.
+    /// </summary>
+    [Test]
+    public async Task GsvFactor_SelectsCorrectPt_WhenSamePptHasTwoPts()
+    {
+        // PT=15 at PY8 should use GSV 55.71%
+        var req15 = ImmediateRequest(ppt: 7, pt: 15);
+        var result15 = await _svc.CalculateAsync(req15);
+        var py8_15 = result15.YearlyTable.First(r => r.PolicyYear == 8);
+
+        // PT=20 at PY8 should use GSV 53.33%
+        var req20 = new BenefitIllustrationRequest
+        {
+            AnnualPremium = 50000m, Ppt = 7, PolicyTerm = 20,
+            EntryAge = 35, Option = "Immediate", Channel = "Other"
+        };
+        var result20 = await _svc.CalculateAsync(req20);
+        var py8_20 = result20.YearlyTable.First(r => r.PolicyYear == 8);
+
+        // GSV = (factorPct/100) × totalPremiums – cumulativeSurvivalBenefits
+        // Both have 8 × 50000 = 400000 premiums and same GI/LI, but factors differ.
+        // PT=15 factor (55.71%) > PT=20 factor (53.33%), so GSV(PT=15) > GSV(PT=20).
+        Assert.Greater(py8_15.Gsv, py8_20.Gsv,
+            "PT=15 GSV factor at PY8 (55.71%) should exceed PT=20 GSV factor (53.33%)");
+    }
+
+    /// <summary>
+    /// Validates that SSV also uses PT-specific factors: at PY2 Factor1 differs between PT=15 and PT=20.
+    /// </summary>
+    [Test]
+    public async Task SsvFactor_SelectsCorrectPt_WhenSamePptHasTwoPts()
+    {
+        // PT=15: Factor1 at PY2 = 37.13  →  SSV Factor1 part = (37.13/100) × GMB
+        // PT=20: Factor1 at PY2 = 26.74  →  SSV Factor1 part = (26.74/100) × GMB
+        var req15 = ImmediateRequest(ppt: 7, pt: 15);
+        var result15 = await _svc.CalculateAsync(req15);
+        var py2_15 = result15.YearlyTable.First(r => r.PolicyYear == 2);
+
+        var req20 = new BenefitIllustrationRequest
+        {
+            AnnualPremium = 50000m, Ppt = 7, PolicyTerm = 20,
+            EntryAge = 35, Option = "Immediate", Channel = "Other"
+        };
+        var result20 = await _svc.CalculateAsync(req20);
+        var py2_20 = result20.YearlyTable.First(r => r.PolicyYear == 2);
+
+        // PT=15 Factor1 (37.13%) > PT=20 Factor1 (26.74%), so SSV(PT=15) > SSV(PT=20).
+        Assert.Greater(py2_15.Ssv, py2_20.Ssv,
+            "PT=15 SSV Factor1 at PY2 (37.13%) should exceed PT=20 Factor1 (26.74%)");
     }
 }
