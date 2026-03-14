@@ -132,16 +132,25 @@ export interface UlipFundAllocation {
 export interface UlipCalculationRequest {
   policyNumber: string;
   customerName: string;
+  policyholderName?: string;
   productCode: string;
+  option: 'Platinum' | 'Platinum Plus';
   gender: 'Male' | 'Female';
   dateOfBirth: string;        // ISO date string
   entryAge: number;
+  policyholderDateOfBirth?: string;
+  policyholderAge?: number;
+  policyholderGender?: 'Male' | 'Female';
   policyTerm: number;
   ppt: number;
   annualizedPremium: number;
   sumAssured: number;
-  premiumFrequency: 'Yearly' | 'HalfYearly' | 'Quarterly' | 'Monthly';
+  premiumFrequency: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
+  policyEffectiveDate?: string;  // ISO date string (used for birthday-month tracking)
+  investmentStrategy?: string;
   fundAllocations: UlipFundAllocation[];
+  distributionChannel?: string;
+  isStaffFamily?: boolean;
 }
 
 export interface UlipIllustrationRow {
@@ -157,11 +166,53 @@ export interface UlipIllustrationRow {
   deathBenefit8: number;
 }
 
+export interface PartARow {
+  year: number;
+  annualizedPremium: number;
+  // 4% scenario
+  mortalityCharges4: number;
+  arbCharges4: number;
+  otherCharges4: number;
+  gst4: number;
+  fundAtEndOfYear4: number;
+  surrenderValue4: number;
+  deathBenefit4: number;
+  // 8% scenario
+  mortalityCharges8: number;
+  arbCharges8: number;
+  otherCharges8: number;
+  gst8: number;
+  fundAtEndOfYear8: number;
+  surrenderValue8: number;
+  deathBenefit8: number;
+}
+
+export interface PartBRow {
+  year: number;
+  annualizedPremium: number;
+  premiumAllocationCharge: number;
+  annualizedPremiumAfterPac: number;
+  mortalityCharges: number;
+  arbCharges: number;
+  gst: number;
+  policyAdministrationCharges: number;
+  extraPremiumAllocation: number;
+  fundBeforeFmc: number;
+  fundManagementCharge: number;
+  loyaltyAddition: number;
+  wealthBooster: number;
+  returnOfCharges: number;
+  fundAtEndOfYear: number;
+  surrenderValue: number;
+  deathBenefit: number;
+}
+
 export interface UlipCalculationResult {
   policyNumber: string;
   customerName: string;
   productCode: string;
   productName: string;
+  option: string;
   gender: string;
   entryAge: number;
   policyTerm: number;
@@ -172,6 +223,11 @@ export interface UlipCalculationResult {
   maturityBenefit4: number;
   maturityBenefit8: number;
   irdaiDisclaimer: string;
+  // New Part A / Part B tables
+  partARows: PartARow[];
+  partBRows4: PartBRow[];
+  partBRows8: PartBRow[];
+  // Legacy table (for backward compat)
   yearlyTable: UlipIllustrationRow[];
 }
 

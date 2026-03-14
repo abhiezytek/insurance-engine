@@ -1,25 +1,29 @@
 namespace InsuranceEngine.Api.DTOs;
 
 // ---------------------------------------------------------------------------
-// Abbreviations (per IRDAI / product spec):
-//   AP  = Annualized Premium
-//   SA  = Sum Assured
-//   PT  = Policy Term
-//   PPT = Premium Payment Term
-//   FV  = Fund Value
-//   NAV = Net Asset Value
-//   FMC = Fund Management Charge
-//   MC  = Mortality Charge
-//   PC  = Policy (Admin) Charge
-//   U   = Units
-//   AV  = Account Value
-//   DB  = Death Benefit
+// Abbreviations (per IRDAI / SUD Life e-Wealth Royale product spec):
+//   AP   = Annualized Premium
+//   SA   = Sum Assured
+//   SAR  = Sum At Risk  (max(SA - FV - partial_withdrawals_last_24m, 105%×TPP - FV, 0))
+//   PT   = Policy Term
+//   PPT  = Premium Payment Term
+//   FV   = Fund Value
+//   FMC  = Fund Management Charge (0.1118% per month for Self-Managed strategy)
+//   MC   = Mortality Charge  (SAR × annual_rate / 12000 per month)
+//   PAC  = Policy Administration Charge (₹100/month for first 10 years)
+//   LA   = Loyalty Addition (0.10% × avg 12-month FV, from end-of-year 6 to end-of-PPT)
+//   WB   = Wealth Booster  (3% × avg 24-month FV, at end of years 10, 15, 20, ...)
+//   RoPAC= Return of Policy Admin Charges (at end of year 10)
+//   RoMC = Return of Mortality Charges (at maturity)
+//   DB   = Death Benefit = max(SA, FV, 105% × total premiums paid)
+//   TPP  = Total Premiums Paid (cumulative AP paid to date)
+//   DC   = Discontinuance Charge (IRDAI-mandated, years 1-4 only)
 // ---------------------------------------------------------------------------
 
 /// <summary>Fund allocation entry: fund type + percentage.</summary>
 public class UlipFundAllocation
 {
-    /// <summary>Name of the fund (e.g. "Equity Growth", "Debt Fund").</summary>
+    /// <summary>Name of the fund (e.g. "SUD Life Nifty Alpha 50 Index Fund").</summary>
     public string FundType { get; set; } = string.Empty;
 
     /// <summary>Allocation percentage (must sum to 100 across all entries).</summary>
@@ -35,8 +39,16 @@ public class UlipCalculationRequest
     /// <summary>Full name of the customer / life assured.</summary>
     public string CustomerName { get; set; } = string.Empty;
 
+    /// <summary>Full name of the policyholder (if different from life assured).</summary>
+    public string PolicyholderName { get; set; } = string.Empty;
+
     /// <summary>Product code for the ULIP (e.g. "EWEALTH-ROYALE").</summary>
     public string ProductCode { get; set; } = "EWEALTH-ROYALE";
+
+    /// <summary>Plan option: Platinum or Platinum Plus.</summary>
+    public string Option { get; set; } = "Platinum";
+
+    // ---- Life Assured details ----
 
     /// <summary>Gender of the life assured: Male or Female.</summary>
     public string Gender { get; set; } = "Male";
@@ -44,8 +56,21 @@ public class UlipCalculationRequest
     /// <summary>Date of birth of the life assured.</summary>
     public DateTime DateOfBirth { get; set; }
 
-    /// <summary>Entry age (years) of the life assured.</summary>
+    /// <summary>Entry age (years last birthday) of the life assured.</summary>
     public int EntryAge { get; set; }
+
+    // ---- Policyholder details ----
+
+    /// <summary>Date of birth of the policyholder.</summary>
+    public DateTime PolicyholderDateOfBirth { get; set; }
+
+    /// <summary>Age of the policyholder (years last birthday).</summary>
+    public int PolicyholderAge { get; set; }
+
+    /// <summary>Gender of the policyholder: Male or Female.</summary>
+    public string PolicyholderGender { get; set; } = "Male";
+
+    // ---- Policy parameters ----
 
     /// <summary>Policy Term (PT) in years.</summary>
     public int PolicyTerm { get; set; }
@@ -53,65 +78,196 @@ public class UlipCalculationRequest
     /// <summary>Premium Payment Term (PPT) in years.</summary>
     public int Ppt { get; set; }
 
-    /// <summary>Annualized Premium (AP) in INR.</summary>
+    /// <summary>Annualized Premium (AP) in INR (excl. GST, riders, underwriting extra).</summary>
     public decimal AnnualizedPremium { get; set; }
 
     /// <summary>Sum Assured (SA) in INR.</summary>
     public decimal SumAssured { get; set; }
 
     /// <summary>
-    /// Premium frequency: Yearly, HalfYearly, Quarterly, Monthly.
-    /// Used to calculate the installment premium; AP is always the annualized figure.
+    /// Premium frequency: Yearly, Half Yearly, Quarterly, Monthly.
+    /// AP is always the annualized figure; installment = AP × frequency_factor.
     /// </summary>
     public string PremiumFrequency { get; set; } = "Yearly";
 
-    /// <summary>Fund allocations — must sum to 100%.</summary>
+    /// <summary>
+    /// Policy effective date (commencement date). Used to compute month-of-birthday
+    /// transitions for monthly mortality rate application.
+    /// Defaults to UTC today if not set.
+    /// </summary>
+    public DateTime? PolicyEffectiveDate { get; set; }
+
+    // ---- Investment strategy ----
+
+    /// <summary>Investment strategy: Self-Managed, Life-Stage Aggressive, Life-Stage Conservative.</summary>
+    public string InvestmentStrategy { get; set; } = "Self-Managed";
+
+    /// <summary>Fund allocations — must sum to 100% for Self-Managed strategy.</summary>
     public List<UlipFundAllocation> FundAllocations { get; set; } = new();
+
+    // ---- Distribution / underwriting ----
+
+    /// <summary>Distribution channel (e.g. Corporate Agency, Broker, Direct Marketing).</summary>
+    public string DistributionChannel { get; set; } = string.Empty;
+
+    /// <summary>Whether the policyholder/LA is a staff / family member of the distributor.</summary>
+    public bool IsStaffFamily { get; set; }
 }
 
-/// <summary>Single policy-year row of the ULIP benefit illustration (dual-scenario).</summary>
+/// <summary>
+/// Single policy-year row of the legacy ULIP benefit illustration (dual-scenario).
+/// Kept for backward compatibility. New code should use PartARows / PartBRows.
+/// </summary>
 public class UlipIllustrationRow
 {
     /// <summary>Policy Year.</summary>
     public int Year { get; set; }
 
-    /// <summary>Age of life assured at end of this policy year.</summary>
+    /// <summary>Age of life assured at start of this policy year.</summary>
     public int Age { get; set; }
 
-    /// <summary>Annual premium due this year (AP; 0 after PPT).</summary>
+    /// <summary>Annualized premium due this year (AP; 0 after PPT).</summary>
     public decimal AnnualPremium { get; set; }
 
-    /// <summary>Premium invested = AP × (1 − PremiumAllocationCharge%).</summary>
+    /// <summary>Premium invested after Premium Allocation Charge (= AP × (1 − PAC%)).</summary>
     public decimal PremiumInvested { get; set; }
 
-    /// <summary>Mortality Charge (MC) deducted this year.</summary>
+    /// <summary>Total Mortality Charge (MC) deducted during this year (all monthly MCs summed).</summary>
     public decimal MortalityCharge { get; set; }
 
-    /// <summary>Policy Administration Charge (PC) deducted this year.</summary>
+    /// <summary>Total Policy Administration Charge (PAC) deducted this year (₹100/month × active months).</summary>
     public decimal PolicyCharge { get; set; }
 
-    // ------------------------------------------------------------------
     // 4% assumed return scenario
-    // ------------------------------------------------------------------
-
-    /// <summary>Fund Value (FV) at end of year — 4% scenario.</summary>
+    /// <summary>Fund Value at end of year — 4% gross return scenario.</summary>
     public decimal FundValue4 { get; set; }
-
-    /// <summary>Death Benefit (DB) — 4% scenario: max(SA, FV).</summary>
+    /// <summary>Death Benefit — 4% scenario: max(SA, FV, 105% × total premiums paid).</summary>
     public decimal DeathBenefit4 { get; set; }
 
-    // ------------------------------------------------------------------
     // 8% assumed return scenario
-    // ------------------------------------------------------------------
-
-    /// <summary>Fund Value (FV) at end of year — 8% scenario.</summary>
+    /// <summary>Fund Value at end of year — 8% gross return scenario.</summary>
     public decimal FundValue8 { get; set; }
-
-    /// <summary>Death Benefit (DB) — 8% scenario: max(SA, FV).</summary>
+    /// <summary>Death Benefit — 8% scenario: max(SA, FV, 105% × total premiums paid).</summary>
     public decimal DeathBenefit8 { get; set; }
 }
 
-/// <summary>Full ULIP Benefit Illustration response including both rate scenarios.</summary>
+// ---------------------------------------------------------------------------
+// Part A — Summary view (IRDAI BI format, both rate scenarios side-by-side)
+// ---------------------------------------------------------------------------
+
+/// <summary>Part A row: summary charges + fund value + SV + DB for one policy year.</summary>
+public class PartARow
+{
+    /// <summary>Policy Year (1 to PT).</summary>
+    public int Year { get; set; }
+
+    /// <summary>Annualized Premium due in this year (0 after PPT).</summary>
+    public decimal AnnualizedPremium { get; set; }
+
+    // ---- 4% gross return scenario ----
+    /// <summary>Total Mortality Charges for the year — 4% scenario.</summary>
+    public decimal MortalityCharges4 { get; set; }
+    /// <summary>Additional Risk Benefit Charges — 4% scenario (Platinum Plus only).</summary>
+    public decimal ArbCharges4 { get; set; }
+    /// <summary>Other Charges* = PAC + FMC — 4% scenario.</summary>
+    public decimal OtherCharges4 { get; set; }
+    /// <summary>GST on charges — 4% scenario (0% per current product rules).</summary>
+    public decimal Gst4 { get; set; }
+    /// <summary>Fund Value at end of year — 4% scenario.</summary>
+    public decimal FundAtEndOfYear4 { get; set; }
+    /// <summary>Surrender Value — 4% scenario.</summary>
+    public decimal SurrenderValue4 { get; set; }
+    /// <summary>Death Benefit — 4% scenario.</summary>
+    public decimal DeathBenefit4 { get; set; }
+
+    // ---- 8% gross return scenario ----
+    /// <summary>Total Mortality Charges for the year — 8% scenario.</summary>
+    public decimal MortalityCharges8 { get; set; }
+    /// <summary>Additional Risk Benefit Charges — 8% scenario (Platinum Plus only).</summary>
+    public decimal ArbCharges8 { get; set; }
+    /// <summary>Other Charges* = PAC + FMC — 8% scenario.</summary>
+    public decimal OtherCharges8 { get; set; }
+    /// <summary>GST on charges — 8% scenario.</summary>
+    public decimal Gst8 { get; set; }
+    /// <summary>Fund Value at end of year — 8% scenario.</summary>
+    public decimal FundAtEndOfYear8 { get; set; }
+    /// <summary>Surrender Value — 8% scenario.</summary>
+    public decimal SurrenderValue8 { get; set; }
+    /// <summary>Death Benefit — 8% scenario.</summary>
+    public decimal DeathBenefit8 { get; set; }
+}
+
+// ---------------------------------------------------------------------------
+// Part B — Detailed charge break-up (one scenario per table)
+// ---------------------------------------------------------------------------
+
+/// <summary>Part B row: detailed charge and fund projection for one rate scenario per year.</summary>
+public class PartBRow
+{
+    /// <summary>Policy Year.</summary>
+    public int Year { get; set; }
+
+    /// <summary>Annualized Premium (AP) due in this year (0 after PPT).</summary>
+    public decimal AnnualizedPremium { get; set; }
+
+    /// <summary>Premium Allocation Charge (PAC) deducted from AP before investment (usually 0).</summary>
+    public decimal PremiumAllocationCharge { get; set; }
+
+    /// <summary>AP after PAC = AP − PremiumAllocationCharge.</summary>
+    public decimal AnnualizedPremiumAfterPac { get; set; }
+
+    /// <summary>Total annual Mortality Charges (MC) — sum of monthly charges.</summary>
+    public decimal MortalityCharges { get; set; }
+
+    /// <summary>Additional Risk Benefit Charges (Platinum Plus only).</summary>
+    public decimal ArbCharges { get; set; }
+
+    /// <summary>GST on mortality / ARB charges (0% per current rules).</summary>
+    public decimal Gst { get; set; }
+
+    /// <summary>Total Policy Administration Charge for the year (₹100/month × months, first 10 years).</summary>
+    public decimal PolicyAdministrationCharges { get; set; }
+
+    /// <summary>Extra Premium Allocation (0 for standard plans).</summary>
+    public decimal ExtraPremiumAllocation { get; set; }
+
+    /// <summary>
+    /// Fund value at end of anniversary month BEFORE that month's FMC.
+    /// (Used to derive the Fund at End of Year figure.)
+    /// </summary>
+    public decimal FundBeforeFmc { get; set; }
+
+    /// <summary>Total Fund Management Charge for the year (sum of all monthly FMC deductions).</summary>
+    public decimal FundManagementCharge { get; set; }
+
+    /// <summary>Loyalty Addition credited at this anniversary (0.10% × avg 12-month FV, years 6–PPT).</summary>
+    public decimal LoyaltyAddition { get; set; }
+
+    /// <summary>Wealth Booster credited at this anniversary (3% × avg 24-month FV, years 10, 15, 20…).</summary>
+    public decimal WealthBooster { get; set; }
+
+    /// <summary>
+    /// Return of Charges credited:
+    /// — At year 10: Return of all Policy Admin Charges paid.
+    /// — At maturity: Return of all Mortality Charges paid.
+    /// </summary>
+    public decimal ReturnOfCharges { get; set; }
+
+    /// <summary>Fund Value at end of year (after all monthly charges, then anniversary additions).</summary>
+    public decimal FundAtEndOfYear { get; set; }
+
+    /// <summary>Surrender Value = FundAtEndOfYear − Discontinuance Charge (years 1–4).</summary>
+    public decimal SurrenderValue { get; set; }
+
+    /// <summary>Death Benefit = max(SA, FundAtEndOfYear, 105% × TotalPremiumsPaid).</summary>
+    public decimal DeathBenefit { get; set; }
+}
+
+// ---------------------------------------------------------------------------
+// Response
+// ---------------------------------------------------------------------------
+
+/// <summary>Full ULIP Benefit Illustration response including Part A and Part B for both rate scenarios.</summary>
 public class UlipCalculationResponse
 {
     // -- Policy inputs echoed back --
@@ -119,6 +275,7 @@ public class UlipCalculationResponse
     public string CustomerName { get; set; } = string.Empty;
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
+    public string Option { get; set; } = "Platinum";
     public string Gender { get; set; } = string.Empty;
     public int EntryAge { get; set; }
     public int PolicyTerm { get; set; }
@@ -134,12 +291,13 @@ public class UlipCalculationResponse
 
     // -- Summary values --
 
-    /// <summary>Maturity Benefit at 4% assumed return (= FV at final year, 4% scenario).</summary>
+    /// <summary>Maturity Benefit at 4% assumed gross return (FV at final year).</summary>
     public decimal MaturityBenefit4 { get; set; }
 
-    /// <summary>Maturity Benefit at 8% assumed return (= FV at final year, 8% scenario).</summary>
+    /// <summary>Maturity Benefit at 8% assumed gross return (FV at final year).</summary>
     public decimal MaturityBenefit8 { get; set; }
 
+    // -- IRDAI disclaimer --
     /// <summary>IRDAI-mandated investment risk disclaimer.</summary>
     public string IrdaiDisclaimer { get; set; } =
         "In this policy, the investment risk in the investment portfolio is borne by the policyholder. " +
@@ -148,7 +306,20 @@ public class UlipCalculationResponse
         "completely or partially till the end of fifth year. " +
         "Returns shown at 4% p.a. and 8% p.a. are for illustration purposes only and are not guaranteed.";
 
-    /// <summary>Yearly illustration rows — one entry per policy year.</summary>
+    // -- Part A: dual-scenario summary table --
+    /// <summary>Part A rows — one per policy year, showing both 4% and 8% scenarios.</summary>
+    public List<PartARow> PartARows { get; set; } = new();
+
+    // -- Part B: detailed charge tables for each scenario --
+    /// <summary>Part B rows for 4% assumed gross return.</summary>
+    public List<PartBRow> PartBRows4 { get; set; } = new();
+    /// <summary>Part B rows for 8% assumed gross return.</summary>
+    public List<PartBRow> PartBRows8 { get; set; } = new();
+
+    /// <summary>
+    /// Legacy yearly table for backward compatibility.
+    /// Each row has MC/PolicyCharge as the average of 4% and 8% scenarios.
+    /// </summary>
     public List<UlipIllustrationRow> YearlyTable { get; set; } = new();
 }
 

@@ -325,49 +325,53 @@ public static class SeedData
         context.Products.Add(ulipProduct);
         await context.SaveChangesAsync();
 
-        // Default ULIP charges — PAC 0%, Policy Admin ₹100/month (stored as monthly value), FMC 1.35%
+        // Default ULIP charges:
+        //   PremiumAllocation (PAC) = 0% of premium (no allocation charge)
+        //   Policy Administration Charge = ₹100/month (first 10 policy years)
+        //   FMC (Fund Management Charge) = 0.1118% of fund per month (Self-Managed strategy)
         context.UlipCharges.AddRange(
-            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PremiumAllocation", ChargeValue = 0m,    ChargeFrequency = "PercentOfPremium" },
-            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "FMC",               ChargeValue = 1.35m, ChargeFrequency = "PercentOfFund"    },
-            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PolicyAdmin",        ChargeValue = 100m,  ChargeFrequency = "Monthly"          }
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PremiumAllocation", ChargeValue = 0m,      ChargeFrequency = "PercentOfPremium" },
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "FMC",               ChargeValue = 0.1118m, ChargeFrequency = "PercentOfFundMonthly" },
+            new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PolicyAdmin",        ChargeValue = 100m,    ChargeFrequency = "Monthly"          }
         );
         await context.SaveChangesAsync();
 
-        // Default Indian LIC-based mortality rates for both genders
+        // IALM 2012-14 Ultimate mortality rates for both genders
+        // Male rates sourced from product workbook (ages 37–46 extracted; others from IALM 2012-14 published table).
+        // Female rates approximated at 80% of male (conservative; upload actual table via /api/ulip/upload-mortality).
         if (!await context.MortalityRates.AnyAsync())
         {
             var maleRates = new (int Age, decimal Rate)[]
             {
-                (18, 0.72m), (19, 0.74m), (20, 0.78m), (21, 0.80m), (22, 0.82m),
-                (23, 0.84m), (24, 0.87m), (25, 0.90m), (26, 0.93m), (27, 0.96m),
-                (28, 1.00m), (29, 1.05m), (30, 1.10m), (31, 1.15m), (32, 1.20m),
-                (33, 1.25m), (34, 1.30m), (35, 1.35m), (36, 1.42m), (37, 1.50m),
-                (38, 1.60m), (39, 1.70m), (40, 1.79m), (41, 1.95m), (42, 2.10m),
-                (43, 2.25m), (44, 2.38m), (45, 2.50m), (46, 2.70m), (47, 2.90m),
-                (48, 3.10m), (49, 3.32m), (50, 3.55m), (51, 3.85m), (52, 4.15m),
-                (53, 4.50m), (54, 4.84m), (55, 5.20m), (56, 5.65m), (57, 6.12m),
-                (58, 6.62m), (59, 7.13m), (60, 7.65m), (61, 8.35m), (62, 9.05m),
-                (63, 9.85m), (64, 10.55m),(65, 11.25m),
-            };
-            var femaleRates = new (int Age, decimal Rate)[]
-            {
-                (18, 0.55m), (19, 0.57m), (20, 0.60m), (21, 0.62m), (22, 0.64m),
-                (23, 0.66m), (24, 0.68m), (25, 0.71m), (26, 0.74m), (27, 0.77m),
-                (28, 0.80m), (29, 0.84m), (30, 0.88m), (31, 0.92m), (32, 0.96m),
-                (33, 1.00m), (34, 1.04m), (35, 1.08m), (36, 1.14m), (37, 1.20m),
-                (38, 1.28m), (39, 1.36m), (40, 1.43m), (41, 1.56m), (42, 1.68m),
-                (43, 1.80m), (44, 1.90m), (45, 2.00m), (46, 2.16m), (47, 2.32m),
-                (48, 2.48m), (49, 2.66m), (50, 2.84m), (51, 3.08m), (52, 3.32m),
-                (53, 3.60m), (54, 3.87m), (55, 4.16m), (56, 4.52m), (57, 4.90m),
-                (58, 5.30m), (59, 5.70m), (60, 6.12m), (61, 6.68m), (62, 7.24m),
-                (63, 7.88m), (64, 8.44m), (65, 9.00m),
+                // IALM 2012-14 Ultimate Male (per 1000 per year)
+                (0,  5.15m), (1,  1.15m), (2,  0.85m), (3,  0.69m), (4,  0.60m),
+                (5,  0.54m), (6,  0.48m), (7,  0.43m), (8,  0.40m), (9,  0.38m),
+                (10, 0.36m), (11, 0.35m), (12, 0.36m), (13, 0.40m), (14, 0.46m),
+                (15, 0.55m), (16, 0.65m), (17, 0.77m), (18, 0.89m), (19, 1.01m),
+                (20, 1.11m), (21, 1.19m), (22, 1.25m), (23, 1.29m), (24, 1.32m),
+                (25, 1.34m), (26, 1.36m), (27, 1.38m), (28, 1.40m), (29, 1.43m),
+                (30, 1.46m), (31, 1.50m), (32, 1.53m), (33, 1.56m), (34, 1.58m),
+                (35, 1.59m), (36, 1.61m),
+                // Workbook-extracted exact rates for key ages
+                (37, 1.6298m), (38, 1.7440m), (39, 1.8722m),
+                (40, 2.0160m), (41, 2.1780m), (42, 2.3628m),
+                (43, 2.5730m), (44, 2.8143m), (45, 3.0772m), (46, 3.4188m),
+                // IALM 2012-14 continuation
+                (47, 3.78m),  (48, 4.18m),  (49, 4.60m),
+                (50, 5.06m),  (51, 5.55m),  (52, 6.06m),  (53, 6.60m),  (54, 7.17m),
+                (55, 7.77m),  (56, 8.41m),  (57, 9.09m),  (58, 9.81m),  (59, 10.57m),
+                (60, 11.37m), (61, 12.22m), (62, 13.12m), (63, 14.07m), (64, 15.07m),
+                (65, 16.13m), (66, 17.24m), (67, 18.41m), (68, 19.65m), (69, 20.95m),
+                (70, 22.31m), (71, 23.75m), (72, 25.26m), (73, 26.84m), (74, 28.50m),
+                (75, 30.25m),
             };
 
             var effDate = new DateTime(2024, 1, 1);
             context.MortalityRates.AddRange(
-                maleRates.Select(x   => new MortalityRate { Age = x.Age, Rate = x.Rate, Gender = "Male",   EffectiveDate = effDate }));
+                maleRates.Select(x => new MortalityRate { Age = x.Age, Rate = x.Rate, Gender = "Male", EffectiveDate = effDate }));
+            // Female rates: IALM 2012-14 Female rates (approx. 80% of male; replace via upload for exactness)
             context.MortalityRates.AddRange(
-                femaleRates.Select(x => new MortalityRate { Age = x.Age, Rate = x.Rate, Gender = "Female", EffectiveDate = effDate }));
+                maleRates.Select(x => new MortalityRate { Age = x.Age, Rate = Math.Round(x.Rate * 0.80m, 4), Gender = "Female", EffectiveDate = effDate }));
             await context.SaveChangesAsync();
         }
     }
