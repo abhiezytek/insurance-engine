@@ -452,6 +452,9 @@ public class UlipController : ControllerBase
             sb.AppendLine("</tbody></table>");
         }
 
+        // Net yield = workbook reference values derived from gross return minus all charges
+        // (FMC 0.1118%/m, Policy Admin ₹100/m first 10 yrs); PA=0%.
+        // These are indicative figures from the product workbook for PT=20/PPT=10/AP=24000.
         renderPartB(r.PartBRows8, "8% p.a.", "7.037%");
         sb.AppendLine("<div style='margin-top:16px'></div>");
         renderPartB(r.PartBRows4, "4% p.a.", "3.068%");

@@ -325,7 +325,10 @@ public static class SeedData
         context.Products.Add(ulipProduct);
         await context.SaveChangesAsync();
 
-        // Default ULIP charges — PAC 0%, Policy Admin ₹100/month, FMC 0.1118% monthly
+        // Default ULIP charges:
+        //   PremiumAllocation (PAC) = 0% of premium (no allocation charge)
+        //   Policy Administration Charge = ₹100/month (first 10 policy years)
+        //   FMC (Fund Management Charge) = 0.1118% of fund per month (Self-Managed strategy)
         context.UlipCharges.AddRange(
             new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "PremiumAllocation", ChargeValue = 0m,      ChargeFrequency = "PercentOfPremium" },
             new UlipCharge { ProductId = ulipProduct.Id, ChargeType = "FMC",               ChargeValue = 0.1118m, ChargeFrequency = "PercentOfFundMonthly" },

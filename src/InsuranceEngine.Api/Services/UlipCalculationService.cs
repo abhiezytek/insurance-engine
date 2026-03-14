@@ -37,11 +37,15 @@ public class UlipCalculationService : IUlipCalculationService
     /// <summary>Fund Management Charge per month: 0.1118%.</summary>
     private const decimal FmcMonthly = 0.001118m;
 
-    /// <summary>Policy Administration Charge per month in rupees (first 10 years only).</summary>
-    private const decimal PacMonthly = 100m;
+    /// <summary>
+    /// Policy Administration Charge (PolicyAdminCharge) per month in rupees (first 10 years only).
+    /// Note: "PAC" in the IRDAI Part B column refers to "Premium Allocation Charge" (= 0% here);
+    /// the Policy Administration Charge is a separate ₹100/month deduction.
+    /// </summary>
+    private const decimal PolicyAdminChargeMonthly = 100m;
 
-    /// <summary>Policy year through which PAC is charged.</summary>
-    private const int PacEndYear = 10;
+    /// <summary>Policy year through which PolicyAdminCharge is charged.</summary>
+    private const int PolicyAdminChargeEndYear = 10;
 
     /// <summary>Loyalty Addition rate: 0.10% of average 12-month fund value.</summary>
     private const decimal LoyaltyAdditionRate = 0.001m;
@@ -129,7 +133,9 @@ public class UlipCalculationService : IUlipCalculationService
                 Age = req.EntryAge + py - 1,
                 AnnualPremium = ap,
                 PremiumInvested = ap * (1m - PacPercent / 100m),
-                MortalityCharge = Round2((r4.TotalMc + r8.TotalMc) / 2.0),
+                // Legacy single-value MC: use the 8% scenario (higher return → lower SAR → slightly lower MC).
+                // This field exists only for backward-compatibility; consumers should use PartBRows4/8 for per-scenario accuracy.
+                MortalityCharge = Round2(r8.TotalMc),
                 PolicyCharge = Round2(r4.TotalPac),
                 FundValue4 = Round2(r4.FundEnd),
                 DeathBenefit4 = Round2(r4.DeathBenefit),
@@ -235,7 +241,7 @@ public class UlipCalculationService : IUlipCalculationService
         // Effective monthly gross return: (1 + annual)^(1/12) − 1
         var monthlyRate = Math.Pow(1.0 + (double)annualRate, 1.0 / 12.0) - 1.0;
         var fmcMonthly  = (double)FmcMonthly;
-        var pacMonthly  = (double)PacMonthly;
+        var pacMonthly  = (double)PolicyAdminChargeMonthly;
 
         // Installment premium for each premium month
         var installment = FrequencyInstallment(ap, req.PremiumFrequency);
@@ -277,7 +283,7 @@ public class UlipCalculationService : IUlipCalculationService
                 }
 
                 // --- Deduct Policy Admin Charge ---
-                double pac = py <= PacEndYear ? pacMonthly : 0.0;
+                double pac = py <= PolicyAdminChargeEndYear ? pacMonthly : 0.0;
                 fv -= pac;
                 yearPac += pac;
                 cumPac  += pac;
