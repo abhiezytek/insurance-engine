@@ -344,3 +344,83 @@ export function downloadUlipBiPdf(data: UlipPdfData) {
   addFooter(doc);
   doc.save(`ULIP_${data.policyNumber || 'policy'}_BI.pdf`);
 }
+
+// ---------------------------------------------------------------------------
+// YPYG ULIP PDF — separate from BI, with surrender values and YPYG branding
+// ---------------------------------------------------------------------------
+export interface YpygUlipPdfRow {
+  year: number;
+  age: number;
+  annualPremium: number;
+  premiumInvested: number;
+  mortalityCharge: number;
+  policyCharge: number;
+  fundValue4: number;
+  deathBenefit4: number;
+  surrenderValue4: number;
+  fundValue8: number;
+  deathBenefit8: number;
+  surrenderValue8: number;
+}
+
+export interface YpygUlipPdfData {
+  policyNumber: string;
+  customerName: string;
+  productCode: string;
+  gender: string;
+  entryAge: number;
+  policyTerm: number;
+  ppt: number;
+  annualizedPremium: number;
+  sumAssured: number;
+  maturityBenefit4: number;
+  maturityBenefit8: number;
+  yearlyTable: YpygUlipPdfRow[];
+}
+
+export function downloadYpygUlipPdf(data: YpygUlipPdfData) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  addPageHeader(
+    doc,
+    'YPYG — You Pay You Get (ULIP)',
+    `Policy Number: ${data.policyNumber || 'N/A'}. Two scenarios: 4% and 8% assumed return. All values in Rs.`,
+  );
+
+  const summaryY = addSummaryGrid(doc, [
+    ['Policy Number', data.policyNumber || 'N/A'],
+    ['Customer', data.customerName || 'N/A'],
+    ['Product', data.productCode],
+    ['Gender', data.gender || 'N/A'],
+    ['Entry Age', data.entryAge > 0 ? `${data.entryAge} yrs` : 'N/A'],
+    ['Annual Premium', `Rs. ${INR(data.annualizedPremium)}`],
+    ['PPT', `${data.ppt} yrs`],
+    ['Policy Term', `${data.policyTerm} yrs`],
+    ['Sum Assured', `Rs. ${INR(data.sumAssured)}`],
+    ['Maturity (4%)', `Rs. ${INR(data.maturityBenefit4)}`],
+    ['Maturity (8%)', `Rs. ${INR(data.maturityBenefit8)}`],
+  ], 38);
+
+  addTable(
+    doc,
+    ['Yr', 'Age', 'AP (Rs.)', 'Invested', 'MC', 'PC', 'FV @4%', 'DB @4%', 'SV @4%', 'FV @8%', 'DB @8%', 'SV @8%'],
+    data.yearlyTable.map(r => [
+      String(r.year),
+      String(r.age),
+      INR(r.annualPremium),
+      INR(r.premiumInvested),
+      INR(r.mortalityCharge),
+      INR(r.policyCharge),
+      INR(r.fundValue4),
+      INR(r.deathBenefit4),
+      INR(r.surrenderValue4),
+      INR(r.fundValue8),
+      INR(r.deathBenefit8),
+      INR(r.surrenderValue8),
+    ]),
+    summaryY + 6,
+  );
+
+  addFooter(doc);
+  doc.save(`YPYG_ULIP_${data.policyNumber || 'policy'}.pdf`);
+}
