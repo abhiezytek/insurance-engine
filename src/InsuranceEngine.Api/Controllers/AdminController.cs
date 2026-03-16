@@ -345,6 +345,208 @@ public class AdminController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(row);
     }
+
+    // -------------------------------------------------------------------------
+    // User Management
+    // -------------------------------------------------------------------------
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers() =>
+        Ok(await _db.UserMasters.Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .OrderBy(u => u.FullName).ToListAsync());
+
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
+    {
+        var user = new UserMaster
+        {
+            FullName = dto.FullName,
+            Email = dto.Email,
+            Mobile = dto.Mobile,
+            EmployeeId = dto.EmployeeId,
+            Department = dto.Department,
+            PasswordHash = BCryptHash(dto.Password ?? "Welcome@123"),
+            Status = dto.Status ?? "Active",
+            ForceChangePassword = true,
+            CreatedBy = User.Identity?.Name ?? "System"
+        };
+        _db.UserMasters.Add(user);
+        await _db.SaveChangesAsync();
+        return Ok(user);
+    }
+
+    [HttpPut("users/{id:int}")]
+    public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto dto)
+    {
+        var user = await _db.UserMasters.FindAsync(id);
+        if (user is null) return NotFound();
+        if (dto.FullName != null) user.FullName = dto.FullName;
+        if (dto.Email != null) user.Email = dto.Email;
+        if (dto.Mobile != null) user.Mobile = dto.Mobile;
+        if (dto.Department != null) user.Department = dto.Department;
+        if (dto.Status != null) user.Status = dto.Status;
+        await _db.SaveChangesAsync();
+        return Ok(user);
+    }
+
+    [HttpPut("users/{id:int}/toggle-status")]
+    public async Task<IActionResult> ToggleUserStatus(int id)
+    {
+        var user = await _db.UserMasters.FindAsync(id);
+        if (user is null) return NotFound();
+        user.Status = user.Status == "Active" ? "Inactive" : "Active";
+        await _db.SaveChangesAsync();
+        return Ok(user);
+    }
+
+    // -------------------------------------------------------------------------
+    // Role Management
+    // -------------------------------------------------------------------------
+
+    [HttpGet("roles")]
+    public async Task<IActionResult> GetRoles() =>
+        Ok(await _db.RoleMasters.Include(r => r.ModuleAccess).OrderBy(r => r.RoleName).ToListAsync());
+
+    [HttpPost("roles")]
+    public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto dto)
+    {
+        var role = new RoleMaster
+        {
+            RoleName = dto.RoleName,
+            Description = dto.Description,
+            IsActive = true
+        };
+        _db.RoleMasters.Add(role);
+        await _db.SaveChangesAsync();
+        return Ok(role);
+    }
+
+    [HttpPut("roles/{id:int}")]
+    public async Task<IActionResult> UpdateRole(int id, [FromBody] CreateRoleDto dto)
+    {
+        var role = await _db.RoleMasters.FindAsync(id);
+        if (role is null) return NotFound();
+        role.RoleName = dto.RoleName;
+        role.Description = dto.Description;
+        await _db.SaveChangesAsync();
+        return Ok(role);
+    }
+
+    [HttpPut("roles/{id:int}/toggle-status")]
+    public async Task<IActionResult> ToggleRoleStatus(int id)
+    {
+        var role = await _db.RoleMasters.FindAsync(id);
+        if (role is null) return NotFound();
+        role.IsActive = !role.IsActive;
+        await _db.SaveChangesAsync();
+        return Ok(role);
+    }
+
+    // -------------------------------------------------------------------------
+    // Module & SubModule Management
+    // -------------------------------------------------------------------------
+
+    [HttpGet("modules")]
+    public async Task<IActionResult> GetModules() =>
+        Ok(await _db.ModuleMasters.Include(m => m.SubModules).OrderBy(m => m.ModuleName).ToListAsync());
+
+    [HttpGet("module-access")]
+    public async Task<IActionResult> GetModuleAccess([FromQuery] int? roleId) 
+    {
+        var query = _db.RoleModuleAccesses
+            .Include(r => r.Module)
+            .Include(r => r.SubModule)
+            .AsQueryable();
+        if (roleId.HasValue)
+            query = query.Where(r => r.RoleId == roleId.Value);
+        return Ok(await query.ToListAsync());
+    }
+
+    [HttpPost("module-access")]
+    public async Task<IActionResult> SaveModuleAccess([FromBody] SaveModuleAccessDto dto)
+    {
+        // Remove existing access for this role+module
+        var existing = await _db.RoleModuleAccesses
+            .Where(r => r.RoleId == dto.RoleId && r.ModuleId == dto.ModuleId && r.SubModuleId == dto.SubModuleId)
+            .ToListAsync();
+        _db.RoleModuleAccesses.RemoveRange(existing);
+
+        var access = new RoleModuleAccess
+        {
+            RoleId = dto.RoleId,
+            ModuleId = dto.ModuleId,
+            SubModuleId = dto.SubModuleId,
+            CanView = dto.CanView,
+            CanExecute = dto.CanExecute,
+            CanApprove = dto.CanApprove,
+            CanDownload = dto.CanDownload,
+            CanUpload = dto.CanUpload,
+            CanAdmin = dto.CanAdmin
+        };
+        _db.RoleModuleAccesses.Add(access);
+        await _db.SaveChangesAsync();
+        return Ok(access);
+    }
+
+    // -------------------------------------------------------------------------
+    // Integration Config
+    // -------------------------------------------------------------------------
+
+    [HttpGet("integrations")]
+    public async Task<IActionResult> GetIntegrations() =>
+        Ok(await _db.IntegrationConfigs.OrderBy(c => c.ConfigName).ToListAsync());
+
+    [HttpPost("integrations")]
+    public async Task<IActionResult> CreateIntegration([FromBody] IntegrationConfigDto dto)
+    {
+        var config = new IntegrationConfig
+        {
+            ConfigName = dto.ConfigName,
+            BaseUrl = dto.BaseUrl,
+            AuthType = dto.AuthType,
+            AuthToken = dto.AuthToken,
+            TimeoutSeconds = dto.TimeoutSeconds,
+            IsMock = dto.IsMock,
+            IsActive = dto.IsActive
+        };
+        _db.IntegrationConfigs.Add(config);
+        await _db.SaveChangesAsync();
+        return Ok(config);
+    }
+
+    [HttpPut("integrations/{id:int}")]
+    public async Task<IActionResult> UpdateIntegration(int id, [FromBody] IntegrationConfigDto dto)
+    {
+        var config = await _db.IntegrationConfigs.FindAsync(id);
+        if (config is null) return NotFound();
+        config.ConfigName = dto.ConfigName;
+        config.BaseUrl = dto.BaseUrl;
+        config.AuthType = dto.AuthType;
+        config.AuthToken = dto.AuthToken;
+        config.TimeoutSeconds = dto.TimeoutSeconds;
+        config.IsMock = dto.IsMock;
+        config.IsActive = dto.IsActive;
+        await _db.SaveChangesAsync();
+        return Ok(config);
+    }
+
+    [HttpPut("integrations/{id:int}/toggle-mock")]
+    public async Task<IActionResult> ToggleMock(int id)
+    {
+        var config = await _db.IntegrationConfigs.FindAsync(id);
+        if (config is null) return NotFound();
+        config.IsMock = !config.IsMock;
+        await _db.SaveChangesAsync();
+        return Ok(config);
+    }
+
+    private static string BCryptHash(string password)
+    {
+        // Simple hash for now — in production use BCrypt.Net
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+        return Convert.ToBase64String(bytes);
+    }
 }
 
 // DTO records for factor updates
@@ -354,3 +556,10 @@ public record SsvUpdateDto(decimal SsvFactor1Percent, decimal SsvFactor2Percent)
 public record UlipChargeUpdateDto(decimal ChargeValue);
 public record MortalityUpdateDto(decimal Rate);
 public record LoyaltyUpdateDto(decimal RatePercent);
+
+// DTO records for admin management
+public record CreateUserDto(string FullName, string Email, string? Mobile, string? EmployeeId, string? Department, string? Password, string? Status);
+public record UpdateUserDto(string? FullName, string? Email, string? Mobile, string? Department, string? Status);
+public record CreateRoleDto(string RoleName, string? Description);
+public record SaveModuleAccessDto(int RoleId, int ModuleId, int? SubModuleId, bool CanView, bool CanExecute, bool CanApprove, bool CanDownload, bool CanUpload, bool CanAdmin);
+public record IntegrationConfigDto(string ConfigName, string BaseUrl, string? AuthType, string? AuthToken, int TimeoutSeconds, bool IsMock, bool IsActive);
