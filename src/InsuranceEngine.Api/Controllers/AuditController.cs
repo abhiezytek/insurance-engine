@@ -1,5 +1,6 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,11 +15,13 @@ public class AuditController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
     private readonly IBenefitCalculationService _calcService;
+    private readonly IAuditService _auditService;
 
-    public AuditController(InsuranceDbContext db, IBenefitCalculationService calcService)
+    public AuditController(InsuranceDbContext db, IBenefitCalculationService calcService, IAuditService auditService)
     {
         _db = db;
         _calcService = calcService;
+        _auditService = auditService;
     }
 
     // -------------------------------------------------------------------------
@@ -223,6 +226,221 @@ public class AuditController : ControllerBase
         var logs = await _db.CalculationLogs
             .OrderByDescending(l => l.CreatedDate)
             .Take(top)
+            .ToListAsync();
+        return Ok(logs);
+    }
+
+    // -------------------------------------------------------------------------
+    // Enhanced Audit — Single Policy Search
+    // -------------------------------------------------------------------------
+
+    /// <summary>Search and process a single policy for audit.</summary>
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(AuditCaseResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchPolicy([FromBody] SinglePolicySearchRequest req)
+    {
+        var userId = User.Identity?.Name ?? "Anonymous";
+        var result = await _auditService.ProcessSinglePolicy(req.PolicyNumber, req.AuditType, userId);
+        return Ok(result);
+    }
+
+    /// <summary>Approve a single audit case.</summary>
+    [HttpPost("approve")]
+    [ProducesResponseType(typeof(AuditCaseResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ApproveCase([FromBody] AuditDecisionRequest req)
+    {
+        var userId = User.Identity?.Name ?? "Anonymous";
+        var result = await _auditService.ApproveCase(req.CaseId, req.Remarks, userId);
+        return Ok(result);
+    }
+
+    /// <summary>Reject a single audit case.</summary>
+    [HttpPost("reject")]
+    [ProducesResponseType(typeof(AuditCaseResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RejectCase([FromBody] AuditDecisionRequest req)
+    {
+        var userId = User.Identity?.Name ?? "Anonymous";
+        var result = await _auditService.RejectCase(req.CaseId, req.Remarks, userId);
+        return Ok(result);
+    }
+
+    /// <summary>Bulk approve or reject audit cases.</summary>
+    [HttpPost("bulk-decision")]
+    [ProducesResponseType(typeof(List<AuditCaseResultDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> BulkDecision([FromBody] BulkDecisionRequest req)
+    {
+        var userId = User.Identity?.Name ?? "Anonymous";
+        var results = new List<AuditCaseResultDto>();
+        foreach (var caseId in req.CaseIds)
+        {
+            var result = req.Decision == "Approved"
+                ? await _auditService.ApproveCase(caseId, req.Remarks, userId)
+                : await _auditService.RejectCase(caseId, req.Remarks, userId);
+            results.Add(result);
+        }
+        return Ok(results);
+    }
+
+    /// <summary>Get audit cases with filters.</summary>
+    [HttpGet("cases")]
+    [ProducesResponseType(typeof(List<AuditCaseResultDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCases(
+        [FromQuery] string? auditType,
+        [FromQuery] string? status,
+        [FromQuery] string? inputMode,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        var result = await _auditService.GetCases(auditType, status, inputMode, page, pageSize);
+        return Ok(result);
+    }
+
+    /// <summary>Get audit dashboard summary stats.</summary>
+    [HttpGet("dashboard")]
+    [ProducesResponseType(typeof(AuditDashboardDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDashboard()
+    {
+        var result = await _auditService.GetDashboard();
+        return Ok(result);
+    }
+
+    /// <summary>Get audit batches.</summary>
+    [HttpGet("batches")]
+    [ProducesResponseType(typeof(List<AuditBatchDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBatches(
+        [FromQuery] string? auditType,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        var result = await _auditService.GetBatches(auditType, page, pageSize);
+        return Ok(result);
+    }
+
+    /// <summary>Get cases for a specific batch.</summary>
+    [HttpGet("batches/{batchId}/cases")]
+    [ProducesResponseType(typeof(List<AuditCaseResultDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBatchCases(int batchId)
+    {
+        var result = await _auditService.GetBatchCases(batchId);
+        return Ok(result);
+    }
+
+    /// <summary>Upload Excel for batch audit processing.</summary>
+    [HttpPost("upload")]
+    [ProducesResponseType(typeof(AuditBatchDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UploadExcel(IFormFile file, [FromQuery] string auditType = "PayoutVerification")
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "No file uploaded." });
+
+        var userId = User.Identity?.Name ?? "Anonymous";
+
+        // Create batch record
+        var batch = new AuditBatch
+        {
+            FileName = file.FileName,
+            AuditType = auditType,
+            TotalCount = 0,
+            ProcessedCount = 0,
+            Status = "Processing",
+            UploadedBy = userId
+        };
+        _db.AuditBatches.Add(batch);
+        await _db.SaveChangesAsync();
+
+        // Read policy numbers from the uploaded file (simple CSV/text parsing)
+        var policyNumbers = new List<string>();
+        using (var reader = new StreamReader(file.OpenReadStream()))
+        {
+            var header = await reader.ReadLineAsync(); // skip header
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var parts = line.Split(',', '\t');
+                if (parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+                    policyNumbers.Add(parts[0].Trim().Trim('"'));
+            }
+        }
+
+        batch.TotalCount = policyNumbers.Count;
+        await _db.SaveChangesAsync();
+
+        // Process each policy
+        foreach (var policyNumber in policyNumbers)
+        {
+            try
+            {
+                var caseResult = await _auditService.ProcessSinglePolicy(policyNumber, auditType, userId);
+                // Link to batch
+                var auditCase = await _db.AuditCases.FindAsync(caseResult.Id);
+                if (auditCase != null)
+                {
+                    auditCase.BatchId = batch.Id;
+                    auditCase.InputMode = "ExcelUpload";
+                }
+                batch.ProcessedCount++;
+            }
+            catch
+            {
+                // Log error, continue with next policy
+            }
+        }
+
+        batch.Status = "Processed";
+        await _db.SaveChangesAsync();
+
+        return Ok(new AuditBatchDto
+        {
+            Id = batch.Id,
+            UploadDate = batch.UploadDate,
+            FileName = batch.FileName,
+            AuditType = batch.AuditType,
+            TotalCount = batch.TotalCount,
+            ProcessedCount = batch.ProcessedCount,
+            PendingCount = batch.TotalCount - batch.ProcessedCount,
+            Status = batch.Status,
+            UploadedBy = batch.UploadedBy
+        });
+    }
+
+    /// <summary>Download audit Excel template.</summary>
+    [HttpGet("template")]
+    public IActionResult DownloadTemplate([FromQuery] string auditType = "PayoutVerification")
+    {
+        var csv = "PolicyNumber,ProductName,UIN,AuditType\n";
+        csv += "SAMPLE001,Century Income,UIN001," + auditType + "\n";
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+        return File(bytes, "text/csv", $"audit_template_{auditType}.csv");
+    }
+
+    /// <summary>Get audit log entries.</summary>
+    [HttpGet("logs")]
+    [ProducesResponseType(typeof(List<AuditLogDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetLogs(
+        [FromQuery] string? module,
+        [FromQuery] string? policyNumber,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        var query = _db.AuditLogEntries.AsQueryable();
+        if (!string.IsNullOrEmpty(module))
+            query = query.Where(l => l.EventType.Contains(module));
+
+        var logs = await query
+            .OrderByDescending(l => l.DoneAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => new AuditLogDto
+            {
+                Id = l.Id,
+                AuditCaseId = l.AuditCaseId,
+                EventType = l.EventType,
+                OldValue = l.OldValue,
+                NewValue = l.NewValue,
+                DoneBy = l.DoneBy,
+                DoneAt = l.DoneAt
+            })
             .ToListAsync();
         return Ok(logs);
     }
