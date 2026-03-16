@@ -48,7 +48,7 @@ public class YpygController : ControllerBase
 
         if (isUlip)
         {
-            var ulipOptions = new[] { "Platinum", "Platinum Plus", "Platinum" };
+            var ulipOptions = new[] { "Platinum", "Platinum Plus", "Platinum Plus" };
             return Ok(new PolicyLookupResponse
             {
                 PolicyNumber = policyNumber,
