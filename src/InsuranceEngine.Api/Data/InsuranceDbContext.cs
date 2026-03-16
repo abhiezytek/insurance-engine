@@ -27,6 +27,27 @@ public class InsuranceDbContext : DbContext
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<CalculationLog> CalculationLogs => Set<CalculationLog>();
 
+    // Audit module
+    public DbSet<AuditCase> AuditCases => Set<AuditCase>();
+    public DbSet<AuditDecision> AuditDecisions => Set<AuditDecision>();
+    public DbSet<AuditBatch> AuditBatches => Set<AuditBatch>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+
+    // Module access control
+    public DbSet<ModuleMaster> ModuleMasters => Set<ModuleMaster>();
+    public DbSet<SubModuleMaster> SubModuleMasters => Set<SubModuleMaster>();
+    public DbSet<RoleMaster> RoleMasters => Set<RoleMaster>();
+    public DbSet<RoleModuleAccess> RoleModuleAccesses => Set<RoleModuleAccess>();
+    public DbSet<UserMaster> UserMasters => Set<UserMaster>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<ClientMaster> ClientMasters => Set<ClientMaster>();
+    public DbSet<ClientModuleAccess> ClientModuleAccesses => Set<ClientModuleAccess>();
+
+    // Configuration
+    public DbSet<FormulaMaster> FormulaMasters => Set<FormulaMaster>();
+    public DbSet<IntegrationConfig> IntegrationConfigs => Set<IntegrationConfig>();
+    public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -140,6 +161,117 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.PolicyNumber).HasMaxLength(100);
             e.Property(x => x.RequestedBy).HasMaxLength(200);
             e.Property(x => x.Status).HasMaxLength(50);
+        });
+
+        // ── Audit module ──
+        modelBuilder.Entity<AuditCase>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PolicyNumber).HasMaxLength(100).IsRequired();
+            e.Property(x => x.AuditType).HasMaxLength(50);
+            e.Property(x => x.InputMode).HasMaxLength(20);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.HasOne(x => x.Batch).WithMany(x => x.Cases).HasForeignKey(x => x.BatchId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<AuditDecision>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Decision).HasMaxLength(20);
+            e.Property(x => x.PushStatus).HasMaxLength(20);
+            e.HasOne(x => x.AuditCase).WithMany(x => x.Decisions).HasForeignKey(x => x.AuditCaseId);
+        });
+
+        modelBuilder.Entity<AuditBatch>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FileName).HasMaxLength(500);
+            e.Property(x => x.AuditType).HasMaxLength(50);
+            e.Property(x => x.Status).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<AuditLogEntry>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(100);
+        });
+
+        // ── Module access control ──
+        modelBuilder.Entity<ModuleMaster>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ModuleName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.ModuleCode).HasMaxLength(50).IsRequired();
+            e.HasIndex(x => x.ModuleCode).IsUnique();
+        });
+
+        modelBuilder.Entity<SubModuleMaster>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.SubModuleName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.SubModuleCode).HasMaxLength(50).IsRequired();
+            e.HasOne(x => x.Module).WithMany(x => x.SubModules).HasForeignKey(x => x.ModuleId);
+        });
+
+        modelBuilder.Entity<RoleMaster>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.RoleName).HasMaxLength(100).IsRequired();
+        });
+
+        modelBuilder.Entity<RoleModuleAccess>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Role).WithMany(x => x.ModuleAccess).HasForeignKey(x => x.RoleId);
+            e.HasOne(x => x.Module).WithMany().HasForeignKey(x => x.ModuleId);
+            e.HasOne(x => x.SubModule).WithMany().HasForeignKey(x => x.SubModuleId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<UserMaster>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Email).HasMaxLength(200).IsRequired();
+            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+        });
+
+        modelBuilder.Entity<UserRole>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.User).WithMany(x => x.UserRoles).HasForeignKey(x => x.UserId);
+            e.HasOne(x => x.Role).WithMany().HasForeignKey(x => x.RoleId);
+        });
+
+        modelBuilder.Entity<ClientMaster>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ClientName).HasMaxLength(200).IsRequired();
+        });
+
+        modelBuilder.Entity<ClientModuleAccess>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Client).WithMany(x => x.ModuleAccess).HasForeignKey(x => x.ClientId);
+            e.HasOne(x => x.Module).WithMany().HasForeignKey(x => x.ModuleId);
+        });
+
+        modelBuilder.Entity<FormulaMaster>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Uin).HasMaxLength(100);
+            e.Property(x => x.FormulaType).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<IntegrationConfig>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ConfigName).HasMaxLength(200).IsRequired();
+        });
+
+        modelBuilder.Entity<LoginHistory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Username).HasMaxLength(200);
         });
     }
 }

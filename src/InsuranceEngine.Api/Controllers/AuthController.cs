@@ -31,13 +31,21 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
+        {
+            await LogLoginAttempt(req.Username ?? "", false, "Empty credentials");
             return Unauthorized(new { error = "Username and password are required." });
+        }
 
         var user = await _db.AppUsers
             .FirstOrDefaultAsync(u => u.Username == req.Username);
 
         if (user == null || !VerifyPassword(req.Password, user.PasswordHash))
+        {
+            await LogLoginAttempt(req.Username, false, "Invalid credentials");
             return Unauthorized(new { error = "Invalid username or password." });
+        }
+
+        await LogLoginAttempt(user.Username, true, null);
 
         var token = GenerateJwtToken(user.Username, user.Role);
         return Ok(new LoginResponse
@@ -47,6 +55,31 @@ public class AuthController : ControllerBase
             Role = user.Role,
             ExpiresAt = DateTime.UtcNow.AddHours(8)
         });
+    }
+
+    /// <summary>Get login history.</summary>
+    [HttpGet("login-history")]
+    [ProducesResponseType(typeof(List<Models.LoginHistory>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetLoginHistory([FromQuery] int top = 50)
+    {
+        var history = await _db.LoginHistories
+            .OrderByDescending(h => h.LoginTime)
+            .Take(top)
+            .ToListAsync();
+        return Ok(history);
+    }
+
+    private async Task LogLoginAttempt(string username, bool success, string? failureReason)
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        _db.LoginHistories.Add(new Models.LoginHistory
+        {
+            Username = username,
+            IpAddress = ipAddress,
+            Success = success,
+            FailureReason = failureReason
+        });
+        await _db.SaveChangesAsync();
     }
 
     private string GenerateJwtToken(string username, string role)
