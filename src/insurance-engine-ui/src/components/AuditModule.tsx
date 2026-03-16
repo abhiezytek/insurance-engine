@@ -79,8 +79,13 @@ function ErrBanner({ msg }: { msg: string }) {
   );
 }
 
-function Spinner({ size = 4 }: { size?: number }) {
-  return <span className={`inline-block w-${size} h-${size} border-2 border-[#007bff]/20 border-t-[#007bff] rounded-full animate-spin`} />;
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <span
+      className="inline-block border-2 border-[#007bff]/20 border-t-[#007bff] rounded-full animate-spin"
+      style={{ width: size, height: size }}
+    />
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -553,7 +558,7 @@ function AuditDashboard({ sub }: { sub: AuditSubModule }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <Spinner size={8} />
+        <Spinner size={32} />
       </div>
     );
   }
@@ -638,7 +643,7 @@ function IndividualAuditTable({ auditType }: { auditType: string }) {
 
   const filtered = statusFilter === 'All' ? cases : cases.filter(c => c.status === statusFilter);
 
-  if (loading) return <div className="flex items-center justify-center h-32"><Spinner size={8} /></div>;
+  if (loading) return <div className="flex items-center justify-center h-32"><Spinner size={32} /></div>;
   if (error) return <ErrBanner msg={error} />;
 
   return (
@@ -740,7 +745,7 @@ function BatchAuditTable({ auditType }: { auditType: string }) {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-32"><Spinner size={8} /></div>;
+  if (loading) return <div className="flex items-center justify-center h-32"><Spinner size={32} /></div>;
   if (error) return <ErrBanner msg={error} />;
 
   return (
@@ -789,7 +794,7 @@ function BatchAuditTable({ auditType }: { auditType: string }) {
         <div className={`${CARD_CLS} p-5 space-y-3`}>
           <h4 className="text-sm font-semibold text-[#004282]">Cases in Batch</h4>
           {casesLoading ? (
-            <div className="flex items-center justify-center h-20"><Spinner size={6} /></div>
+            <div className="flex items-center justify-center h-20"><Spinner size={24} /></div>
           ) : batchCases.length === 0 ? (
             <p className="text-sm text-slate-400">No cases found for this batch.</p>
           ) : (
@@ -848,7 +853,7 @@ function AuditLogsTable() {
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
-  if (loading) return <div className="flex items-center justify-center h-32"><Spinner size={8} /></div>;
+  if (loading) return <div className="flex items-center justify-center h-32"><Spinner size={32} /></div>;
   if (error) return <ErrBanner msg={error} />;
 
   return (
