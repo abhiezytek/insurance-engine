@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
 import axios from 'axios';
-import { downloadYpygPdf, type YpygPdfResult } from '../utils/pdfExport';
+import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -13,6 +13,8 @@ interface PolicyData {
   customerName: string;
   productType: string;
   productCode: string;
+  productCategory: string;
+  uin: string;
   annualPremium: number;
   policyTerm: number;
   premiumPayingTerm: number;
@@ -23,11 +25,39 @@ interface PolicyData {
   option: string;
   channel: string;
   entryAge: number;
+  gender: string;
+  dateOfBirth: string;
+  premiumFrequency: string;
+  premiumStatus: string;
+  dateOfCommencement: string;
+  riskCommencementDate: string;
+  pendingPremiums: number;
+  survivalBenefitPaid: number;
+  investmentStrategy: string;
+}
+
+interface YpygUlipRow {
+  year: number;
+  age: number;
+  annualPremium: number;
+  premiumInvested: number;
+  mortalityCharge: number;
+  policyCharge: number;
+  fundValue4: number;
+  deathBenefit4: number;
+  surrenderValue4: number;
+  fundValue8: number;
+  deathBenefit8: number;
+  surrenderValue8: number;
 }
 
 interface YpygResult {
   policyNumber: string;
   productCode: string;
+  productCategory: string;
+  uin: string;
+  customerName: string;
+  policyStatus: string;
   annualPremium: number;
   policyTerm: number;
   premiumPayingTerm: number;
@@ -47,6 +77,12 @@ interface YpygResult {
     deathBenefit: number;
     maturityBenefit: number;
   }[];
+  // ULIP-specific
+  fundValue4?: number;
+  fundValue8?: number;
+  maturityBenefit4?: number;
+  maturityBenefit8?: number;
+  ulipYearlyTable?: YpygUlipRow[];
 }
 
 // ─── Sub-page: Policy Number mode ───────────────────────────────────────────
@@ -85,6 +121,14 @@ function PolicyNumberMode() {
       const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
         policyNumber: policy.policyNumber,
         productCode: policy.productCode,
+        productCategory: policy.productCategory,
+        uin: policy.uin,
+        customerName: policy.customerName,
+        gender: policy.gender,
+        dateOfBirth: policy.dateOfBirth,
+        premiumFrequency: policy.premiumFrequency,
+        policyStatus: policy.policyStatus,
+        investmentStrategy: policy.investmentStrategy,
         annualPremium: policy.annualPremium,
         policyTerm: policy.policyTerm,
         premiumPayingTerm: policy.premiumPayingTerm,
@@ -95,6 +139,7 @@ function PolicyNumberMode() {
         channel: policy.channel,
         fundValue: policy.fundValue,
         surrenderFactor: 0.8,
+        riskCommencementDate: policy.riskCommencementDate || undefined,
       });
       setResult(res.data);
     } catch (e: any) {
@@ -154,15 +199,22 @@ function PolicyNumberMode() {
                 ['Policy Number', policy.policyNumber],
                 ['Customer Name', policy.customerName],
                 ['Product', `${policy.productType} (${policy.productCode})`],
+                ['Category', policy.productCategory],
+                ['UIN', policy.uin || 'N/A'],
                 ['Annual Premium', `₹ ${INR(policy.annualPremium)}`],
                 ['Policy Term', `${policy.policyTerm} yrs`],
                 ['Premium Paying Term', `${policy.premiumPayingTerm} yrs`],
                 ['Premiums Paid', `${policy.premiumsPaid} yrs`],
                 ['Sum Assured', `₹ ${INR(policy.sumAssured)}`],
                 ['Entry Age', `${policy.entryAge} yrs`],
+                ['Gender', policy.gender],
+                ['Premium Frequency', policy.premiumFrequency],
                 ['Option', policy.option],
                 ['Channel', policy.channel],
-                ['Fund Value', `₹ ${INR(policy.fundValue)}`],
+                ...(policy.productCategory === 'ULIP' ? [
+                  ['Fund Value', `₹ ${INR(policy.fundValue)}`],
+                  ['Investment Strategy', policy.investmentStrategy || 'N/A'],
+                ] : []),
               ].map(([k, v]) => (
                 <div key={k as string}>
                   <p className="text-xs text-slate-400 uppercase tracking-wider">{k}</p>
@@ -193,17 +245,24 @@ function PolicyNumberMode() {
 
 const DEFAULT_INPUTS = {
   policyNumber: '',
+  productCategory: 'Traditional' as string,
   annualPremium: 50000,
   policyTerm: 20,
   premiumPayingTerm: 10,
   premiumsPaid: 5,
   sumAssured: 500000,
   entryAge: 35,
+  gender: 'Male' as string,
   option: 'Immediate',
   channel: 'Other',
   fundValue: 0,
   surrenderFactor: 0.8,
   riskCommencementDate: '' as string,
+  policyStatus: 'In-Force' as string,
+  investmentStrategy: 'Self-Managed' as string,
+  premiumFrequency: 'Yearly' as string,
+  customerName: '' as string,
+  uin: '' as string,
 };
 
 function InputValueMode() {
@@ -215,6 +274,8 @@ function InputValueMode() {
   const set = (k: keyof typeof DEFAULT_INPUTS, v: string | number) =>
     setForm(f => ({ ...f, [k]: v }));
 
+  const isUlip = form.productCategory === 'ULIP';
+
   const handleCalculate = async () => {
     setLoading(true);
     setError(null);
@@ -222,7 +283,7 @@ function InputValueMode() {
     try {
       const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
         ...form,
-        productCode: 'CENTURY_INCOME',
+        productCode: isUlip ? 'EWEALTH-ROYALE' : 'CENTURY_INCOME',
       });
       setResult(res.data);
     } catch (e: any) {
@@ -239,10 +300,28 @@ function InputValueMode() {
         <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Input Parameters</h3>
 
+          <Field label="Product Type">
+            <select value={form.productCategory}
+              onChange={e => set('productCategory', e.target.value)}
+              className={INPUT_CLS}>
+              <option value="Traditional">Endowment (Traditional)</option>
+              <option value="ULIP">ULIP (Unit Linked)</option>
+            </select>
+          </Field>
           <Field label="Policy Number (optional)">
             <input type="text" value={form.policyNumber}
               onChange={e => set('policyNumber', e.target.value)}
               className={INPUT_CLS} placeholder="Optional" />
+          </Field>
+          <Field label="Customer Name (optional)">
+            <input type="text" value={form.customerName}
+              onChange={e => set('customerName', e.target.value)}
+              className={INPUT_CLS} placeholder="Optional" />
+          </Field>
+          <Field label="UIN (optional)">
+            <input type="text" value={form.uin}
+              onChange={e => set('uin', e.target.value)}
+              className={INPUT_CLS} placeholder={isUlip ? '142L079V03' : '142N066V02'} />
           </Field>
           <Field label="Annual Premium (₹)">
             <input type="number" value={form.annualPremium}
@@ -274,40 +353,93 @@ function InputValueMode() {
               onChange={e => set('entryAge', +e.target.value)}
               className={INPUT_CLS} />
           </Field>
-          <Field label="Fund Value (₹)">
-            <input type="number" value={form.fundValue}
-              onChange={e => set('fundValue', +e.target.value)}
-              className={INPUT_CLS} />
+          <Field label="Gender">
+            <select value={form.gender}
+              onChange={e => set('gender', e.target.value)}
+              className={INPUT_CLS}>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
           </Field>
-          <Field label="Surrender Factor">
-            <input type="number" step="0.01" value={form.surrenderFactor}
-              onChange={e => set('surrenderFactor', +e.target.value)}
-              className={INPUT_CLS} />
+          <Field label="Premium Frequency">
+            <select value={form.premiumFrequency}
+              onChange={e => set('premiumFrequency', e.target.value)}
+              className={INPUT_CLS}>
+              <option>Yearly</option>
+              <option>Half Yearly</option>
+              <option>Quarterly</option>
+              <option>Monthly</option>
+            </select>
           </Field>
+          <Field label="Policy Status">
+            <select value={form.policyStatus}
+              onChange={e => set('policyStatus', e.target.value)}
+              className={INPUT_CLS}>
+              <option>In-Force</option>
+              <option>Paid-Up</option>
+              <option>Lapsed</option>
+              <option>Revived</option>
+              <option>Discontinued</option>
+            </select>
+          </Field>
+          {isUlip ? (
+            <>
+              <Field label="Investment Strategy">
+                <select value={form.investmentStrategy}
+                  onChange={e => set('investmentStrategy', e.target.value)}
+                  className={INPUT_CLS}>
+                  <option>Self-Managed</option>
+                  <option>Life-Stage Aggressive</option>
+                  <option>Life-Stage Conservative</option>
+                </select>
+              </Field>
+              <Field label="Fund Value (₹)">
+                <input type="number" value={form.fundValue}
+                  onChange={e => set('fundValue', +e.target.value)}
+                  className={INPUT_CLS} />
+              </Field>
+              <Field label="Option">
+                <select value={form.option}
+                  onChange={e => set('option', e.target.value)}
+                  className={INPUT_CLS}>
+                  <option>Platinum</option>
+                  <option>Platinum Plus</option>
+                </select>
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Surrender Factor">
+                <input type="number" step="0.01" value={form.surrenderFactor}
+                  onChange={e => set('surrenderFactor', +e.target.value)}
+                  className={INPUT_CLS} />
+              </Field>
+              <Field label="Option">
+                <select value={form.option}
+                  onChange={e => set('option', e.target.value)}
+                  className={INPUT_CLS}>
+                  <option>Immediate</option>
+                  <option>Deferred</option>
+                  <option>Twin</option>
+                </select>
+              </Field>
+              <Field label="Channel">
+                <select value={form.channel}
+                  onChange={e => set('channel', e.target.value)}
+                  className={INPUT_CLS}>
+                  <option>Online</option>
+                  <option>StaffDirect</option>
+                  <option>Other</option>
+                </select>
+              </Field>
+            </>
+          )}
           <Field label="Risk Commencement Date">
             <input type="date" value={form.riskCommencementDate}
               onChange={e => set('riskCommencementDate', e.target.value)}
               className={INPUT_CLS}
               title="Date when risk cover started (YPYG mode). Leave blank for pre-issuance." />
             <p className="mt-1 text-xs text-slate-400">Used to determine elapsed policy years</p>
-          </Field>
-          <Field label="Option">
-            <select value={form.option}
-              onChange={e => set('option', e.target.value)}
-              className={INPUT_CLS}>
-              <option>Immediate</option>
-              <option>Deferred</option>
-              <option>Twin</option>
-            </select>
-          </Field>
-          <Field label="Channel">
-            <select value={form.channel}
-              onChange={e => set('channel', e.target.value)}
-              className={INPUT_CLS}>
-              <option>Online</option>
-              <option>StaffDirect</option>
-              <option>Other</option>
-            </select>
           </Field>
 
           <button
@@ -341,37 +473,80 @@ function InputValueMode() {
 // ─── Shared result section ───────────────────────────────────────────────────
 
 function ResultSection({ result }: { result: YpygResult }) {
+  const isUlip = result.productCategory === 'ULIP';
+
   return (
     <div className="space-y-6">
       {/* Summary cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        {[
-          { label: 'Maturity Value', value: result.maturityValue, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-          { label: 'Surrender Value', value: result.surrenderValue, color: 'text-[#004282]', bg: 'bg-blue-50 border-blue-200' },
-          { label: 'Death Benefit', value: result.deathBenefit, color: 'text-[#d32f2f]', bg: 'bg-red-50 border-red-200' },
-        ].map(c => (
-          <div key={c.label} className={`rounded-xl p-4 border ${c.bg}`}>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{c.label}</p>
-            <p className={`text-2xl font-extrabold ${c.color}`}>₹ {INR(c.value)}</p>
-          </div>
-        ))}
-      </div>
+      {isUlip ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: 'Maturity @4%', value: result.maturityBenefit4 ?? 0, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+            { label: 'Maturity @8%', value: result.maturityBenefit8 ?? 0, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+            { label: 'Surrender Value', value: result.surrenderValue, color: 'text-[#004282]', bg: 'bg-blue-50 border-blue-200' },
+            { label: 'Death Benefit', value: result.deathBenefit, color: 'text-[#d32f2f]', bg: 'bg-red-50 border-red-200' },
+          ].map(c => (
+            <div key={c.label} className={`rounded-xl p-4 border ${c.bg}`}>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{c.label}</p>
+              <p className={`text-xl font-extrabold ${c.color}`}>₹ {INR(c.value)}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            { label: 'Maturity Value', value: result.maturityValue, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+            { label: 'Surrender Value', value: result.surrenderValue, color: 'text-[#004282]', bg: 'bg-blue-50 border-blue-200' },
+            { label: 'Death Benefit', value: result.deathBenefit, color: 'text-[#d32f2f]', bg: 'bg-red-50 border-red-200' },
+          ].map(c => (
+            <div key={c.label} className={`rounded-xl p-4 border ${c.bg}`}>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{c.label}</p>
+              <p className={`text-2xl font-extrabold ${c.color}`}>₹ {INR(c.value)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Additional info */}
       <div className="grid sm:grid-cols-2 gap-4">
         <InfoCard label="Sum Assured on Death" value={`₹ ${INR(result.sumAssuredOnDeath)}`} />
-        <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
+        {isUlip ? (
+          <>
+            <InfoCard label="Fund Value @4%" value={`₹ ${INR(result.fundValue4 ?? 0)}`} />
+          </>
+        ) : (
+          <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
+        )}
       </div>
 
       {/* Yearly table */}
       <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <h3 className="text-base font-bold text-[#004282]">
-            Yearly Benefit Table
+            {isUlip ? 'ULIP Fund Projection Table' : 'Yearly Benefit Table'}
             <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
           </h3>
           <button
-            onClick={() => downloadYpygPdf(result as YpygPdfResult, result.policyNumber)}
+            onClick={() => {
+              if (isUlip && result.ulipYearlyTable) {
+                downloadYpygUlipPdf({
+                  policyNumber: result.policyNumber,
+                  customerName: result.customerName || '',
+                  productCode: result.productCode,
+                  gender: result.ulipYearlyTable.length > 0 ? '' : '',
+                  entryAge: result.ulipYearlyTable.length > 0 ? result.ulipYearlyTable[0].age : 0,
+                  policyTerm: result.policyTerm,
+                  ppt: result.premiumPayingTerm,
+                  annualizedPremium: result.annualPremium,
+                  sumAssured: result.sumAssuredOnDeath,
+                  maturityBenefit4: result.maturityBenefit4 ?? 0,
+                  maturityBenefit8: result.maturityBenefit8 ?? 0,
+                  yearlyTable: result.ulipYearlyTable,
+                });
+              } else {
+                downloadYpygPdf(result as YpygPdfResult, result.policyNumber);
+              }
+            }}
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
                        bg-[#004282] text-white rounded-lg hover:bg-[#003370] transition"
           >
@@ -380,30 +555,60 @@ function ResultSection({ result }: { result: YpygResult }) {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
-                {['Yr', 'Annual Prem.', 'Total Paid', 'Guar. Income', 'Loyalty Inc.', 'Total Inc.', 'SV', 'Death Benefit', 'Maturity'].map(h => (
-                  <th key={h} className="px-4 py-3 text-right first:text-center">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {result.yearlyTable.map(row => (
-                <tr key={row.policyYear} className="hover:bg-slate-50 text-slate-700">
-                  <td className="px-4 py-2 text-center font-semibold text-[#004282]">{row.policyYear}</td>
-                  <td className="px-4 py-2 text-right">{INR(row.annualPremium)}</td>
-                  <td className="px-4 py-2 text-right">{INR(row.totalPremiumsPaid)}</td>
-                  <td className="px-4 py-2 text-right">{INR(row.guaranteedIncome)}</td>
-                  <td className="px-4 py-2 text-right">{INR(row.loyaltyIncome)}</td>
-                  <td className="px-4 py-2 text-right">{INR(row.totalIncome)}</td>
-                  <td className="px-4 py-2 text-right">{INR(row.surrenderValue)}</td>
-                  <td className="px-4 py-2 text-right text-[#d32f2f] font-semibold">{INR(row.deathBenefit)}</td>
-                  <td className="px-4 py-2 text-right text-green-700 font-bold">{row.maturityBenefit > 0 ? INR(row.maturityBenefit) : '—'}</td>
+          {isUlip && result.ulipYearlyTable ? (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
+                  {['Yr', 'Age', 'Annual Prem.', 'Invested', 'MC', 'PC', 'FV @4%', 'DB @4%', 'SV @4%', 'FV @8%', 'DB @8%', 'SV @8%'].map(h => (
+                    <th key={h} className="px-3 py-3 text-right first:text-center">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {result.ulipYearlyTable.map(row => (
+                  <tr key={row.year} className="hover:bg-slate-50 text-slate-700">
+                    <td className="px-3 py-2 text-center font-semibold text-[#004282]">{row.year}</td>
+                    <td className="px-3 py-2 text-right">{row.age}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.annualPremium)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.premiumInvested)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.mortalityCharge)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.policyCharge)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.fundValue4)}</td>
+                    <td className="px-3 py-2 text-right text-[#d32f2f]">{INR(row.deathBenefit4)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.surrenderValue4)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.fundValue8)}</td>
+                    <td className="px-3 py-2 text-right text-[#d32f2f]">{INR(row.deathBenefit8)}</td>
+                    <td className="px-3 py-2 text-right">{INR(row.surrenderValue8)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
+                  {['Yr', 'Annual Prem.', 'Total Paid', 'Guar. Income', 'Loyalty Inc.', 'Total Inc.', 'SV', 'Death Benefit', 'Maturity'].map(h => (
+                    <th key={h} className="px-4 py-3 text-right first:text-center">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {result.yearlyTable.map(row => (
+                  <tr key={row.policyYear} className="hover:bg-slate-50 text-slate-700">
+                    <td className="px-4 py-2 text-center font-semibold text-[#004282]">{row.policyYear}</td>
+                    <td className="px-4 py-2 text-right">{INR(row.annualPremium)}</td>
+                    <td className="px-4 py-2 text-right">{INR(row.totalPremiumsPaid)}</td>
+                    <td className="px-4 py-2 text-right">{INR(row.guaranteedIncome)}</td>
+                    <td className="px-4 py-2 text-right">{INR(row.loyaltyIncome)}</td>
+                    <td className="px-4 py-2 text-right">{INR(row.totalIncome)}</td>
+                    <td className="px-4 py-2 text-right">{INR(row.surrenderValue)}</td>
+                    <td className="px-4 py-2 text-right text-[#d32f2f] font-semibold">{INR(row.deathBenefit)}</td>
+                    <td className="px-4 py-2 text-right text-green-700 font-bold">{row.maturityBenefit > 0 ? INR(row.maturityBenefit) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
