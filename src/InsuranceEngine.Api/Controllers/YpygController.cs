@@ -143,17 +143,7 @@ public class YpygController : ControllerBase
         // Pull last year values for summary
         var lastRow = result.YearlyTable.Count > 0 ? result.YearlyTable[^1] : null;
 
-        // Determine current policy year from risk commencement date
-        int elapsedYears;
-        if (req.RiskCommencementDate.HasValue)
-        {
-            elapsedYears = (int)((DateTime.UtcNow - req.RiskCommencementDate.Value).TotalDays / 365.25);
-            elapsedYears = Math.Max(1, Math.Min(elapsedYears, req.PolicyTerm));
-        }
-        else
-        {
-            elapsedYears = Math.Max(1, req.PremiumsPaid);
-        }
+        int elapsedYears = ComputeElapsedPolicyYears(req.RiskCommencementDate, req.PremiumsPaid, req.PolicyTerm);
 
         var currentRow = result.YearlyTable.FirstOrDefault(r => r.PolicyYear == elapsedYears)
                          ?? result.YearlyTable.FirstOrDefault();
@@ -224,17 +214,7 @@ public class YpygController : ControllerBase
 
         var result = await _ulipService.CalculateAsync(ulipReq);
 
-        // Determine current policy year from risk commencement date
-        int elapsedYears;
-        if (req.RiskCommencementDate.HasValue)
-        {
-            elapsedYears = (int)((DateTime.UtcNow - req.RiskCommencementDate.Value).TotalDays / 365.25);
-            elapsedYears = Math.Max(1, Math.Min(elapsedYears, req.PolicyTerm));
-        }
-        else
-        {
-            elapsedYears = Math.Max(1, req.PremiumsPaid);
-        }
+        int elapsedYears = ComputeElapsedPolicyYears(req.RiskCommencementDate, req.PremiumsPaid, req.PolicyTerm);
 
         // Build the ULIP yearly table from the legacy YearlyTable + PartARows for surrender values
         var ulipYearlyRows = new List<YpygUlipYearlyRow>();
@@ -309,6 +289,18 @@ public class YpygController : ControllerBase
 
         await LogCalculation("YPYG-ULIP", req, response);
         return Ok(response);
+    }
+
+    private const double AverageDaysPerYear = 365.25;
+
+    private static int ComputeElapsedPolicyYears(DateTime? riskCommencementDate, int premiumsPaid, int policyTerm)
+    {
+        if (riskCommencementDate.HasValue)
+        {
+            var elapsed = (int)((DateTime.UtcNow - riskCommencementDate.Value).TotalDays / AverageDaysPerYear);
+            return Math.Max(1, Math.Min(elapsed, policyTerm));
+        }
+        return Math.Max(1, premiumsPaid);
     }
 
     private async Task LogCalculation(string module, YpygCalculationRequest req, YpygCalculationResponse response)

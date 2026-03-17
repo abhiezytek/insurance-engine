@@ -84,8 +84,8 @@ interface YpygResult {
   maturityBenefit8?: number;
   ulipYearlyTable?: YpygUlipRow[];
   // Total Benefit Value fields
-  calculationDate: string;
-  currentPolicyYear: number;
+  calculationDate?: string;
+  currentPolicyYear?: number;
   currentSurvivalBenefit: number;
   maturitySurvivalBenefit: number;
   currentMaturityBenefit: number;
@@ -578,7 +578,7 @@ function ResultSection({ result }: { result: YpygResult }) {
       <div className="grid sm:grid-cols-2 gap-4">
         <InfoCard label="Sum Assured on Death" value={`₹ ${INR(result.sumAssuredOnDeath)}`} />
         {isUlip ? (
-          <InfoCard label="Current Policy Year" value={`Year ${result.currentPolicyYear}`} />
+          <InfoCard label="Current Policy Year" value={`Year ${result.currentPolicyYear ?? 1}`} />
         ) : (
           <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
         )}
