@@ -54,6 +54,8 @@ export default function UlipIllustration() {
     fundAllocations:     [{ fundType: 'SUD Life Nifty Alpha 50 Index Fund', allocationPercent: 100 }],
     distributionChannel: 'Corporate Agency',
     isStaffFamily:       false,
+    standardAgeProofLA:  true,
+    standardAgeProofPH:  true,
   });
   const [result,  setResult]  = useState<UlipCalculationResult | null>(null);
   const [error,   setError]   = useState<string | null>(null);
@@ -246,86 +248,104 @@ export default function UlipIllustration() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-8">
-        {/* ---------------------------------------------------------------- */}
-        {/* Input panel                                                       */}
-        {/* ---------------------------------------------------------------- */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Section 1: Policyholder Details */}
-          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <User size={15} className="text-[#004282]" />
-              <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
-            </div>
-
-            {/* Product */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Product</label>
-              <select value={form.productCode} onChange={e => set('productCode', e.target.value)} className={INPUT_CLS}>
-                {products.length > 0
-                  ? products.map(p => <option key={p.code} value={p.code}>{p.name}</option>)
-                  : <option value="EWEALTH-ROYALE">SUD Life e-Wealth Royale</option>}
-              </select>
-            </div>
-
-            {/* Option */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Option</label>
-              <select value={form.option} onChange={e => set('option', e.target.value as 'Platinum' | 'Platinum Plus')} className={INPUT_CLS}>
-                <option value="Platinum">Platinum</option>
-                <option value="Platinum Plus">Platinum Plus</option>
-              </select>
-            </div>
-
-            {/* Policy Number */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Number</label>
-              <input type="text" value={form.policyNumber} onChange={e => set('policyNumber', e.target.value)}
-                placeholder="e.g. UL-2026-0001" className={INPUT_CLS} />
-            </div>
-
-            {/* Customer Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (Life Assured)</label>
-              <input type="text" value={form.customerName} onChange={e => set('customerName', e.target.value)}
-                placeholder="Full name" className={INPUT_CLS} />
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
-              <select value={form.gender} onChange={e => set('gender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Life Assured)</label>
-              <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={INPUT_CLS} />
-            </div>
-
-            {/* Entry Age */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Age (Life Assured)</label>
-              <input type="number" value={form.entryAge} onChange={e => set('entryAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
-
-            {/* Policy Effective Date */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Effective Date <span className="text-slate-400 text-xs">(optional)</span></label>
-              <input type="date" value={form.policyEffectiveDate ?? ''} onChange={e => set('policyEffectiveDate', e.target.value || undefined)} className={INPUT_CLS} />
-            </div>
+      {/* ── 2-Section input layout ── */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Section 1 — Policyholder Details */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <User size={16} className="text-[#004282]" />
+            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
           </div>
 
-          {/* Section 2: Plan Parameters */}
-          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <Settings2 size={15} className="text-[#004282]" />
-              <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Plan Parameters</h3>
-            </div>
+          {/* Product */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Product</label>
+            <select value={form.productCode} onChange={e => set('productCode', e.target.value)} className={INPUT_CLS}>
+              {products.length > 0
+                ? products.map(p => <option key={p.code} value={p.code}>{p.name}</option>)
+                : <option value="EWEALTH-ROYALE">SUD Life e-Wealth Royale</option>}
+            </select>
+          </div>
 
+          {/* Option */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Option</label>
+            <select value={form.option} onChange={e => set('option', e.target.value as 'Platinum' | 'Platinum Plus')} className={INPUT_CLS}>
+              <option value="Platinum">Platinum</option>
+              <option value="Platinum Plus">Platinum Plus</option>
+            </select>
+          </div>
+
+          {/* Policy Number */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Number</label>
+            <input type="text" value={form.policyNumber} onChange={e => set('policyNumber', e.target.value)}
+              placeholder="e.g. UL-2026-0001" className={INPUT_CLS} />
+          </div>
+
+          {/* Customer Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (Life Assured)</label>
+            <input type="text" value={form.customerName} onChange={e => set('customerName', e.target.value)}
+              placeholder="Full name" className={INPUT_CLS} />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
+            <select value={form.gender} onChange={e => set('gender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          {/* Date of Birth */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Life Assured)</label>
+            <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={INPUT_CLS} />
+          </div>
+
+          {/* Entry Age */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Age (Life Assured)</label>
+            <input type="number" value={form.entryAge} onChange={e => set('entryAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
+          </div>
+
+          {/* Standard Age Proof LA */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Standard Age Proof (Life Assured)</label>
+            <select value={form.standardAgeProofLA ? 'Yes' : 'No'}
+              onChange={e => set('standardAgeProofLA', e.target.value === 'Yes')} className={INPUT_CLS}>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+
+          {/* Standard Age Proof PH */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Standard Age Proof (Policyholder)</label>
+            <select value={form.standardAgeProofPH ? 'Yes' : 'No'}
+              onChange={e => set('standardAgeProofPH', e.target.value === 'Yes')} className={INPUT_CLS}>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+
+          {/* Policy Effective Date */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Effective Date <span className="text-slate-400 text-xs">(optional)</span></label>
+            <input type="date" value={form.policyEffectiveDate ?? ''} onChange={e => set('policyEffectiveDate', e.target.value || undefined)} className={INPUT_CLS} />
+          </div>
+        </div>
+
+        {/* Section 2 — Plan Parameters */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Settings2 size={16} className="text-[#004282]" />
+            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Plan Parameters</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             {/* Policy Term */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Term (PT) — years</label>
@@ -337,48 +357,56 @@ export default function UlipIllustration() {
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Payment Term (PPT)</label>
               <input type="number" value={form.ppt} onChange={e => set('ppt', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
             </div>
+          </div>
 
-            {/* Annualized Premium */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Annualized Premium (AP) ₹</label>
-              <input type="number" value={form.annualizedPremium} onChange={e => set('annualizedPremium', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
+          {/* Annualized Premium */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Annualized Premium (AP) ₹</label>
+            <input type="number" value={form.annualizedPremium} onChange={e => set('annualizedPremium', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
+          </div>
 
-            {/* Sum Assured */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sum Assured (SA) ₹</label>
-              <input type="number" value={form.sumAssured} onChange={e => set('sumAssured', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
+          {/* Sum Assured */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Sum Assured (SA) ₹</label>
+            <input type="number" value={form.sumAssured} onChange={e => set('sumAssured', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
+          </div>
 
-            {/* Premium Frequency */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Frequency</label>
-              <select value={form.premiumFrequency}
-                onChange={e => set('premiumFrequency', e.target.value as UlipCalculationRequest['premiumFrequency'])} className={INPUT_CLS}>
-                <option value="Yearly">Yearly</option>
-                <option value="Half Yearly">Half Yearly</option>
-                <option value="Quarterly">Quarterly</option>
-                <option value="Monthly">Monthly</option>
-              </select>
-            </div>
+          {/* Premium Frequency */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Frequency</label>
+            <select value={form.premiumFrequency}
+              onChange={e => set('premiumFrequency', e.target.value as UlipCalculationRequest['premiumFrequency'])} className={INPUT_CLS}>
+              <option value="Yearly">Yearly</option>
+              <option value="Half Yearly">Half Yearly</option>
+              <option value="Quarterly">Quarterly</option>
+              <option value="Monthly">Monthly</option>
+            </select>
+          </div>
 
-            {/* Distribution Channel */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Distribution Channel</label>
-              <select value={form.distributionChannel ?? ''} onChange={e => set('distributionChannel', e.target.value)} className={INPUT_CLS}>
-                <option value="Corporate Agency">Corporate Agency</option>
-                <option value="Agency">Agency</option>
-                <option value="Broker">Broker</option>
-                <option value="Direct Marketing">Direct Marketing</option>
-                <option value="Online">Online</option>
-                <option value="Insurance Marketing Firm">Insurance Marketing Firm</option>
-              </select>
-            </div>
+          {/* Distribution Channel */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Distribution Channel</label>
+            <select value={form.distributionChannel ?? ''} onChange={e => set('distributionChannel', e.target.value)} className={INPUT_CLS}>
+              <option value="Corporate Agency">Corporate Agency</option>
+              <option value="Agency">Agency</option>
+              <option value="Broker">Broker</option>
+              <option value="Direct Marketing">Direct Marketing</option>
+              <option value="Online">Online</option>
+              <option value="Insurance Marketing Firm">Insurance Marketing Firm</option>
+            </select>
+          </div>
+
+          {/* Staff/Family */}
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" id="staffFamily" checked={form.isStaffFamily ?? false}
+              onChange={e => set('isStaffFamily', e.target.checked)}
+              className="accent-[#004282]" />
+            <label htmlFor="staffFamily">Staff / Family Policy</label>
           </div>
 
           {/* Fund Allocation */}
-          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Fund Allocation</h3>
+          <div className="pt-3 border-t border-slate-100 space-y-3">
+            <h4 className="text-xs font-bold text-[#004282] uppercase tracking-wider">Fund Allocation</h4>
 
             {form.fundAllocations.map((alloc, idx) => (
               <div key={idx} className="flex gap-2 items-end">
@@ -411,132 +439,131 @@ export default function UlipIllustration() {
             disabled={loading || allocError || !form.policyNumber}
             className="w-full py-3 px-6 rounded-xl bg-[#004282] text-white font-semibold text-sm
                        hover:bg-[#003570] disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-colors shadow-md">
+                       transition-colors shadow-md flex items-center justify-center gap-2">
+            {loading
+              ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <TrendingUp size={16} />}
             {loading ? 'Calculating…' : 'Generate Illustration'}
           </button>
-        </div>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Results panel                                                     */}
-        {/* ---------------------------------------------------------------- */}
-        <div className="lg:col-span-3 space-y-6">
           {error && (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-              <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-[#d32f2f]" />
-              {error}
-            </div>
-          )}
-
-          {loading && (
-            <div className="flex items-center justify-center py-24">
-              <span className="inline-block w-10 h-10 border-2 border-[#007bff]/20 border-t-[#007bff] rounded-full animate-spin" />
-            </div>
-          )}
-
-          {!loading && result && (
-            <>
-              {/* Summary cards */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Annualized Premium (AP)', value: `₹${INR(result.annualizedPremium)}` },
-                  { label: 'Sum Assured (SA)',         value: `₹${INR(result.sumAssured)}` },
-                  { label: 'Maturity Benefit @ 4%',   value: `₹${INR(result.maturityBenefit4)}`, highlight: true },
-                  { label: 'Maturity Benefit @ 8%',   value: `₹${INR(result.maturityBenefit8)}`, highlight: true },
-                ].map(card => (
-                  <div key={card.label}
-                    className={`bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-4
-                      ${card.highlight ? 'border-l-4 border-[#007bff]' : ''}`}>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{card.label}</p>
-                    <p className="text-xl font-extrabold text-[#004282]">{card.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Policy at a glance */}
-              <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6">
-                <h3 className="text-base font-bold text-[#004282] mb-4 flex items-center gap-2">
-                  <TrendingUp size={18} className="text-[#007bff]" />
-                  Policy At a Glance — SUD Life e-Wealth Royale
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                  {[
-                    ['Policy Number',        result.policyNumber],
-                    ['Customer Name',        result.customerName],
-                    ['Product',              result.productName],
-                    ['Option',               result.option],
-                    ['Gender',               result.gender],
-                    ['Entry Age',            `${result.entryAge} yrs`],
-                    ['Policy Term (PT)',     `${result.policyTerm} yrs`],
-                    ['PPT',                  `${result.ppt} yrs`],
-                    ['Premium Frequency',    result.premiumFrequency],
-                    ['GST Rate',             '0%'],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex gap-2">
-                      <span className="text-slate-400 w-44 shrink-0">{k}</span>
-                      <span className="font-medium text-slate-700">{v}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button onClick={handleDownload}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full border border-[#004282]
-                             text-[#004282] text-sm font-semibold hover:bg-blue-50 transition-colors">
-                  <FileDown size={14} />
-                  Download Illustration (HTML / Print to PDF)
-                </button>
-              </div>
-
-              {/* Part A / Part B tabs */}
-              <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
-                <div className="px-6 pt-4 border-b border-slate-100 flex gap-1">
-                  {([
-                    { key: 'partA',  label: 'Part A — Summary (4% & 8%)' },
-                    { key: 'partB8', label: 'Part B @ 8%' },
-                    { key: 'partB4', label: 'Part B @ 4%' },
-                  ] as const).map(tab => (
-                    <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                      className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-colors
-                        ${activeTab === tab.key
-                          ? 'text-[#004282] border-[#007bff] bg-blue-50/60'
-                          : 'text-slate-400 border-transparent hover:text-slate-600 hover:border-slate-300'}`}>
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="p-2">
-                  {activeTab === 'partA'  && <PartATable rows={result.partARows ?? []} />}
-                  {activeTab === 'partB8' && <PartBTable rows={result.partBRows8 ?? []} rateLabel="8% p.a." />}
-                  {activeTab === 'partB4' && <PartBTable rows={result.partBRows4 ?? []} rateLabel="4% p.a." />}
-                </div>
-              </div>
-
-              {/* IRDAI Disclaimer */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-                <button onClick={() => setShowDisclaimer(d => !d)}
-                  className="flex items-center gap-2 text-amber-700 font-semibold text-sm w-full text-left">
-                  <Info size={16} />
-                  IRDAI Disclaimer
-                  {showDisclaimer ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
-                </button>
-                {showDisclaimer && (
-                  <p className="mt-3 text-xs text-amber-800 leading-relaxed">{result.irdaiDisclaimer}</p>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Empty state */}
-          {!loading && !result && !error && (
-            <div className="flex flex-col items-center justify-center py-32 text-slate-300 space-y-4">
-              <TrendingUp size={56} />
-              <p className="text-base font-semibold text-slate-400">
-                Fill in the policy details and click <span className="text-[#004282]">Generate Illustration</span>
-              </p>
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Results ── */}
+      {loading && (
+        <div className="flex items-center justify-center py-24">
+          <span className="inline-block w-10 h-10 border-2 border-[#007bff]/20 border-t-[#007bff] rounded-full animate-spin" />
+        </div>
+      )}
+
+      {!loading && result && (
+        <>
+          {/* Summary cards */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Annualized Premium (AP)', value: `₹${INR(result.annualizedPremium)}` },
+              { label: 'Sum Assured (SA)',         value: `₹${INR(result.sumAssured)}` },
+              { label: 'Maturity Benefit @ 4%',   value: `₹${INR(result.maturityBenefit4)}`, highlight: true },
+              { label: 'Maturity Benefit @ 8%',   value: `₹${INR(result.maturityBenefit8)}`, highlight: true },
+            ].map(card => (
+              <div key={card.label}
+                className={`bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-4
+                  ${card.highlight ? 'border-l-4 border-[#007bff]' : ''}`}>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{card.label}</p>
+                <p className="text-xl font-extrabold text-[#004282]">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Policy at a glance */}
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6">
+            <h3 className="text-base font-bold text-[#004282] mb-4 flex items-center gap-2">
+              <TrendingUp size={18} className="text-[#007bff]" />
+              Policy At a Glance — SUD Life e-Wealth Royale
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              {[
+                ['Policy Number',        result.policyNumber],
+                ['Customer Name',        result.customerName],
+                ['Product',              result.productName],
+                ['Option',               result.option],
+                ['Gender',               result.gender],
+                ['Entry Age',            `${result.entryAge} yrs`],
+                ['Policy Term (PT)',     `${result.policyTerm} yrs`],
+                ['PPT',                  `${result.ppt} yrs`],
+                ['Premium Frequency',    result.premiumFrequency],
+                ['GST Rate',             '0%'],
+              ].map(([k, v]) => (
+                <div key={k} className="flex gap-2">
+                  <span className="text-slate-400 w-44 shrink-0">{k}</span>
+                  <span className="font-medium text-slate-700">{v}</span>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={handleDownload}
+              className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full border border-[#004282]
+                         text-[#004282] text-sm font-semibold hover:bg-blue-50 transition-colors">
+              <FileDown size={14} />
+              Download Illustration (HTML / Print to PDF)
+            </button>
+          </div>
+
+          {/* Part A / Part B tabs */}
+          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
+            <div className="px-6 pt-4 border-b border-slate-100 flex gap-1">
+              {([
+                { key: 'partA',  label: 'Part A — Summary (4% & 8%)' },
+                { key: 'partB8', label: 'Part B @ 8%' },
+                { key: 'partB4', label: 'Part B @ 4%' },
+              ] as const).map(tab => (
+                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-colors
+                    ${activeTab === tab.key
+                      ? 'text-[#004282] border-[#007bff] bg-blue-50/60'
+                      : 'text-slate-400 border-transparent hover:text-slate-600 hover:border-slate-300'}`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-2">
+              {activeTab === 'partA'  && <PartATable rows={result.partARows ?? []} />}
+              {activeTab === 'partB8' && <PartBTable rows={result.partBRows8 ?? []} rateLabel="8% p.a." />}
+              {activeTab === 'partB4' && <PartBTable rows={result.partBRows4 ?? []} rateLabel="4% p.a." />}
+            </div>
+          </div>
+
+          {/* IRDAI Disclaimer */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+            <button onClick={() => setShowDisclaimer(d => !d)}
+              className="flex items-center gap-2 text-amber-700 font-semibold text-sm w-full text-left">
+              <Info size={16} />
+              IRDAI Disclaimer
+              {showDisclaimer ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
+            </button>
+            {showDisclaimer && (
+              <p className="mt-3 text-xs text-amber-800 leading-relaxed">{result.irdaiDisclaimer}</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Empty state */}
+      {!loading && !result && !error && (
+        <div className="flex flex-col items-center justify-center py-32 text-slate-300 space-y-4">
+          <TrendingUp size={56} />
+          <p className="text-base font-semibold text-slate-400">
+            Fill in the policy details and click <span className="text-[#004282]">Generate Illustration</span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }

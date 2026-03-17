@@ -26,6 +26,9 @@ export default function BenefitIllustration() {
     entryAge: 35,
     option: 'Immediate',
     channel: 'Other',
+    gender: 'Male',
+    premiumFrequency: 'Yearly',
+    standardAgeProof: false,
     isPreIssuance: true,
   });
   const [result, setResult] = useState<BenefitIllustrationResult | null>(null);
@@ -74,6 +77,15 @@ export default function BenefitIllustration() {
               onChange={e => set('entryAge', +e.target.value)} className={INPUT_CLS} />
           </Field>
 
+          <Field label="Gender">
+            <select value={form.gender ?? 'Male'}
+              onChange={e => set('gender', e.target.value as 'Male' | 'Female')}
+              className={INPUT_CLS}>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </Field>
+
           <Field label="Sum Assured (₹) — optional override">
             <input type="number" value={form.sumAssured ?? ''} placeholder="Auto-derived from GMB"
               onChange={e => set('sumAssured', e.target.value === '' ? undefined : +e.target.value)}
@@ -86,6 +98,15 @@ export default function BenefitIllustration() {
                 const v = e.target.value;
                 set('premiumsPaid', v === '' ? undefined : +v);
               }} className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Standard Age Proof">
+            <select value={form.standardAgeProof ? 'Yes' : 'No'}
+              onChange={e => set('standardAgeProof', e.target.value === 'Yes')}
+              className={INPUT_CLS}>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
           </Field>
 
           <div className="pt-2 border-t border-slate-100">
@@ -107,6 +128,17 @@ export default function BenefitIllustration() {
           <Field label="Annual Premium — AP (₹)">
             <input type="number" value={form.annualPremium}
               onChange={e => set('annualPremium', +e.target.value)} className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Premium Payment Mode">
+            <select value={form.premiumFrequency ?? 'Yearly'}
+              onChange={e => set('premiumFrequency', e.target.value as BenefitIllustrationRequest['premiumFrequency'])}
+              className={INPUT_CLS}>
+              <option value="Yearly">Yearly</option>
+              <option value="Half Yearly">Half Yearly</option>
+              <option value="Quarterly">Quarterly</option>
+              <option value="Monthly">Monthly</option>
+            </select>
           </Field>
 
           <div className="grid grid-cols-2 gap-3">

@@ -21,6 +21,15 @@ public class BenefitIllustrationRequest
     /// <summary>Sales channel: Online, StaffDirect, or Other.</summary>
     public string Channel { get; set; } = "Other";
 
+    /// <summary>Gender of the life assured: Male or Female.</summary>
+    public string Gender { get; set; } = "Male";
+
+    /// <summary>Premium payment frequency/mode: Yearly, Half Yearly, Quarterly, Monthly.</summary>
+    public string PremiumFrequency { get; set; } = "Yearly";
+
+    /// <summary>Whether standard age proof has been submitted (Yes/No).</summary>
+    public bool StandardAgeProof { get; set; } = true;
+
     /// <summary>
     /// Number of premiums actually paid (for Reduced Paid-Up calculations).
     /// When null, assumed equal to PPT (fully paid-up policy).
