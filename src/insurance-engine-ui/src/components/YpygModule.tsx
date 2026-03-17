@@ -156,7 +156,6 @@ function PolicyNumberMode() {
         option: policy.option,
         channel: policy.channel,
         fundValue: policy.fundValue,
-        surrenderFactor: 0.8,
         riskCommencementDate: policy.riskCommencementDate || undefined,
       });
       setResult(res.data);
@@ -274,7 +273,6 @@ const DEFAULT_INPUTS = {
   option: 'Immediate',
   channel: 'Other',
   fundValue: 0,
-  surrenderFactor: 0.8,
   riskCommencementDate: '' as string,
   policyStatus: 'In-Force' as string,
   investmentStrategy: 'Self-Managed' as string,
@@ -427,11 +425,6 @@ function InputValueMode() {
             </>
           ) : (
             <>
-              <Field label="Surrender Factor">
-                <input type="number" step="0.01" value={form.surrenderFactor}
-                  onChange={e => set('surrenderFactor', +e.target.value)}
-                  className={INPUT_CLS} />
-              </Field>
               <Field label="Option">
                 <select value={form.option}
                   onChange={e => set('option', e.target.value)}
@@ -606,6 +599,15 @@ function ResultSection({ result }: { result: YpygResult }) {
                   sumAssured: result.sumAssuredOnDeath,
                   maturityBenefit4: result.maturityBenefit4 ?? 0,
                   maturityBenefit8: result.maturityBenefit8 ?? 0,
+                  currentFundValue4: result.currentFundValue4,
+                  currentFundValue8: result.currentFundValue8,
+                  maturityFundValue4: result.maturityFundValue4,
+                  maturityFundValue8: result.maturityFundValue8,
+                  currentDeathBenefit4: result.currentDeathBenefit4,
+                  currentDeathBenefit8: result.currentDeathBenefit8,
+                  maturityDeathBenefit4: result.maturityDeathBenefit4,
+                  maturityDeathBenefit8: result.maturityDeathBenefit8,
+                  calculationDate: result.calculationDate,
                   yearlyTable: result.ulipYearlyTable,
                 });
               } else {
