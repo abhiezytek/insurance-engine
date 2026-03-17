@@ -112,6 +112,12 @@ public class UlipCalculationRequest
 
     /// <summary>Whether the policyholder/LA is a staff / family member of the distributor.</summary>
     public bool IsStaffFamily { get; set; }
+
+    /// <summary>Whether standard age proof has been submitted for the Life Assured (Yes/No).</summary>
+    public bool StandardAgeProofLA { get; set; } = true;
+
+    /// <summary>Whether standard age proof has been submitted for the Policyholder (Yes/No).</summary>
+    public bool StandardAgeProofPH { get; set; } = true;
 }
 
 /// <summary>

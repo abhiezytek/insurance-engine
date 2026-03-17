@@ -81,6 +81,9 @@ export interface BenefitIllustrationRequest {
   entryAge: number;
   option: 'Immediate' | 'Deferred' | 'Twin';
   channel: 'Online' | 'StaffDirect' | 'Other';
+  gender?: 'Male' | 'Female';
+  premiumFrequency?: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
+  standardAgeProof?: boolean;
   premiumsPaid?: number;
   sumAssured?: number;
   isPreIssuance?: boolean;
@@ -151,6 +154,8 @@ export interface UlipCalculationRequest {
   fundAllocations: UlipFundAllocation[];
   distributionChannel?: string;
   isStaffFamily?: boolean;
+  standardAgeProofLA?: boolean;
+  standardAgeProofPH?: boolean;
 }
 
 export interface UlipIllustrationRow {
