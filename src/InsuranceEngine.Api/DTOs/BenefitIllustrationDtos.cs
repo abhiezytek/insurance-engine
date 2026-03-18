@@ -33,6 +33,9 @@ public class BenefitIllustrationRequest
     /// <summary>Age of the Policy Holder.</summary>
     public int? AgeOfPolicyHolder { get; set; }
 
+    /// <summary>Whether Life Assured and Proposer are the same person.</summary>
+    public bool LifeAssuredSameAsProposer { get; set; } = true;
+
     /// <summary>Income option: Immediate, Deferred, or Twin.</summary>
     public string Option { get; set; } = "Immediate";
 
