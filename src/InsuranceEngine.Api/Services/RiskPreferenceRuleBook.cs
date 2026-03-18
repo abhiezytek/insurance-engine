@@ -23,7 +23,7 @@ internal static class RiskPreferenceRuleBook
 
         var rules = Rules;
         if (rules.Count == 0)
-            return (false, "Risk preference rules are not configured. Please upload ewealth_risk_preference_rules.csv.");
+            return (false, "Risk preference rules are not configured. Ensure ewealth_risk_preference_rules.csv is present in the docs directory and restart the service after updating.");
 
         var strategy = req.InvestmentStrategy?.Trim();
         if (string.IsNullOrWhiteSpace(strategy))

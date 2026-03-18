@@ -560,7 +560,10 @@ export default function UlipIllustration() {
                   <div className="w-16">
                     <label className="block text-xs font-medium text-slate-500 mb-1">%</label>
                     <input type="number" value={alloc.allocationPercent}
-                      onChange={e => updateAlloc(idx, 'allocationPercent', parseFloat(e.target.value) || 0)}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        updateAlloc(idx, 'allocationPercent', Number.isNaN(val) ? 0 : val);
+                      }}
                       min={0} max={100} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
                   </div>
                   {form.fundAllocations.length > 1 && (

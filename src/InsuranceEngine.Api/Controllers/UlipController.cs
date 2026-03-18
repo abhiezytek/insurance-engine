@@ -100,12 +100,6 @@ public class UlipController : ControllerBase
         if (request.EntryAge < 0 || request.EntryAge > 65)
             return BadRequest("EntryAge must be between 0 and 65.");
 
-        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(
-            request,
-            () => RiskPreferenceRuleBook.HasAgeBasedAllocationMaster(_db, request.ProductCode));
-        if (!riskPrefValidation.IsValid)
-            return BadRequest(riskPrefValidation.Error);
-
         try
         {
             var result = await _svc.CalculateAsync(request);
