@@ -13,9 +13,38 @@ public class BenefitCalculationService : IBenefitCalculationService
 
     public BenefitCalculationService(InsuranceDbContext db) => _db = db;
 
+    /// <summary>
+    /// Modal factor lookup: fraction of annualised premium due per installment.
+    /// Yearly=1.0, Half Yearly=0.5108, Quarterly=0.2582, Monthly=0.0867.
+    /// </summary>
+    internal static (decimal ModalFactor, int PaymentsPerYear) GetModalFactor(string premiumFrequency)
+    {
+        return premiumFrequency switch
+        {
+            "Half Yearly" or "HalfYearly" => (0.5108m, 2),
+            "Quarterly" => (0.2582m, 4),
+            "Monthly" => (0.0867m, 12),
+            _ => (1.0m, 1) // Yearly
+        };
+    }
+
+    /// <summary>
+    /// Compute Annual Premium from Annualised Premium and payment frequency.
+    /// Annual Premium = Annualised Premium × Modal Factor × Payments Per Year.
+    /// </summary>
+    internal static decimal ComputeAnnualPremium(decimal annualisedPremium, string premiumFrequency)
+    {
+        var (modalFactor, payments) = GetModalFactor(premiumFrequency);
+        return Round(annualisedPremium * modalFactor * payments);
+    }
+
     public async Task<BenefitIllustrationResponse> CalculateAsync(BenefitIllustrationRequest request)
     {
-        var ap = request.AnnualPremium;
+        // Resolve annualised premium and compute annual premium
+        var annualisedPremium = request.AnnualisedPremium ?? request.AnnualPremium;
+        var frequency = request.PremiumFrequency ?? "Yearly";
+        var ap = ComputeAnnualPremium(annualisedPremium, frequency);
+
         var ppt = request.Ppt;
         var pt = request.PolicyTerm;
         var option = request.Option;
@@ -31,19 +60,19 @@ public class BenefitCalculationService : IBenefitCalculationService
         // 2. High Premium benefit %
         var highPremiumPct = GetHighPremiumPct(ap, option);
 
-        // 3. Channel benefit %
-        var channelPct = GetChannelPct(channel, option);
+        // 3. Channel benefit % (staff policy overrides channel benefit)
+        var channelPct = request.StaffPolicy
+            ? GetStaffPct(option)
+            : GetChannelPct(channel, option);
 
-        // 4-6. Compute GMB
+        // 4-6. Compute GMB (Sum Assured on Maturity)
         var baseGmb = ap * gmbFactor;
         var gmb1 = baseGmb * (1 + highPremiumPct);
         var finalGmb = gmb1 * (1 + channelPct);
         finalGmb = Round(finalGmb);
 
-        // 7. SAD = Max(10 × AP, GMB); optional explicit SA override from request
-        var sad = request.SumAssured.HasValue
-            ? Round(Math.Max(request.SumAssured.Value, Round(Math.Max(10m * ap, finalGmb))))
-            : Round(Math.Max(10m * ap, finalGmb));
+        // 7. SA = 10 × Annual Premium; optional explicit SA override from request
+        var sad = request.SumAssured ?? Round(10m * ap);
 
         // Load factor tables up front
         var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
@@ -125,13 +154,16 @@ public class BenefitCalculationService : IBenefitCalculationService
 
         return new BenefitIllustrationResponse
         {
+            AnnualisedPremium = Round(annualisedPremium),
             AnnualPremium = Round(ap),
             Ppt = ppt,
             PolicyTerm = pt,
             EntryAge = entryAge,
             Option = option,
             Channel = channel,
+            PremiumFrequency = frequency,
             SumAssuredOnDeath = sad,
+            SumAssuredOnMaturity = finalGmb,
             GuaranteedMaturityBenefit = finalGmb,
             MaxLoanAmount = maxLoan,
             YearlyTable = rows
@@ -191,13 +223,19 @@ public class BenefitCalculationService : IBenefitCalculationService
                 "Twin" => 0.0425m,
                 _ => 0m
             },
-            "StaffDirect" => option switch
-            {
-                "Immediate" => 0.085m,
-                "Deferred" => 0.07m,
-                "Twin" => 0.085m,
-                _ => 0m
-            },
+            // Other channels: no additional benefit
+            _ => 0m
+        };
+    }
+
+    /// <summary>Staff policy benefit percentage (replaces channel benefit when StaffPolicy=true).</summary>
+    private static decimal GetStaffPct(string option)
+    {
+        return option switch
+        {
+            "Immediate" => 0.085m,
+            "Deferred" => 0.07m,
+            "Twin" => 0.085m,
             _ => 0m
         };
     }

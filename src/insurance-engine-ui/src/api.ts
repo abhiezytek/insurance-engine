@@ -75,15 +75,20 @@ export interface UploadBatch {
 }
 
 export interface BenefitIllustrationRequest {
+  annualisedPremium?: number;
   annualPremium: number;
   ppt: number;
   policyTerm: number;
   entryAge: number;
+  nameOfLifeAssured?: string;
+  nameOfPolicyHolder?: string;
+  ageOfPolicyHolder?: number;
   option: 'Immediate' | 'Deferred' | 'Twin';
-  channel: 'Online' | 'StaffDirect' | 'Other';
+  channel: string;
   gender?: 'Male' | 'Female';
   premiumFrequency?: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
   standardAgeProof?: boolean;
+  staffPolicy?: boolean;
   premiumsPaid?: number;
   sumAssured?: number;
   isPreIssuance?: boolean;
@@ -107,13 +112,16 @@ export interface BenefitIllustrationRow {
 }
 
 export interface BenefitIllustrationResult {
+  annualisedPremium: number;
   annualPremium: number;
   ppt: number;
   policyTerm: number;
   entryAge: number;
   option: string;
   channel: string;
+  premiumFrequency: string;
   sumAssuredOnDeath: number;
+  sumAssuredOnMaturity: number;
   guaranteedMaturityBenefit: number;
   maxLoanAmount: number;
   yearlyTable: BenefitIllustrationRow[];
@@ -122,6 +130,16 @@ export interface BenefitIllustrationResult {
 export const getBatches = () => api.get<UploadBatch[]>('/api/upload/batches');
 export const runBenefitIllustration = (req: BenefitIllustrationRequest) =>
   api.post<BenefitIllustrationResult>('/api/benefit-illustration/calculate', req);
+
+export interface EndowmentProductConfig {
+  pptOptions: number[];
+  ptOptionsByPpt: Record<string, number[]>;
+  channels: string[];
+  paymentModes: string[];
+}
+
+export const getEndowmentConfig = () =>
+  api.get<EndowmentProductConfig>('/api/benefit-illustration/config');
 
 // ---------------------------------------------------------------------------
 // ULIP — Unit Linked Insurance Plan

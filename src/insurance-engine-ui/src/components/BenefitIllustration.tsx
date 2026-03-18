@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, AlertCircle, Info, FileDown, User, Settings2 } from 'lucide-react';
-import { runBenefitIllustration } from '../api';
-import type { BenefitIllustrationResult, BenefitIllustrationRequest } from '../api';
+import { runBenefitIllustration, getEndowmentConfig } from '../api';
+import type { BenefitIllustrationResult, BenefitIllustrationRequest, EndowmentProductConfig } from '../api';
 import { downloadEndowmentBiPdf } from '../utils/pdfExport';
 
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 const INPUT_CLS = `w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
                    focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]
                    placeholder:text-slate-300`;
+
+/* Fallback config used until the backend responds */
+const DEFAULT_CONFIG: EndowmentProductConfig = {
+  pptOptions: [7, 10, 12],
+  ptOptionsByPpt: { '7': [15, 20], '10': [20, 25], '12': [25] },
+  channels: ['Corporate Agency', 'Direct Marketing', 'Online', 'Broker', 'Agency', 'Web Aggregator', 'Insurance Marketing Firm'],
+  paymentModes: ['Yearly', 'Half Yearly', 'Quarterly', 'Monthly'],
+};
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -19,23 +27,48 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function BenefitIllustration() {
+  const [config, setConfig] = useState<EndowmentProductConfig>(DEFAULT_CONFIG);
   const [form, setForm] = useState<BenefitIllustrationRequest>({
-    annualPremium: 50000,
+    annualisedPremium: 50000,
+    annualPremium: 0,
     ppt: 7,
     policyTerm: 15,
     entryAge: 35,
+    nameOfLifeAssured: '',
+    nameOfPolicyHolder: '',
+    ageOfPolicyHolder: undefined,
     option: 'Immediate',
-    channel: 'Other',
+    channel: 'Agency',
     gender: 'Male',
     premiumFrequency: 'Yearly',
     standardAgeProof: false,
+    staffPolicy: false,
     isPreIssuance: true,
   });
   const [result, setResult] = useState<BenefitIllustrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /* Load product config from backend on mount */
+  useEffect(() => {
+    getEndowmentConfig()
+      .then(r => setConfig(r.data))
+      .catch(() => { /* keep fallback */ });
+  }, []);
+
   const set = (k: keyof BenefitIllustrationRequest, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  /* When PPT changes, reset Policy Term to first valid option */
+  const handlePptChange = (newPpt: number) => {
+    const ptOptions = config.ptOptionsByPpt[String(newPpt)] ?? [];
+    setForm(p => ({
+      ...p,
+      ppt: newPpt,
+      policyTerm: ptOptions.length > 0 ? ptOptions[0] : p.policyTerm,
+    }));
+  };
+
+  const ptOptions = config.ptOptionsByPpt[String(form.ppt)] ?? [];
 
   const handleCalculate = async () => {
     setLoading(true); setError(null); setResult(null);
@@ -72,9 +105,27 @@ export default function BenefitIllustration() {
             <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
           </div>
 
-          <Field label="Entry Age (years)">
+          <Field label="Name of the Life Assured">
+            <input type="text" value={form.nameOfLifeAssured ?? ''}
+              onChange={e => set('nameOfLifeAssured', e.target.value)}
+              placeholder="Enter name" className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Age of the Life Assured (years)">
             <input type="number" value={form.entryAge}
               onChange={e => set('entryAge', +e.target.value)} className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Name of the Policy Holder">
+            <input type="text" value={form.nameOfPolicyHolder ?? ''}
+              onChange={e => set('nameOfPolicyHolder', e.target.value)}
+              placeholder="Enter name" className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Age of the Policy Holder (years)">
+            <input type="number" value={form.ageOfPolicyHolder ?? ''}
+              onChange={e => set('ageOfPolicyHolder', e.target.value === '' ? undefined : +e.target.value)}
+              placeholder="Enter age" className={INPUT_CLS} />
           </Field>
 
           <Field label="Gender">
@@ -87,17 +138,9 @@ export default function BenefitIllustration() {
           </Field>
 
           <Field label="Sum Assured (₹) — optional override">
-            <input type="number" value={form.sumAssured ?? ''} placeholder="Auto-derived from GMB"
+            <input type="number" value={form.sumAssured ?? ''} placeholder="Auto: Annual Premium × 10"
               onChange={e => set('sumAssured', e.target.value === '' ? undefined : +e.target.value)}
               className={INPUT_CLS} />
-          </Field>
-
-          <Field label="Premiums Paid (for Paid-Up calculation)">
-            <input type="number" value={form.premiumsPaid ?? ''} placeholder="Leave blank if fully paid-up"
-              onChange={e => {
-                const v = e.target.value;
-                set('premiumsPaid', v === '' ? undefined : +v);
-              }} className={INPUT_CLS} />
           </Field>
 
           <Field label="Standard Age Proof">
@@ -111,9 +154,9 @@ export default function BenefitIllustration() {
 
           <div className="pt-2 border-t border-slate-100">
             <p className="text-xs text-slate-400">
-              <strong>SAD</strong> = Max(10 × AP, GMB) &nbsp;·&nbsp;
+              <strong>SA</strong> = 10 × Annual Premium &nbsp;·&nbsp;
               <strong>SV</strong> = Max(GSV, SSV) &nbsp;·&nbsp;
-              <strong>DB</strong> = Max(SAD, SV, 105% × TPP)
+              <strong>DB</strong> = Max(SA, SV, 105% × TPP)
             </p>
           </div>
         </div>
@@ -125,30 +168,40 @@ export default function BenefitIllustration() {
             <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Plan Parameters</h3>
           </div>
 
-          <Field label="Annual Premium — AP (₹)">
-            <input type="number" value={form.annualPremium}
-              onChange={e => set('annualPremium', +e.target.value)} className={INPUT_CLS} />
+          <Field label="Annualised Premium (₹)">
+            <input type="number" value={form.annualisedPremium ?? 0}
+              onChange={e => set('annualisedPremium', +e.target.value)}
+              className={INPUT_CLS} />
           </Field>
 
           <Field label="Premium Payment Mode">
             <select value={form.premiumFrequency ?? 'Yearly'}
               onChange={e => set('premiumFrequency', e.target.value as BenefitIllustrationRequest['premiumFrequency'])}
               className={INPUT_CLS}>
-              <option value="Yearly">Yearly</option>
-              <option value="Half Yearly">Half Yearly</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="Monthly">Monthly</option>
+              {config.paymentModes.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
             </select>
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="PPT (years)">
-              <input type="number" value={form.ppt}
-                onChange={e => set('ppt', +e.target.value)} className={INPUT_CLS} />
+              <select value={form.ppt}
+                onChange={e => handlePptChange(+e.target.value)}
+                className={INPUT_CLS}>
+                {config.pptOptions.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Policy Term (years)">
-              <input type="number" value={form.policyTerm}
-                onChange={e => set('policyTerm', +e.target.value)} className={INPUT_CLS} />
+              <select value={form.policyTerm}
+                onChange={e => set('policyTerm', +e.target.value)}
+                className={INPUT_CLS}>
+                {ptOptions.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </Field>
           </div>
 
@@ -164,11 +217,20 @@ export default function BenefitIllustration() {
 
           <Field label="Sales Channel">
             <select value={form.channel}
-              onChange={e => set('channel', e.target.value as BenefitIllustrationRequest['channel'])}
+              onChange={e => set('channel', e.target.value)}
               className={INPUT_CLS}>
-              <option value="Other">Other / Direct</option>
-              <option value="Online">Online (+4.25%)</option>
-              <option value="StaffDirect">Staff Direct (+8.5%)</option>
+              {config.channels.map(ch => (
+                <option key={ch} value={ch}>{ch}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Staff Policy">
+            <select value={form.staffPolicy ? 'Yes' : 'No'}
+              onChange={e => set('staffPolicy', e.target.value === 'Yes')}
+              className={INPUT_CLS}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
             </select>
           </Field>
 
@@ -204,11 +266,11 @@ export default function BenefitIllustration() {
       {/* ── Results ── */}
       {result && (
         <>
-          {/* Summary cards */}
+          {/* Summary cards — SA on Maturity is intentionally omitted per requirements */}
           <div className="grid sm:grid-cols-3 gap-4">
             {[
               { label: 'Sum Assured on Death', value: result.sumAssuredOnDeath, color: 'text-[#004282]' },
-              { label: 'Guaranteed Maturity Benefit', value: result.guaranteedMaturityBenefit, color: 'text-[#d32f2f]' },
+              { label: 'Annual Premium (Calculated)', value: result.annualPremium, color: 'text-[#007bff]' },
               { label: 'Max Loan Amount (70% SV)', value: result.maxLoanAmount, color: 'text-[#004282]' },
             ].map(m => (
               <div key={m.label} className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5">

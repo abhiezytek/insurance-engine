@@ -98,12 +98,12 @@ public class BenefitCalculationTests
         new() { AnnualPremium = annualPremium, Ppt = ppt, PolicyTerm = pt, EntryAge = age, Option = "Immediate", Channel = channel };
 
     [Test]
-    public async Task ImmediateIncome_SAD_IsMaxOf10xAPAndGMB()
+    public async Task ImmediateIncome_SAD_Is10xAP()
     {
         var ap = 50000m;
         var result = await _svc.CalculateAsync(ImmediateRequest(ap));
-        // SAD = Max(10 × AP, GMB)
-        var expected = Math.Round(Math.Max(10m * ap, result.GuaranteedMaturityBenefit), 2, MidpointRounding.AwayFromZero);
+        // SA = 10 × Annual Premium
+        var expected = Math.Round(10m * ap, 2, MidpointRounding.AwayFromZero);
         Assert.AreEqual(expected, result.SumAssuredOnDeath);
     }
 
