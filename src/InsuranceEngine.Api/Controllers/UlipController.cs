@@ -100,16 +100,15 @@ public class UlipController : ControllerBase
         if (request.EntryAge < 0 || request.EntryAge > 65)
             return BadRequest("EntryAge must be between 0 and 65.");
 
-        // Validate fund allocations sum to 100 when provided
-        if (request.FundAllocations.Count > 0)
+        try
         {
-            var total = request.FundAllocations.Sum(f => f.AllocationPercent);
-            if (Math.Abs(total - 100m) > 0.01m)
-                return BadRequest($"Fund allocations must sum to 100%. Current sum: {total}%.");
+            var result = await _svc.CalculateAsync(request);
+            return Ok(result);
         }
-
-        var result = await _svc.CalculateAsync(request);
-        return Ok(result);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     // -----------------------------------------------------------------------

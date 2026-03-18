@@ -73,6 +73,12 @@ public class UlipCalculationService : IUlipCalculationService
 
     public async Task<UlipCalculationResponse> CalculateAsync(UlipCalculationRequest req)
     {
+        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(
+            req,
+            () => RiskPreferenceRuleBook.HasAgeBasedAllocationMaster(_db, req.ProductCode));
+        if (!riskPrefValidation.IsValid)
+            throw new InvalidOperationException(riskPrefValidation.Error);
+
         var product = await _db.Products
             .FirstOrDefaultAsync(p => p.Code == req.ProductCode && p.ProductType == "ULIP");
         var productName = product?.Name ?? req.ProductCode;
@@ -647,4 +653,5 @@ public class UlipCalculationService : IUlipCalculationService
         Math.Round(value, 2, MidpointRounding.AwayFromZero);
     private static decimal Round2(double value) =>
         Math.Round((decimal)value, 2, MidpointRounding.AwayFromZero);
+
 }

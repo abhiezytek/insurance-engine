@@ -300,4 +300,37 @@ public class UlipCalculationTests
         Assert.IsFalse(string.IsNullOrWhiteSpace(result.IrdaiDisclaimer));
         StringAssert.Contains("investment risk", result.IrdaiDisclaimer);
     }
+
+    // -----------------------------------------------------------------------
+    // Risk preference and allocation rules (backend-driven)
+    // -----------------------------------------------------------------------
+
+    [Test]
+    public void Calculate_SelfManagedAllocationMustBeMultipleOfFive()
+    {
+        var req = DefaultRequest();
+        req.InvestmentStrategy = "Self-Managed Investment Strategy";
+        req.FundAllocations = new List<UlipFundAllocation>
+        {
+            new() { FundType = "Equity Growth Fund", AllocationPercent = 97 },
+            new() { FundType = "Debt Fund", AllocationPercent = 3 },
+        };
+
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(() => _svc.CalculateAsync(req));
+        Assert.IsNotNull(ex);
+        StringAssert.Contains("multiples of 5%", ex!.Message);
+    }
+
+    [Test]
+    public void Calculate_AgeBasedBlocksWhenMasterMissing()
+    {
+        var req = DefaultRequest();
+        req.InvestmentStrategy = "Age-based Investment Strategy";
+        req.RiskPreference = "Aggressive";
+        req.FundAllocations.Clear();
+
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(() => _svc.CalculateAsync(req));
+        Assert.IsNotNull(ex);
+        StringAssert.Contains("Age-based allocation master is missing", ex!.Message);
+    }
 }

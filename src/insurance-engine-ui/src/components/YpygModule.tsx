@@ -275,7 +275,7 @@ const DEFAULT_INPUTS = {
   fundValue: 0,
   riskCommencementDate: '' as string,
   policyStatus: 'In-Force' as string,
-  investmentStrategy: 'Self-Managed' as string,
+  investmentStrategy: 'Self-Managed Investment Strategy' as string,
   premiumFrequency: 'Yearly' as string,
   customerName: '' as string,
   uin: '' as string,
@@ -404,9 +404,8 @@ function InputValueMode() {
                 <select value={form.investmentStrategy}
                   onChange={e => set('investmentStrategy', e.target.value)}
                   className={INPUT_CLS}>
-                  <option>Self-Managed</option>
-                  <option>Life-Stage Aggressive</option>
-                  <option>Life-Stage Conservative</option>
+                  <option>Self-Managed Investment Strategy</option>
+                  <option>Age-based Investment Strategy</option>
                 </select>
               </Field>
               <Field label="Fund Value (₹)">
