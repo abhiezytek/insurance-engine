@@ -107,11 +107,11 @@ public class UlipCalculationRequest
     /// <summary>Fund option category: Self-Managed, Target_Maturity, Structured.</summary>
     public string FundOption { get; set; } = string.Empty;
 
-    /// <summary>Investment strategy: Self-Managed, Life-Stage Aggressive, Life-Stage Conservative.</summary>
-    public string InvestmentStrategy { get; set; } = "Self-Managed";
+    /// <summary>Investment strategy: Age-based Investment Strategy or Self-Managed Investment Strategy.</summary>
+    public string InvestmentStrategy { get; set; } = "Self-Managed Investment Strategy";
 
-    /// <summary>Risk preference: Conservative, Moderate, Aggressive.</summary>
-    public string RiskPreference { get; set; } = "Conservative";
+    /// <summary>Risk preference (required only for Age-based Investment Strategy): Aggressive or Conservative.</summary>
+    public string? RiskPreference { get; set; }
 
     /// <summary>Fund allocations — must sum to 100% for Self-Managed strategy.</summary>
     public List<UlipFundAllocation> FundAllocations { get; set; } = new();

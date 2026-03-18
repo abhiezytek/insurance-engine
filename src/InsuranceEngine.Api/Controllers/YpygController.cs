@@ -75,7 +75,7 @@ public class YpygController : ControllerBase
                 RiskCommencementDate = new DateTime(2021, 4, 1),
                 PendingPremiums = 0,
                 SurvivalBenefitPaid = 0m,
-                InvestmentStrategy = seed == 0 ? "Self-Managed" : "Life-Stage Aggressive"
+                InvestmentStrategy = seed == 0 ? "Self-Managed Investment Strategy" : "Age-based Investment Strategy"
             });
         }
 
@@ -352,32 +352,32 @@ public class PolicyLookupResponse
     public string InvestmentStrategy { get; set; } = string.Empty;
 }
 
-public class YpygCalculationRequest
-{
-    public string PolicyNumber { get; set; } = string.Empty;
-    public string ProductCode { get; set; } = "CENTURY_INCOME";
-    public string ProductCategory { get; set; } = "Traditional";
-    public string Uin { get; set; } = string.Empty;
-    public string CustomerName { get; set; } = string.Empty;
-    public string Gender { get; set; } = "Male";
-    public DateTime? DateOfBirth { get; set; }
-    public string PremiumFrequency { get; set; } = "Yearly";
-    public string PolicyStatus { get; set; } = "In-Force";
-    public string InvestmentStrategy { get; set; } = "Self-Managed";
-    public decimal AnnualPremium { get; set; }
-    public int PolicyTerm { get; set; }
-    public int PremiumPayingTerm { get; set; }
-    public int PremiumsPaid { get; set; }
-    public decimal SumAssured { get; set; }
-    public int EntryAge { get; set; }
-    public string Option { get; set; } = "Immediate";
-    public string Channel { get; set; } = "Other";
-    public decimal FundValue { get; set; }
-    public decimal BonusRate { get; set; }
-    public decimal SurrenderFactor { get; set; } = 0.8m;
-    /// <summary>Risk Commencement Date — used to determine elapsed policy years in YPYG mode.</summary>
-    public DateTime? RiskCommencementDate { get; set; }
-}
+    public class YpygCalculationRequest
+    {
+        public string PolicyNumber { get; set; } = string.Empty;
+        public string ProductCode { get; set; } = "CENTURY_INCOME";
+        public string ProductCategory { get; set; } = "Traditional";
+        public string Uin { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string Gender { get; set; } = "Male";
+        public DateTime? DateOfBirth { get; set; }
+        public string PremiumFrequency { get; set; } = "Yearly";
+        public string PolicyStatus { get; set; } = "In-Force";
+        public string InvestmentStrategy { get; set; } = "Self-Managed Investment Strategy";
+        public decimal AnnualPremium { get; set; }
+        public int PolicyTerm { get; set; }
+        public int PremiumPayingTerm { get; set; }
+        public int PremiumsPaid { get; set; }
+        public decimal SumAssured { get; set; }
+        public int EntryAge { get; set; }
+        public string Option { get; set; } = "Immediate";
+        public string Channel { get; set; } = "Other";
+        public decimal FundValue { get; set; }
+        public decimal BonusRate { get; set; }
+        public decimal SurrenderFactor { get; set; } = 0.8m;
+        /// <summary>Risk Commencement Date — used to determine elapsed policy years in YPYG mode.</summary>
+        public DateTime? RiskCommencementDate { get; set; }
+    }
 
 public class YpygCalculationResponse
 {

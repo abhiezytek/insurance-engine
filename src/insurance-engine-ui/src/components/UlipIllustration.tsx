@@ -53,8 +53,8 @@ export default function UlipIllustration() {
     premiumFrequency:    'Yearly',
     policyEffectiveDate: '',
     fundOption:          '',
-    investmentStrategy:  'Self-Managed',
-    riskPreference:      'Conservative',
+    investmentStrategy:  'Self-Managed Investment Strategy',
+    riskPreference:      undefined,
     fundAllocations:     [{ fundType: 'SUD Life Nifty Alpha 50 Index Fund', allocationPercent: 100 }],
     distributionChannel: 'Corporate Agency',
     isStaffFamily:       false,
@@ -88,6 +88,17 @@ export default function UlipIllustration() {
     value: UlipCalculationRequest[K],
   ) => setForm(prev => ({ ...prev, [key]: value }));
 
+  const handleStrategyChange = (value: UlipCalculationRequest['investmentStrategy']) => {
+    setForm(prev => ({
+      ...prev,
+      investmentStrategy: value,
+      riskPreference: value === 'Age-based Investment Strategy'
+        ? (prev.riskPreference ?? 'Aggressive')
+        : undefined,
+      fundAllocations: value === 'Age-based Investment Strategy' ? [] : (prev.fundAllocations.length ? prev.fundAllocations : [{ fundType: '', allocationPercent: 0 }]),
+    }));
+  };
+
   const handleCalculate = async () => {
     setLoading(true);
     setError(null);
@@ -110,8 +121,10 @@ export default function UlipIllustration() {
   };
 
   // ---- fund allocation helpers ----
+  const isSelfManaged = form.investmentStrategy === 'Self-Managed Investment Strategy' || form.investmentStrategy === 'Self-Managed';
   const totalAlloc = form.fundAllocations.reduce((s, f) => s + f.allocationPercent, 0);
-  const allocError = Math.abs(totalAlloc - 100) > 0.01;
+  const allocError = isSelfManaged && Math.abs(totalAlloc - 100) > 0.01;
+  const allocationStepError = isSelfManaged && form.fundAllocations.some(f => f.allocationPercent % 5 !== 0);
 
   const updateAlloc = (idx: number, field: 'fundType' | 'allocationPercent', val: string | number) => {
     setForm(prev => {
@@ -454,22 +467,28 @@ export default function UlipIllustration() {
           {/* Investment Strategy */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Investment Strategy</label>
-            <select value={form.investmentStrategy ?? 'Self-Managed'} onChange={e => set('investmentStrategy', e.target.value)} className={INPUT_CLS}>
-              <option value="Self-Managed">Self-Managed Investment Strategy</option>
-              <option value="Life-Stage Aggressive">Life-Stage Aggressive</option>
-              <option value="Life-Stage Conservative">Life-Stage Conservative</option>
+            <select
+              value={form.investmentStrategy ?? 'Self-Managed Investment Strategy'}
+              onChange={e => handleStrategyChange(e.target.value as UlipCalculationRequest['investmentStrategy'])}
+              className={INPUT_CLS}>
+              <option value="Self-Managed Investment Strategy">Self-Managed Investment Strategy</option>
+              <option value="Age-based Investment Strategy">Age-based Investment Strategy</option>
             </select>
           </div>
 
           {/* Risk Preference */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Risk Preference</label>
-            <select value={form.riskPreference ?? 'Conservative'} onChange={e => set('riskPreference', e.target.value as 'Conservative' | 'Moderate' | 'Aggressive')} className={INPUT_CLS}>
-              <option value="Conservative">Conservative</option>
-              <option value="Moderate">Moderate</option>
-              <option value="Aggressive">Aggressive</option>
-            </select>
-          </div>
+          {form.investmentStrategy === 'Age-based Investment Strategy' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Risk Preference</label>
+              <select
+                value={form.riskPreference ?? 'Aggressive'}
+                onChange={e => set('riskPreference', e.target.value as 'Aggressive' | 'Conservative')}
+                className={INPUT_CLS}>
+                <option value="Aggressive">Aggressive</option>
+                <option value="Conservative">Conservative</option>
+              </select>
+            </div>
+          )}
 
           {/* Age at Risk Commencement */}
           <div>
@@ -520,38 +539,41 @@ export default function UlipIllustration() {
           </div>
 
           {/* Fund Allocation */}
-          <div className="pt-3 border-t border-slate-100 space-y-3">
-            <h4 className="text-xs font-bold text-[#004282] uppercase tracking-wider">Fund Allocation</h4>
+          {isSelfManaged && (
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <h4 className="text-xs font-bold text-[#004282] uppercase tracking-wider">Fund Allocation</h4>
 
-            {form.fundAllocations.map((alloc, idx) => (
-              <div key={idx} className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Fund</label>
-                  <input type="text" value={alloc.fundType} onChange={e => updateAlloc(idx, 'fundType', e.target.value)}
-                    placeholder="Fund name" className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
+              {form.fundAllocations.map((alloc, idx) => (
+                <div key={idx} className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Fund</label>
+                    <input type="text" value={alloc.fundType} onChange={e => updateAlloc(idx, 'fundType', e.target.value)}
+                      placeholder="Fund name" className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
+                  </div>
+                  <div className="w-16">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">%</label>
+                    <input type="number" value={alloc.allocationPercent}
+                      onChange={e => updateAlloc(idx, 'allocationPercent', parseFloat(e.target.value) || 0)}
+                      min={0} max={100} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
+                  </div>
+                  {form.fundAllocations.length > 1 && (
+                    <button onClick={() => removeAlloc(idx)} className="text-red-400 hover:text-red-600 text-xs pb-1" aria-label="Remove">✕</button>
+                  )}
                 </div>
-                <div className="w-16">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">%</label>
-                  <input type="number" value={alloc.allocationPercent}
-                    onChange={e => updateAlloc(idx, 'allocationPercent', parseFloat(e.target.value) || 0)}
-                    min={0} max={100} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
-                </div>
-                {form.fundAllocations.length > 1 && (
-                  <button onClick={() => removeAlloc(idx)} className="text-red-400 hover:text-red-600 text-xs pb-1" aria-label="Remove">✕</button>
-                )}
+              ))}
+
+              <div className="flex items-center justify-between">
+                <button onClick={addAlloc} className="text-xs text-[#007bff] hover:underline">+ Add Fund</button>
+                <span className={`text-xs font-semibold ${allocError ? 'text-red-500' : 'text-green-600'}`}>Total: {totalAlloc}%</span>
               </div>
-            ))}
-
-            <div className="flex items-center justify-between">
-              <button onClick={addAlloc} className="text-xs text-[#007bff] hover:underline">+ Add Fund</button>
-              <span className={`text-xs font-semibold ${allocError ? 'text-red-500' : 'text-green-600'}`}>Total: {totalAlloc}%</span>
+              {allocError && <p className="text-xs text-red-500">Fund allocations must sum to exactly 100%.</p>}
+              {allocationStepError && <p className="text-xs text-red-500">Each fund allocation must be in multiples of 5%.</p>}
             </div>
-            {allocError && <p className="text-xs text-red-500">Fund allocations must sum to exactly 100%.</p>}
-          </div>
+          )}
 
           {/* Calculate button */}
           <button onClick={handleCalculate}
-            disabled={loading || allocError || !form.policyNumber}
+            disabled={loading || (isSelfManaged && (allocError || allocationStepError)) || !form.policyNumber}
             className="w-full py-3 px-6 rounded-xl bg-[#004282] text-white font-semibold text-sm
                        hover:bg-[#003570] disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors shadow-md flex items-center justify-center gap-2">
@@ -686,4 +708,3 @@ export default function UlipIllustration() {
     </div>
   );
 }
-

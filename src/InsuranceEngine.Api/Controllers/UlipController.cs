@@ -100,16 +100,19 @@ public class UlipController : ControllerBase
         if (request.EntryAge < 0 || request.EntryAge > 65)
             return BadRequest("EntryAge must be between 0 and 65.");
 
-        // Validate fund allocations sum to 100 when provided
-        if (request.FundAllocations.Count > 0)
-        {
-            var total = request.FundAllocations.Sum(f => f.AllocationPercent);
-            if (Math.Abs(total - 100m) > 0.01m)
-                return BadRequest($"Fund allocations must sum to 100%. Current sum: {total}%.");
-        }
+        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(request, HasAgeBasedAllocationMaster);
+        if (!riskPrefValidation.IsValid)
+            return BadRequest(riskPrefValidation.Error);
 
-        var result = await _svc.CalculateAsync(request);
-        return Ok(result);
+        try
+        {
+            var result = await _svc.CalculateAsync(request);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -149,6 +152,9 @@ public class UlipController : ControllerBase
         var bytes = Encoding.UTF8.GetBytes(html);
         return File(bytes, "text/html", $"ULIP_BI_{policyNumber}.html");
     }
+
+    private bool HasAgeBasedAllocationMaster() =>
+        _db.ProductParameters.Any(p => p.Name.Contains("AgeBasedAllocation", StringComparison.OrdinalIgnoreCase));
 
     // -----------------------------------------------------------------------
     // POST /api/ulip/upload-mortality

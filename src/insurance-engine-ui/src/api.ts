@@ -170,8 +170,8 @@ export interface UlipCalculationRequest {
   premiumFrequency: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
   policyEffectiveDate?: string;  // ISO date string (used for birthday-month tracking)
   fundOption?: string;          // Fund option category
-  investmentStrategy?: string;
-  riskPreference?: 'Conservative' | 'Moderate' | 'Aggressive';
+  investmentStrategy?: 'Age-based Investment Strategy' | 'Self-Managed Investment Strategy' | 'Life-Stage Aggressive' | 'Life-Stage Conservative' | 'Self-Managed';
+  riskPreference?: 'Conservative' | 'Aggressive';
   fundAllocations: UlipFundAllocation[];
   distributionChannel?: string;
   isStaffFamily?: boolean;
@@ -298,4 +298,3 @@ export const uploadUlipCharges = (file: File, productCode: string = 'EWEALTH-ROY
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
-
