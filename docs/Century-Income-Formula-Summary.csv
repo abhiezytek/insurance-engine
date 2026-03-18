@@ -1,0 +1,23 @@
+Sheet,Cell,Description,Key Parameters,Returns / Examples,Data Type
+Input,I8,Modal Factor,"B10 (Mode), H10:J13 (Lookup)",1 / 0.5108 / 0.2582 / 0.0867,Decimal
+Input,J8,Number of Payments,"B10 (Mode), H10:J13 (Lookup)",1 / 2 / 4 / 12,Integer
+Input,B11,Annual Premium,B9 (iPRM) × I8 × J8,"50000 × 0.0867 × 12 = 52,020",Currency
+Input,B23,Installment Premium with Loading,iPRM × I8 + Loading if Age Proof=No,"4,403 with loading applied",Currency
+Input,D2,Option Code,"B2, P2:Q4 (Lookup table)",1 (Immediate) / 2 (Deferred) / 3 (Twin),Integer
+Input,B17,GI Base Percentage,"D2 (Option): 1→10%, 2→30%, 3→105%",10% / 30% / 105%,Percentage
+Input,B20,Loyalty Benefit Percentage,"D2 (Option): 1→30%, 2→10%, 3→0%",30% / 10% / 0%,Percentage
+Input,B21,Income Start Adjustment,"D2 (Option): 3→0, else Income_ST+1","Immediate: Input+1, Twin: 0",Integer
+Input,B19,Income Interval,"D2 (Option): 3→5 years, else 1 year",1 year / 5 years,Integer
+Input,D15,Mortality Benefit Reference,"D2→MB sheet table, iAGE, D7 (combo)",Mortality benefit from MB table,Currency
+Output,B,Annualized Premium (Output),"IF(A>iPRM_PP, """", iPRM)","Shows during years 1-12, blank 13-25",Currency
+Output,C,Survival Benefit,SF lookup + Option logic,Year 10+ varies by option,Currency
+Output,D,Loyalty Survival Benefit,"Option 1,2 only; conditional by year","Specific years only (Options 1,2)",Currency
+Output,E,Maturity Benefit,"IF(Year=PT, MB, 0)","Year 25: 912,100; Others: 0",Currency
+Output,F,Death Benefit,"MAX(SA, Surrender Value, 105% Premiums)",Max of components per year,Currency
+Output,G,Guaranteed Surrender Value,(Premiums × GSV Factor) - Benefits,"24,615 (Yr1) → 246,816 (Yr25)",Currency
+Output,H,Special Surrender Value,Premium Ratio × (MB + Income),"24,615 (Yr1) → 849,165 (Yr25)",Currency
+Output,I,Max Surrender Value,"MAX(GSV, SSV)",Max value to display,Currency
+Output,A,Policy Year,1 to 25 sequence,Row identifier for 25-year period,Integer
+SF,I4:L4,GSV Factors (Option 1),"SF!I5:L5 (PPT 7/15, 7/20, 10/20, 10/25)",Factors 0.3755 → 0.931,Decimal
+SF,P4:S4,GSV Factors (Option 2),SF!P5:S5 (Deferred Income),Factors vary by policy year,Decimal
+SF,W4:Z4,GSV Factors (Option 3),SF!W5:Z5 (Twin Income),Factors 0.2714 → 0.931,Decimal

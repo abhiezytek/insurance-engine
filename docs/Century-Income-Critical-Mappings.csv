@@ -1,0 +1,16 @@
+Mapping Type,Input,Output / Code,Formula Cell
+Option Code,Immediate Income,1,D2 lookup
+Option Code,Deferred Income,2,D2 lookup
+Option Code,Twin Income,3,D2 lookup
+Modal Factor,Yearly,1.0,I8 lookup
+Modal Factor,Half Yearly,0.5108,I8 lookup
+Modal Factor,Quarterly,0.2582,I8 lookup
+Modal Factor,Monthly,0.0867,I8 lookup
+Income Interval,Option 1 or 2,1 year,B19 logic
+Income Interval,Option 3,5 years,B19 logic
+Loyalty Benefit,Option 1,30%,B20 logic
+Loyalty Benefit,Option 2,10%,B20 logic
+Loyalty Benefit,Option 3,0%,B20 logic
+GI Base %,Option 1,10%,B17 logic
+GI Base %,Option 2,30%,B17 logic
+GI Base %,Option 3,105%,B17 logic

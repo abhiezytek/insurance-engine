@@ -1,0 +1,7 @@
+"Aspect","Details"
+"Formulas Found","47 (Input) + 241 (Output) + 20 (SF) = 308 total"
+"Parameters","16 abbreviations: iPRM, iPRM_PP, iBP, iAGE, SA, IPRM, GI, MB, SF, GSV, SSV, PY, D2, etc."
+"Income Options","3 types: Immediate (10% GI), Deferred (30% GI + 10% increase), Twin (105% GI + intervals)"
+"Modal Factors","Monthly=0.0867, Quarterly=0.2582, Half-Yearly=0.5108, Yearly=1.0"
+"Output Columns","9: Policy Year, Premium, Survival, Loyalty, Maturity, Death, GSV, SSV, Max SV"
+"Validation Data","Complete 25-year sample calculation for Twin Income option"
