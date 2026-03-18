@@ -3,7 +3,17 @@ namespace InsuranceEngine.Api.DTOs;
 /// <summary>Request for generating a yearly Benefit Illustration table.</summary>
 public class BenefitIllustrationRequest
 {
-    /// <summary>Annual Premium (excluding taxes, riders, extra premium).</summary>
+    /// <summary>
+    /// Annualised Premium — the base premium entered by the user.
+    /// When provided, AnnualPremium is computed as AnnualisedPremium × ModalFactor × PaymentsPerYear.
+    /// </summary>
+    public decimal? AnnualisedPremium { get; set; }
+
+    /// <summary>
+    /// Annual Premium (excluding taxes, riders, extra premium).
+    /// If AnnualisedPremium is provided this is ignored (computed from modal factor).
+    /// Kept for backward compatibility.
+    /// </summary>
     public decimal AnnualPremium { get; set; }
 
     /// <summary>Premium Payment Term (number of years premiums are paid).</summary>
@@ -15,11 +25,20 @@ public class BenefitIllustrationRequest
     /// <summary>Age of the life assured at entry.</summary>
     public int EntryAge { get; set; }
 
+    /// <summary>Name of the Life Assured.</summary>
+    public string? NameOfLifeAssured { get; set; }
+
+    /// <summary>Name of the Policy Holder.</summary>
+    public string? NameOfPolicyHolder { get; set; }
+
+    /// <summary>Age of the Policy Holder.</summary>
+    public int? AgeOfPolicyHolder { get; set; }
+
     /// <summary>Income option: Immediate, Deferred, or Twin.</summary>
     public string Option { get; set; } = "Immediate";
 
-    /// <summary>Sales channel: Online, StaffDirect, or Other.</summary>
-    public string Channel { get; set; } = "Other";
+    /// <summary>Sales channel (e.g. Corporate Agency, Direct Marketing, Online, Broker, Agency, Web Aggregator, Insurance Marketing Firm).</summary>
+    public string Channel { get; set; } = "Agency";
 
     /// <summary>Gender of the life assured: Male or Female.</summary>
     public string Gender { get; set; } = "Male";
@@ -30,13 +49,16 @@ public class BenefitIllustrationRequest
     /// <summary>Whether standard age proof has been submitted (Yes/No).</summary>
     public bool StandardAgeProof { get; set; } = true;
 
+    /// <summary>Whether this is a staff policy.</summary>
+    public bool StaffPolicy { get; set; }
+
     /// <summary>
     /// Number of premiums actually paid (for Reduced Paid-Up calculations).
     /// When null, assumed equal to PPT (fully paid-up policy).
     /// </summary>
     public int? PremiumsPaid { get; set; }
     /// <summary>
-    /// Optional explicit Sum Assured override. When null, SAD is derived as Max(10 × AP, GMB).
+    /// Optional explicit Sum Assured override. When null, SA is derived as 10 × AnnualPremium.
     /// </summary>
     public decimal? SumAssured { get; set; }
 
@@ -56,6 +78,10 @@ public class BenefitIllustrationRequest
 /// <summary>Full yearly Benefit Illustration table for an Endowment policy.</summary>
 public class BenefitIllustrationResponse
 {
+    /// <summary>Annualised Premium (base premium entered by user).</summary>
+    public decimal AnnualisedPremium { get; set; }
+
+    /// <summary>Annual Premium (Annualised Premium × Modal Factor × Payments/Year).</summary>
     public decimal AnnualPremium { get; set; }
     public int Ppt { get; set; }
     public int PolicyTerm { get; set; }
@@ -63,8 +89,14 @@ public class BenefitIllustrationResponse
     public string Option { get; set; } = string.Empty;
     public string Channel { get; set; } = string.Empty;
 
-    /// <summary>Sum Assured on Death (10 × AP).</summary>
+    /// <summary>Premium payment frequency used for this illustration.</summary>
+    public string PremiumFrequency { get; set; } = string.Empty;
+
+    /// <summary>Sum Assured on Death (10 × Annual Premium).</summary>
     public decimal SumAssuredOnDeath { get; set; }
+
+    /// <summary>Sum Assured on Maturity (GMB after High Premium + Channel benefits). Not displayed on frontend.</summary>
+    public decimal SumAssuredOnMaturity { get; set; }
 
     /// <summary>Guaranteed Maturity Benefit (after High Premium + Channel benefits).</summary>
     public decimal GuaranteedMaturityBenefit { get; set; }

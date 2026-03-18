@@ -14,13 +14,24 @@ public class BenefitIllustrationController : ControllerBase
 
     public BenefitIllustrationController(IBenefitCalculationService svc) => _svc = svc;
 
+    /// <summary>
+    /// Returns product configuration: allowed PPT values, PT options per PPT,
+    /// sales channels, and payment modes. Table-driven and configurable.
+    /// </summary>
+    [HttpGet("config")]
+    [ProducesResponseType(typeof(EndowmentProductConfig), StatusCodes.Status200OK)]
+    public IActionResult GetConfig()
+    {
+        return Ok(new EndowmentProductConfig());
+    }
+
     /// <summary>Generate a full yearly Benefit Illustration table for a Century Income policy.</summary>
     /// <remarks>
     /// Computes SAD, GMB (with High Premium + Channel benefits), yearly GI, LI, SV, GSV, SSV, Death Benefit, and Maturity Benefit.
     ///
     /// **Sample request (Immediate, 7PPT/15PT, age 35):**
     /// ```json
-    /// { "annualPremium": 50000, "ppt": 7, "policyTerm": 15, "entryAge": 35, "option": "Immediate", "channel": "Online" }
+    /// { "annualisedPremium": 50000, "ppt": 7, "policyTerm": 15, "entryAge": 35, "option": "Immediate", "channel": "Agency" }
     /// ```
     /// </remarks>
     [HttpPost("calculate")]
@@ -28,7 +39,8 @@ public class BenefitIllustrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BenefitIllustrationResponse>> Calculate([FromBody] BenefitIllustrationRequest request)
     {
-        if (request.AnnualPremium <= 0) return BadRequest("Annual premium must be positive.");
+        var premium = request.AnnualisedPremium ?? request.AnnualPremium;
+        if (premium <= 0) return BadRequest("Premium must be positive.");
         if (request.Ppt < 1 || request.Ppt > request.PolicyTerm) return BadRequest("PPT must be between 1 and Policy Term.");
         if (request.PolicyTerm < 5 || request.PolicyTerm > 40) return BadRequest("Policy Term must be between 5 and 40 years.");
         if (request.EntryAge < 0 || request.EntryAge > 65) return BadRequest("Entry age must be between 0 and 65.");
@@ -36,4 +48,34 @@ public class BenefitIllustrationController : ControllerBase
         var result = await _svc.CalculateAsync(request);
         return Ok(result);
     }
+}
+
+/// <summary>Product configuration for the Endowment BI form (table-driven dropdowns).</summary>
+public class EndowmentProductConfig
+{
+    /// <summary>Allowed Premium Paying Terms for this product.</summary>
+    public int[] PptOptions { get; set; } = [7, 10, 12];
+
+    /// <summary>Allowed Policy Term options per PPT.</summary>
+    public Dictionary<string, int[]> PtOptionsByPpt { get; set; } = new()
+    {
+        ["7"] = [15, 20],
+        ["10"] = [20, 25],
+        ["12"] = [25]
+    };
+
+    /// <summary>Available sales channels.</summary>
+    public string[] Channels { get; set; } =
+    [
+        "Corporate Agency",
+        "Direct Marketing",
+        "Online",
+        "Broker",
+        "Agency",
+        "Web Aggregator",
+        "Insurance Marketing Firm"
+    ];
+
+    /// <summary>Available premium payment modes.</summary>
+    public string[] PaymentModes { get; set; } = ["Yearly", "Half Yearly", "Quarterly", "Monthly"];
 }
