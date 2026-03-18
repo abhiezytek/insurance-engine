@@ -149,6 +149,12 @@ public class UlipCalculationService : IUlipCalculationService
 
         await PersistResultsAsync(req, legacyRows);
 
+        // Calculated fields per Quick-Action-Guide specification
+        var maturityAge = req.EntryAge + req.PolicyTerm;
+        var premiumInstallment = CalculatePremiumInstallment(req.AnnualizedPremium, req.PremiumFrequency);
+        var netYield4 = CalculateNetYield(req.AnnualizedPremium, req.Ppt, req.PolicyTerm, (decimal)lastR4.FundEnd);
+        var netYield8 = CalculateNetYield(req.AnnualizedPremium, req.Ppt, req.PolicyTerm, (decimal)lastR8.FundEnd);
+
         return new UlipCalculationResponse
         {
             PolicyNumber       = req.PolicyNumber,
@@ -163,6 +169,10 @@ public class UlipCalculationService : IUlipCalculationService
             AnnualizedPremium  = req.AnnualizedPremium,
             SumAssured         = req.SumAssured,
             PremiumFrequency   = req.PremiumFrequency,
+            MaturityAge        = maturityAge,
+            PremiumInstallment = premiumInstallment,
+            NetYield4          = netYield4,
+            NetYield8          = netYield8,
             MaturityBenefit4   = Round2(lastR4.FundEnd),
             MaturityBenefit8   = Round2(lastR8.FundEnd),
             PartARows          = partARows,
@@ -466,21 +476,49 @@ public class UlipCalculationService : IUlipCalculationService
     }
 
     /// <summary>
-    /// IALM 2012-14 Ultimate Male approximate mortality rates (per 1000 per year).
+    /// SUD Life e-Wealth Royale product mortality rates (per 1000 per year),
+    /// sourced from the uploaded commission/mortality CSV reference table.
     /// Used only when the DB mortality table is empty.
     /// </summary>
     private static decimal FallbackMortalityRate(int age) => age switch
     {
-        <= 1  => 5.15m,
-        <= 4  => 0.69m,
-        <= 9  => 0.40m,
-        <= 14 => 0.46m,
-        <= 19 => 1.01m,
-        <= 24 => 1.32m,
-        <= 29 => 1.43m,
-        <= 34 => 1.58m,
-        35    => 1.59m,
-        36    => 1.61m,
+        0     => 5.01m,
+        1     => 4.10m,
+        2     => 1.10m,
+        3     => 0.56m,
+        4     => 0.33m,
+        5     => 0.22m,
+        6     => 0.18m,
+        7     => 0.18m,
+        8     => 0.20m,
+        9     => 0.25m,
+        10    => 0.32m,
+        11    => 0.41m,
+        12    => 0.52m,
+        13    => 0.63m,
+        14    => 0.74m,
+        15    => 0.84m,
+        16    => 0.92m,
+        17    => 1.00m,
+        18    => 1.05m,
+        19    => 1.09m,
+        20    => 1.11m,
+        21    => 1.12m,
+        22    => 1.12m,
+        23    => 1.12m,
+        24    => 1.12m,
+        25    => 1.12m,
+        26    => 1.12m,
+        27    => 1.12m,
+        28    => 1.13m,
+        29    => 1.15m,
+        30    => 1.17m,
+        31    => 1.21m,
+        32    => 1.25m,
+        33    => 1.30m,
+        34    => 1.37m,
+        35    => 1.44m,
+        36    => 1.53m,
         37    => 1.63m,
         38    => 1.74m,
         39    => 1.87m,
@@ -489,37 +527,37 @@ public class UlipCalculationService : IUlipCalculationService
         42    => 2.36m,
         43    => 2.57m,
         44    => 2.81m,
-        45    => 3.08m,
+        45    => 3.10m,
         46    => 3.42m,
-        47    => 3.78m,
-        48    => 4.18m,
-        49    => 4.60m,
-        50    => 5.06m,
-        51    => 5.55m,
-        52    => 6.06m,
-        53    => 6.60m,
-        54    => 7.17m,
-        55    => 7.77m,
-        56    => 8.41m,
-        57    => 9.09m,
-        58    => 9.81m,
-        59    => 10.57m,
-        60    => 11.37m,
-        61    => 12.22m,
-        62    => 13.12m,
-        63    => 14.07m,
-        64    => 15.07m,
-        65    => 16.13m,
-        66    => 17.24m,
-        67    => 18.41m,
-        68    => 19.65m,
-        69    => 20.95m,
-        70    => 22.31m,
-        71    => 23.75m,
-        72    => 25.26m,
-        73    => 26.84m,
-        74    => 28.50m,
-        _     => 30.25m,
+        47    => 3.80m,
+        48    => 4.24m,
+        49    => 4.75m,
+        50    => 5.32m,
+        51    => 5.96m,
+        52    => 6.66m,
+        53    => 7.41m,
+        54    => 8.20m,
+        55    => 9.02m,
+        56    => 9.85m,
+        57    => 10.71m,
+        58    => 11.58m,
+        59    => 12.47m,
+        60    => 13.39m,
+        61    => 14.36m,
+        62    => 15.40m,
+        63    => 16.52m,
+        64    => 17.75m,
+        65    => 19.12m,
+        66    => 20.65m,
+        67    => 22.36m,
+        68    => 24.29m,
+        69    => 26.45m,
+        70    => 28.87m,
+        71    => 31.58m,
+        72    => 34.60m,
+        73    => 37.97m,
+        74    => 41.71m,
+        _     => 45.87m,
     };
 
     private async Task PersistResultsAsync(UlipCalculationRequest req, List<UlipIllustrationRow> rows)
@@ -546,6 +584,58 @@ public class UlipCalculationService : IUlipCalculationService
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Calculates the premium installment based on frequency.
+    /// Premium Installment = AnnualizedPremium × ModalFactor.
+    /// </summary>
+    private static decimal CalculatePremiumInstallment(decimal annualizedPremium, string frequency) =>
+        frequency switch
+        {
+            "Half Yearly" or "HalfYearly" => Math.Round(annualizedPremium * 0.5108m, 2, MidpointRounding.AwayFromZero),
+            "Quarterly"                    => Math.Round(annualizedPremium * 0.2582m, 2, MidpointRounding.AwayFromZero),
+            "Monthly"                      => Math.Round(annualizedPremium * 0.0867m, 2, MidpointRounding.AwayFromZero),
+            _                              => annualizedPremium,   // Yearly: factor = 1.0
+        };
+
+    /// <summary>
+    /// Calculates the Net Yield (approximate IRR) of the premium cash flows
+    /// versus the maturity fund value.
+    ///
+    /// Cash flows: −AP each year for PPT years, +MaturityFV at end of PT.
+    /// Uses Newton–Raphson iteration to solve for internal rate of return.
+    /// </summary>
+    private static decimal CalculateNetYield(decimal ap, int ppt, int pt, decimal maturityFv)
+    {
+        if (maturityFv <= 0 || ap <= 0 || pt <= 0) return 0m;
+
+        double annualPremium = (double)ap;
+        double fv = (double)maturityFv;
+
+        // Newton–Raphson for IRR: Σ( CF_t / (1+r)^t ) = 0
+        double r = 0.06; // initial guess
+        for (int iter = 0; iter < 100; iter++)
+        {
+            double npv = 0;
+            double dnpv = 0;
+            for (int t = 1; t <= ppt; t++)
+            {
+                double discount = Math.Pow(1 + r, t);
+                npv  -= annualPremium / discount;
+                dnpv += t * annualPremium / (discount * (1 + r));
+            }
+            double matDiscount = Math.Pow(1 + r, pt);
+            npv  += fv / matDiscount;
+            dnpv -= pt * fv / (matDiscount * (1 + r));
+
+            if (Math.Abs(dnpv) < 1e-12) break;
+            double newR = r - npv / dnpv;
+            if (Math.Abs(newR - r) < 1e-10) { r = newR; break; }
+            r = newR;
+        }
+
+        return Math.Round((decimal)(r * 100), 3, MidpointRounding.AwayFromZero);
     }
 
     private static decimal Round2(decimal value) =>

@@ -162,18 +162,27 @@ export interface UlipCalculationRequest {
   policyholderDateOfBirth?: string;
   policyholderAge?: number;
   policyholderGender?: 'Male' | 'Female';
+  typeOfPpt?: string;          // "Limited" or "Till_Maturity"
   policyTerm: number;
   ppt: number;
   annualizedPremium: number;
   sumAssured: number;
   premiumFrequency: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
   policyEffectiveDate?: string;  // ISO date string (used for birthday-month tracking)
+  fundOption?: string;          // Fund option category
   investmentStrategy?: string;
+  riskPreference?: string;      // Conservative, Moderate, Aggressive
   fundAllocations: UlipFundAllocation[];
   distributionChannel?: string;
   isStaffFamily?: boolean;
+  ageRiskCommencement?: number;
   standardAgeProofLA?: boolean;
   standardAgeProofPH?: boolean;
+  emrClassLifeAssured?: string;   // Standard or EMR class level
+  emrClassPolicyholder?: string;
+  flatExtraLifeAssured?: number;  // per 1000 SAR
+  flatExtraPolicyholder?: number;
+  keralaFloodCess?: boolean;
 }
 
 export interface UlipIllustrationRow {
@@ -243,6 +252,10 @@ export interface UlipCalculationResult {
   annualizedPremium: number;
   sumAssured: number;
   premiumFrequency: string;
+  maturityAge: number;
+  premiumInstallment: number;
+  netYield4: number;
+  netYield8: number;
   maturityBenefit4: number;
   maturityBenefit8: number;
   irdaiDisclaimer: string;
