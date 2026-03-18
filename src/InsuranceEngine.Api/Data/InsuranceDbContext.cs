@@ -116,16 +116,23 @@ public class InsuranceDbContext : DbContext
             e.HasOne(x => x.ExcelUploadBatch).WithMany(x => x.RowErrors).HasForeignKey(x => x.ExcelUploadBatchId);
         });
 
-        modelBuilder.Entity<GmbFactor>(e => e.HasKey(x => x.Id));
+        modelBuilder.Entity<GmbFactor>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Factor).HasColumnType("decimal(18,4)");
+        });
         modelBuilder.Entity<GsvFactor>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.FactorPercent).HasColumnType("decimal(18,4)");
             e.HasIndex(x => new { x.Ppt, x.Pt, x.PolicyYear }).HasDatabaseName("IX_GsvFactors_Ppt_Pt_PolicyYear");
         });
         modelBuilder.Entity<SsvFactor>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Option).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Factor1).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Factor2).HasColumnType("decimal(18,4)");
             e.HasIndex(x => new { x.Ppt, x.Pt, x.Option, x.PolicyYear }).HasDatabaseName("IX_SsvFactors_Ppt_Pt_Option_PolicyYear");
         });
         modelBuilder.Entity<LoyaltyFactor>(e => e.HasKey(x => x.Id));

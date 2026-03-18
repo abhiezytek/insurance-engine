@@ -6,9 +6,7 @@ namespace InsuranceEngine.Api.Services;
 
 public class BenefitCalculationService : IBenefitCalculationService
 {
-    /// <summary>Default GMB factor used when no matching factor row is found in the database.</summary>
-    private const decimal DefaultGmbFactor = 11.5m;
-
+    private const decimal DefaultGmbFactor = 0m;
     private readonly InsuranceDbContext _db;
 
     public BenefitCalculationService(InsuranceDbContext db) => _db = db;
@@ -40,39 +38,32 @@ public class BenefitCalculationService : IBenefitCalculationService
 
     public async Task<BenefitIllustrationResponse> CalculateAsync(BenefitIllustrationRequest request)
     {
-        // Resolve annualised premium and compute annual premium
+        // Resolve annualised premium (iPRM)
         var annualisedPremium = request.AnnualisedPremium ?? request.AnnualPremium;
         var frequency = request.PremiumFrequency ?? "Yearly";
-        var ap = ComputeAnnualPremium(annualisedPremium, frequency);
+        var (modalFactor, paymentsPerYear) = GetModalFactor(frequency);
+
+        // Installment premium with loading when standard age proof is missing
+        var sumAssuredForLoading = request.SumAssured ?? Round(10m * annualisedPremium);
+        var installmentPremium = Round(annualisedPremium * modalFactor
+            + modalFactor * (request.StandardAgeProof ? 0m : 1.5m * sumAssuredForLoading / 1000m), 0);
+
+        // Annual premium payable across the year (installment × number of payments)
+        var annualPremiumPayable = Round(installmentPremium * paymentsPerYear);
 
         var ppt = request.Ppt;
         var pt = request.PolicyTerm;
-        var option = request.Option;
-        var channel = request.Channel;
+        var option = NormalizeOption(request.Option);
         var entryAge = request.EntryAge;
-        var t = request.PremiumsPaid ?? ppt;
-        var n = ppt;
-        var isPaidUp = t < n;
 
-        // 1. Look up GMB factor
+        // Life Assured age is always the driver for age-based lookups.
+
+        // GMB factor lookup (age-specific, option-specific)
         var gmbFactor = await LookupGmbFactorAsync(ppt, pt, entryAge, option);
+        var maturityBenefit = Round(annualisedPremium * gmbFactor);
 
-        // 2. High Premium benefit %
-        var highPremiumPct = GetHighPremiumPct(ap, option);
-
-        // 3. Channel benefit % (staff policy overrides channel benefit)
-        var channelPct = request.StaffPolicy
-            ? GetStaffPct(option)
-            : GetChannelPct(channel, option);
-
-        // 4-6. Compute GMB (Sum Assured on Maturity)
-        var baseGmb = ap * gmbFactor;
-        var gmb1 = baseGmb * (1 + highPremiumPct);
-        var finalGmb = gmb1 * (1 + channelPct);
-        finalGmb = Round(finalGmb);
-
-        // 7. SA = 10 × Annual Premium; optional explicit SA override from request
-        var sad = request.SumAssured ?? Round(10m * ap);
+        // SA on death = 10 × annualised premium (unless explicitly overridden)
+        var sad = request.SumAssured ?? Round(10m * annualisedPremium);
 
         // Load factor tables up front
         var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
@@ -87,48 +78,59 @@ public class BenefitCalculationService : IBenefitCalculationService
 
         // 8. Generate yearly rows
         var rows = new List<BenefitIllustrationRow>();
-        decimal cumulativeSurvivalBenefits = 0m;
-        var reductionRatio = isPaidUp ? (decimal)t / n : 1m;
+        decimal cumulativeGuaranteed = 0m;
+        decimal cumulativeLoyalty = 0m;
 
         for (int py = 1; py <= pt; py++)
         {
-            var annualPremiumRow = py <= ppt ? ap : 0m;
-            var totalPremiumsPaid = Math.Min(py, ppt) * ap;
+            var declaredPaid = request.PremiumsPaid ?? ppt;
+            var isReducedPaidUp = declaredPaid < ppt;
+            var paidInstallments = isReducedPaidUp ? declaredPaid : Math.Min(py, ppt);
+            var paidUpRatio = isReducedPaidUp ? (decimal)declaredPaid / ppt : 1m;
+
+            var annualPremiumRow = py <= ppt ? annualisedPremium : 0m;
+            var totalPremiumsPaid = Round(annualisedPremium * paidInstallments);
 
             // GI base (full, before reduction)
-            decimal giBase = ComputeGiBase(py, ppt, ap, option, deferredFactors, twinYears);
+            decimal giBase = ComputeGiBase(py, ppt, annualisedPremium, option, deferredFactors, twinYears);
 
             // LI base (full, before reduction)
-            decimal liBase = ComputeLiBase(py, ap, loyaltyFactors);
+            decimal liBase = option == "Immediate"
+                ? ComputeLiBase(py, annualisedPremium, loyaltyFactors)
+                : 0m;
 
             // Apply paid-up reduction
-            decimal gi = Round(giBase * reductionRatio);
-            decimal li = Round(liBase * reductionRatio);
+            decimal gi = Round(giBase * paidUpRatio);
+            decimal li = Round(liBase * paidUpRatio);
 
             decimal totalIncome = Round(gi + li);
-            cumulativeSurvivalBenefits = Round(cumulativeSurvivalBenefits + totalIncome);
+            cumulativeGuaranteed = Round(cumulativeGuaranteed + gi);
+            cumulativeLoyalty = Round(cumulativeLoyalty + li);
 
             // GSV
-            var gsvPct = LookupGsvFactor(py, gsvFactors);
-            var gsv = Math.Max(0m, Round((gsvPct / 100m) * totalPremiumsPaid - cumulativeSurvivalBenefits));
+            var gsvFactor = LookupGsvFactor(py, gsvFactors);
+            var gsv = Math.Max(0m, Round(totalPremiumsPaid * gsvFactor - cumulativeGuaranteed - cumulativeLoyalty));
 
-            // PaidUpGMB
-            var paidUpGmb = isPaidUp ? Round(reductionRatio * finalGmb) : finalGmb;
+            // Paid-up maturity benefit
+            var paidUpMaturity = Round(paidUpRatio * maturityBenefit);
 
             // SSV
             var (ssvF1, ssvF2) = LookupSsvFactors(py, ssvFactors);
-            // income component: GI (already reduced) + LI (already reduced)
-            var ssvIncomeComponent = Round(gi + li);
-            var ssv = Math.Max(0m, Round((ssvF1 / 100m) * paidUpGmb + (ssvF2 / 100m) * ssvIncomeComponent));
+            // benefit-at-inception component
+            var incomeComponentBase = option == "Immediate"
+                ? giBase + liBase
+                : giBase;
+            var benefitAtInceptionComponent = Round(paidUpRatio * incomeComponentBase);
+            var ssv = Math.Max(0m, Round(ssvF1 * paidUpMaturity + ssvF2 * benefitAtInceptionComponent));
 
             // SV
             var sv = Math.Max(0m, Math.Max(gsv, ssv));
 
             // Death benefit = Max(SAD, SV, 105% × Total Premiums Paid)
-            var deathBenefit = Round(Math.Max(sad, Math.Max(sv, 1.05m * totalPremiumsPaid)));
+            var deathBenefit = Round(Math.Max(sad, Math.Max(sv, 1.05m * annualisedPremium * paidInstallments)));
 
             // Maturity benefit
-            var maturityBenefit = py == pt ? finalGmb : 0m;
+            var maturityBenefitRow = py == pt ? paidUpMaturity : 0m;
 
             rows.Add(new BenefitIllustrationRow
             {
@@ -138,13 +140,13 @@ public class BenefitCalculationService : IBenefitCalculationService
                 GuaranteedIncome = gi,
                 LoyaltyIncome = li,
                 TotalIncome = totalIncome,
-                CumulativeSurvivalBenefits = cumulativeSurvivalBenefits,
+                CumulativeSurvivalBenefits = Round(cumulativeGuaranteed + cumulativeLoyalty),
                 Gsv = gsv,
                 Ssv = ssv,
                 SurrenderValue = sv,
                 DeathBenefit = deathBenefit,
-                MaturityBenefit = Round(maturityBenefit),
-                IsPaidUp = isPaidUp
+                MaturityBenefit = Round(maturityBenefitRow),
+                IsPaidUp = isReducedPaidUp
             });
         }
 
@@ -155,16 +157,16 @@ public class BenefitCalculationService : IBenefitCalculationService
         return new BenefitIllustrationResponse
         {
             AnnualisedPremium = Round(annualisedPremium),
-            AnnualPremium = Round(ap),
+            AnnualPremium = Round(annualisedPremium),
             Ppt = ppt,
             PolicyTerm = pt,
             EntryAge = entryAge,
             Option = option,
-            Channel = channel,
+            Channel = request.Channel,
             PremiumFrequency = frequency,
             SumAssuredOnDeath = sad,
-            SumAssuredOnMaturity = finalGmb,
-            GuaranteedMaturityBenefit = finalGmb,
+            SumAssuredOnMaturity = maturityBenefit,
+            GuaranteedMaturityBenefit = maturityBenefit,
             MaxLoanAmount = maxLoan,
             YearlyTable = rows
         };
@@ -185,59 +187,6 @@ public class BenefitCalculationService : IBenefitCalculationService
         if (fallback != null) return fallback.Factor;
 
         return DefaultGmbFactor;
-    }
-
-    private static decimal GetHighPremiumPct(decimal ap, string option)
-    {
-        if (ap >= 200000m)
-        {
-            return option switch
-            {
-                "Immediate" => 0.035m,
-                "Deferred" => 0.030m,
-                "Twin" => 0.045m,
-                _ => 0m
-            };
-        }
-        if (ap >= 100000m)
-        {
-            return option switch
-            {
-                "Immediate" => 0.03m,
-                "Deferred" => 0.0225m,
-                "Twin" => 0.0325m,
-                _ => 0m
-            };
-        }
-        return 0m;
-    }
-
-    private static decimal GetChannelPct(string channel, string option)
-    {
-        return channel switch
-        {
-            "Online" => option switch
-            {
-                "Immediate" => 0.0425m,
-                "Deferred" => 0.035m,
-                "Twin" => 0.0425m,
-                _ => 0m
-            },
-            // Other channels: no additional benefit
-            _ => 0m
-        };
-    }
-
-    /// <summary>Staff policy benefit percentage (replaces channel benefit when StaffPolicy=true).</summary>
-    private static decimal GetStaffPct(string option)
-    {
-        return option switch
-        {
-            "Immediate" => 0.085m,
-            "Deferred" => 0.07m,
-            "Twin" => 0.085m,
-            _ => 0m
-        };
     }
 
     /// <summary>
@@ -321,6 +270,9 @@ public class BenefitCalculationService : IBenefitCalculationService
         return nearest != null ? (nearest.Factor1, nearest.Factor2) : (0m, 0m);
     }
 
-    private static decimal Round(decimal value) =>
-        Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    private static decimal Round(decimal value, int digits = 2) =>
+        Math.Round(value, digits, MidpointRounding.AwayFromZero);
+
+    private static string NormalizeOption(string option) =>
+        CenturyIncomeFactorLoader.NormalizeOption(option);
 }
