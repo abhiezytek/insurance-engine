@@ -1,0 +1,32 @@
+Field_Name,Cell_Reference,Data_Type,Sample_Value,Category,Used_In_Calculations,Status
+Option,B3,Text,Platinum,Policy,All,✓ Verify
+DOB_PolicyHolder,B5,Date,8-Jul-88,Policy,Calc,✓ Verify
+DOB_LifeAssured,B7,Date,8-Jul-88,Policy,Calc,✓ Verify
+Age_PolicyHolder,B9,Number,37,Policy,Mortality,✓ Verify
+Age_LifeAssured,B11,Number,37,Policy,Mortality,✓ Verify
+Gender_PolicyHolder,B13,Text,Male,Policy,ARB,✓ Verify
+Gender_LifeAssured,B15,Text,Male,Policy,ARB,✓ Verify
+Type_PPT,B17,Text,Limited,Policy,Calc,✓ Verify
+PolicyTerm,B19,Number,20,Policy,Calc,✓ Verify
+PremiumPaymentTerm,B21,Number,10,Policy,Calc,✓ Verify
+MaturityAge,B23,Number,57,Policy,Verify,✓ Verify
+PremiumFrequency,B25,Text,Yearly,Premium,Modal_Factor,✓ Verify
+AnnualisedPremium,B27,Number,24000,Premium,Fund_Calc,✓ Verify
+PremiumInstallment,B29,Number,24000,Premium,Fund_Calc,✓ Verify
+SumAssured,B31,Number,240000,Premium,Death_Benefit,✓ Verify
+DistributionChannel,B33,Text,Corporate Agency,Distribution,Reporting,✓ Verify
+Staff_Family,B35,Text,NO,Distribution,Reporting,✓ Verify
+AgeRiskCommencement,B37,Number,37,Distribution,Reporting,✓ Verify
+FundOption,B39,Text,Self-Managed,Investment,Fund_Selection,✓ Verify
+RiskPreference,B41,Text,Conservative,Investment,Reporting,✓ Verify
+FundAllocation,B43:B54,Range,100% Nifty Alpha 50,Investment,Fund_Reporting,⚠️ VERIFY %
+EMR_Class_LifeAssured,B55,Text,Standard,Risk,Extra_Charges,✓ Verify
+EMR_Class_Policyholder,B57,Text,Standard,Risk,Extra_Charges,✓ Verify
+AgeProof_LifeAssured,B59,Text,Yes,Risk,Reporting,✓ Verify
+AgeProof_Policyholder,B61,Text,Yes,Risk,Reporting,✓ Verify
+FlatExtra_LifeAssured,B63,Number,0,Risk,Reporting,✓ Verify
+FlatExtra_Policyholder,B65,Number,0,Risk,Reporting,✓ Verify
+KeralaFloodCess,B67,Text,No,Risk,Tax_Calc,✓ Verify
+GST_Rate,CONST,Percent,0%,Tax,Fund_Calc,⚠️ ADD
+NetYield_4Pct,Calc_4,Formula,Derived,Output,Reporting,⚠️ ADD
+NetYield_8Pct,Calc_8,Formula,Derived,Output,Reporting,⚠️ ADD

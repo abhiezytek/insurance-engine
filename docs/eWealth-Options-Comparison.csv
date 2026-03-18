@@ -1,0 +1,13 @@
+Feature,Platinum,Platinum_Plus
+Display Name,Platinum,Platinum Plus
+Option Code,1,2
+Mortality_Charges,Standard age-based charges,Standard age-based charges
+Additional Risk Benefit (ARB),NOT Included (0),INCLUDED (With charge)
+Policy_Admin_Charges,1200 per year until PPT,1200 per year until PPT
+Fund Management Charge (FMC),0.1118% on fund value,0.1118% on fund value
+GST,Not applicable (0%),Not applicable (0%)
+Coverage_Level,Basic Life Cover + Surrender Value,Enhanced Life Cover + ARB + Surrender
+Death_Benefit_Calculation,"MAX(SA, Fund_Value)","MAX(SA + ARB_Benefit, Fund_Value)"
+Extra_Charges,None (Standard charges only),ARB charges deducted from fund
+Recommended_For,"Basic needs, lower premium","Enhanced protection, higher premium"
+Premium_Impact,Lower - Standard charges only,Higher - ARB charges added

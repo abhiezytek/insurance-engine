@@ -1,0 +1,34 @@
+Sheet_Section,Column,Field_Name,Description,Formula_Required,Sample_4%,Sample_8%,Status
+Part A,A,Policy_Year,1-20,No,1,1,✓
+Part A,B,Annualized_Premium,Input or 0 after PPT,"IF(Year<=PPT,AP,0)",24000,24000,✓
+Part A,C,Mortality_Ch_4%,Age-based lookup,✓ LOOKUP,357,356,⚠️ Verify
+Part A,D,ARB_Ch_4%,"Platinum=0, Plus=Value",✓ IF(Option...),0,0,⚠️ Verify
+Part A,E,Other_Ch_4%,PAC + Admin,✓ Sum,1515,1522,⚠️ Verify
+Part A,F,GST_4%,Always 0 for UL,No,0,0,✓
+Part A,G,Fund_EoY_4%,Core calculation,✓ CRITICAL,23048,23963,⚠️ CRITICAL
+Part A,H,Surrender_4%,IF Year>=5 then Fund else 0,✓ IF(Year>=5...),0,0,⚠️ Verify
+Part A,I,Death_Benefit_4%,"MAX(SA, Fund)",✓ MAX,240000,240000,⚠️ Verify
+Part A,J,Mortality_Ch_8%,Age-based lookup,✓ LOOKUP,356,356,⚠️ Verify
+Part A,K,ARB_Ch_8%,"Platinum=0, Plus=Value",✓ IF(Option...),0,0,⚠️ Verify
+Part A,L,Other_Ch_8%,PAC + Admin,✓ Sum,1522,1522,⚠️ Verify
+Part A,M,GST_8%,Always 0 for UL,No,0,0,✓
+Part A,N,Fund_EoY_8%,Core calculation,✓ CRITICAL,23963,23963,⚠️ CRITICAL
+Part A,O,Surrender_8%,IF Year>=5 then Fund else 0,✓ IF(Year>=5...),0,0,⚠️ Verify
+Part A,P,Death_Benefit_8%,"MAX(SA, Fund)",✓ MAX,240000,240000,⚠️ Verify
+Part A,Summary,Total_Columns,17 columns total,Summary,17,17,✓
+Part B,A,Annualised_Premium,Input or 0 after PPT,"IF(Year<=PPT,AP,0)",24000,24000,✓
+Part B,B,Premium_Allocation_Charges,0% (not charged),No (Const=0),0,0,✓
+Part B,C,AP_minus_PAC,AP minus 0,No,24000,24000,✓
+Part B,D,Mortality_Charges,Age & return-dependent,✓ LOOKUP,357,356,⚠️ Verify
+Part B,E,ARB_Charges,"Platinum=0, Plus=charge",✓ IF(Option...),0,0,⚠️ Verify
+Part B,F,GST,0% (not applicable),No,0,0,✓
+Part B,G,Policy_Admin_Charges,"1200 until PPT, else 0",✓ IF(Year<=PPT...),1200,1200,⚠️ Verify
+Part B,H,Extra_Premium_Allocation,0 typical,No,0,0,✓
+Part B,I,Fund_Before_FMC,Fund_Beg + AP - Charges,✓ Complex,23074,23990,⚠️ Verify
+Part B,J,FMC,0.1118% of Fund_Before_FMC,✓ Fund×0.001118,26,27,⚠️ Verify
+Part B,K,Loyalty_Addition,"Years 6,7,8,15 specific",✓ IF(Year IN...),0,0,⚠️ Verify
+Part B,L,Wealth_Booster,"Years 10,15,20 specific",✓ IF(Year IN...),0,0,⚠️ Verify
+Part B,M,Return_of_Charges,Return at maturity,✓ IF(Year=PT...),0,0,⚠️ Verify
+Part B,N,Fund_EoY,Fund_Before_FMC - FMC + Bonuses,✓ Complex,23048,23963,⚠️ CRITICAL
+Part B,O,Surrender_Value,IF Year>=5 then Fund else 0,✓ IF(Year>=5...),0,0,⚠️ Verify
+Part B,P,Death_Benefit,"MAX(SA, Fund_EoY)",✓ MAX,240000,240000,⚠️ Verify

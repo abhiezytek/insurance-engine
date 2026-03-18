@@ -1,0 +1,11 @@
+Abbreviation,Full_Form,Cell_Reference,Sample_Value,Used_In_Calculations,Formula_Based,Status
+AP,Annualised Premium,B27,24000,"Fund_Calc, Reporting",No,✓ Verify
+PPT,Premium Payment Term,B21,10,"Calc, Premium_Logic",No,✓ Verify
+PT,Policy Term,B19,20,"Calc, Reporting",No,✓ Verify
+PAC,Premium Allocation Charges,Part_B_Col_B,0%,Fund_Calc (0% for UL),No,✓ Verify
+ARB,Additional Risk Benefit,Part_B_Col_E,0 (Platinum),"Fund_Calc, ARB_Logic",No,⚠️ Option-based
+FMC,Fund Management Charge,Part_B_Col_J,0.1118%,Fund_Calc (Embedded),No,⚠️ Verify
+GST,Goods and Services Tax,Part_B_Col_F,0%,Tax_Calc (0% for UL),No,✓ Verify
+EMR,Extra Mortality Rate,B55-B57,Standard,Extra_Charges,No,✓ Verify
+ULIF,Unit-Linked Insurance Fund,B43:B54,12 Funds,Fund_Reporting,No,⚠️ Fund_Alloc
+NSAP,Non-Standard Age Proof,B59-B61,Yes (Standard),Extra_Charges,No,✓ Verify

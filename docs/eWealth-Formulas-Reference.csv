@@ -1,0 +1,13 @@
+Formula_Name,Formula,Returns,Verification_Sample,Priority,Status
+Modal_Factor_Lookup,"VLOOKUP(Frequency, Modal_Table, 2) OR IF statements","Yearly=1.0, HY=0.5108, Q=0.2582, Monthly=0.0867",Yearly: 1.0 ✓,HIGH,⚠️ Verify Lookup
+Annualized_Premium,AP_Input × Modal_Factor,24000 × 1.0 = 24000,24000 ✓,HIGH,✓ Verify
+Mortality_Charges_Lookup,"VLOOKUP(Age, Mortality_Table, Return_Column)","Year 1 Age 37: 357(4%), 356(8%)","357 (Year 1, 4%, Age 37) ✓",CRITICAL,⚠️ Verify Mortality_Table
+Policy_Admin_Charges,"IF(Year <= PPT, 1200, 0) [for PPT=10]",1200 per year for Years 1-10; 0 for Years 11-20,Year 1-10: 1200 ✓; Year 11-20: 0 ✓,HIGH,✓ Verify IF Logic
+Fund_Before_FMC_Calc,Prev_Fund + AP - Mort_Ch - Admin_Ch - Other_Ch + Invest_Income,Complex aggregation of all factors,"Year 1 (4%): 23,048 ✓",CRITICAL,⚠️ CRITICAL
+FMC_Calculation,Fund_Before_FMC × 0.001118,23074 × 0.001118 ≈ 26 (approx),"23,074 × 0.1118% = 26 ✓",MEDIUM,⚠️ Verify
+Fund_End_Of_Year,Fund_Before_FMC - FMC + Loyalty + Booster + Return_of_Charges,"Year 1 at 4%: 23,048; at 8%: 23,963","Year 1 (4%): 23,048 ✓; Year 10 (4%): 281,519 ✓",CRITICAL,⚠️ CRITICAL
+Surrender_Value_Logic,"IF(Year >= 5, Fund_EoY, 0) OR ""Locked""",Year 1-4: 0; Year 5+: Fund_Value,"Year 1-4: 0 ✓; Year 5: 121,638 ✓",HIGH,⚠️ Verify IF
+Death_Benefit_Calculation,"MAX(Sum_Assured, Fund_EoY)","Year 1-9 (4%): 240,000; Year 10: 281,519","Year 1: 240,000 ✓; Year 10: 281,519 ✓",HIGH,⚠️ Verify MAX
+Loyalty_Addition,"IF(Year IN [6,7,8,...], Amount, 0) - Values vary by return","Specific amounts for Year 6,7,8,15 (varies by return)",Year 6 (8%): 166; Year 7 (8%): 200,MEDIUM,⚠️ Verify Values
+Wealth_Booster,"IF(Year IN [10,15,20], Amount, 0) - Values vary by return","Specific amounts for Year 10,15,20 (varies by return)","Year 10 (8%): 8,928; Year 15 (8%): 13,531; Year 20 (8%): 19,116",MEDIUM,⚠️ Verify Values
+Investment_Income,Fund_Base × (Rate/12) for monthly OR Fund_Base × Rate for annual,Depends on fund growth assumptions,4% and 8% return assumptions,HIGH,⚠️ Verify Base

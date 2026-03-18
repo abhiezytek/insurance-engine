@@ -1,0 +1,18 @@
+Parameter_Name,Source,Sample_Value,Is_Formula,Used_In,Status
+Age_of_PolicyHolder,Input Field B9,37,No,"Mortality Lookup, Reporting",✓ Verify
+Age_of_LifeAssured,Input Field B11,37,No,"Mortality Lookup, Maturity Calc, Reporting",✓ Verify
+PolicyTerm,Input Field B19,20,No,"Maturity_Age, Years_Loop, Reporting",✓ Verify
+PremiumPaymentTerm,Input Field B21,10,No,"Premium_Logic, Charge_Logic",✓ Verify
+AnnualisedPremium,Input Field B27,24000,No,"Fund_Calculation, Premium_Deduction",✓ Verify
+SumAssured,Input Field B31,240000,No,"Death_Benefit_Calc, Reporting",✓ Verify
+MaturityAge,Calculated (Age_LA + PT),57,YES (Age_LA + PT),"Verification, Reporting",⚠️ Formula
+PolicyAdminCharge_Annual,Constant,1200,No,"Fund_Deduction, Policy_Duration_Logic",✓ Verify
+FMC_Rate,Constant,0.1118%,No,"Fund_Calculation, Embedded_in_NAV",✓ Verify
+InterestRate_4Percent,Constant,4.00%,No,Fund_Growth_4%_Scenario,✓ Verify
+InterestRate_8Percent,Constant,8.00%,No,Fund_Growth_8%_Scenario,✓ Verify
+GrossYield_Scenario_1,Scenario 1,4%,No,Scenario_1_Assumption,✓ Verify
+GrossYield_Scenario_2,Scenario 2,8%,No,Scenario_2_Assumption,✓ Verify
+ModalFactor_Yearly,Lookup Table,1.0000,No,Premium_Calculation_Yearly,✓ Verify
+ModalFactor_HalfYearly,Lookup Table,0.5108,No,Premium_Calculation_HalfYearly,✓ Verify
+ModalFactor_Quarterly,Lookup Table,0.2582,No,Premium_Calculation_Quarterly,✓ Verify
+ModalFactor_Monthly,Lookup Table,0.0867,No,Premium_Calculation_Monthly,✓ Verify
