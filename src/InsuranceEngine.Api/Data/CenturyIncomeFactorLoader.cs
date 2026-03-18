@@ -54,7 +54,8 @@ public static class CenturyIncomeFactorLoader
             if (Directory.Exists(path)) return path;
         }
 
-        throw new InvalidOperationException("Unable to locate docs directory for Century Income CSV factor loading.");
+        throw new InvalidOperationException(
+            $"Unable to locate docs directory for Century Income CSV factor loading. Tried: {string.Join("; ", candidates)}");
     }
 
     private static IEnumerable<GmbFactor> ReadGmbFactors(string docsPath)
@@ -131,7 +132,11 @@ public static class CenturyIncomeFactorLoader
         var results = new List<SsvFactor>();
         foreach (var row in factor2Rows)
         {
-            factor1.TryGetValue((row.ppt, row.pt, row.policyYear), out var f1);
+            if (!factor1.TryGetValue((row.ppt, row.pt, row.policyYear), out var f1))
+            {
+                throw new InvalidOperationException(
+                    $"Missing SSV_FACTOR_1 for PPT={row.ppt}, PT={row.pt}, PY={row.policyYear} while processing option {row.option}.");
+            }
             results.Add(new SsvFactor
             {
                 Ppt = row.ppt,

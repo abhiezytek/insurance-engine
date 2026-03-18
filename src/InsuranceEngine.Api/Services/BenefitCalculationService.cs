@@ -6,7 +6,6 @@ namespace InsuranceEngine.Api.Services;
 
 public class BenefitCalculationService : IBenefitCalculationService
 {
-    private const decimal DefaultGmbFactor = 0m;
     private readonly InsuranceDbContext _db;
 
     public BenefitCalculationService(InsuranceDbContext db) => _db = db;
@@ -88,7 +87,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             var paidInstallments = isReducedPaidUp ? declaredPaid : Math.Min(py, ppt);
             var paidUpRatio = isReducedPaidUp ? (decimal)declaredPaid / ppt : 1m;
 
-            var annualPremiumRow = py <= ppt ? annualisedPremium : 0m;
+            var annualPremiumRow = py <= ppt ? annualPremiumPayable : 0m;
             var totalPremiumsPaid = Round(annualisedPremium * paidInstallments);
 
             // GI base (full, before reduction)
@@ -157,7 +156,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         return new BenefitIllustrationResponse
         {
             AnnualisedPremium = Round(annualisedPremium),
-            AnnualPremium = Round(annualisedPremium),
+            AnnualPremium = Round(annualPremiumPayable),
             Ppt = ppt,
             PolicyTerm = pt,
             EntryAge = entryAge,
@@ -186,7 +185,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        return DefaultGmbFactor;
+        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, Age={entryAge}, Option={option}. Ensure CSV seed data is loaded.");
     }
 
     /// <summary>

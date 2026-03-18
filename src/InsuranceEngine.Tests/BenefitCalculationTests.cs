@@ -62,7 +62,10 @@ public class BenefitCalculationTests
         var result = await _svc.CalculateAsync(Request(50000m, 7, 15, 30, "Immediate"));
         var expectedGI = Math.Round(0.10m * 50000m, 2, MidpointRounding.AwayFromZero);
         var mismatch = result.YearlyTable.FirstOrDefault(r => r.GuaranteedIncome != expectedGI);
-        Assert.IsNull(mismatch, $"Mismatch at PY={mismatch?.PolicyYear}: GI={mismatch?.GuaranteedIncome}");
+        if (mismatch != null)
+        {
+            Assert.Fail($"Mismatch at PY={mismatch.PolicyYear}: GI={mismatch.GuaranteedIncome}");
+        }
     }
 
     [Test]
