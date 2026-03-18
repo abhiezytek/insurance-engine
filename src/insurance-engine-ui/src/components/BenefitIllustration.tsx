@@ -30,7 +30,7 @@ export default function BenefitIllustration() {
   const [config, setConfig] = useState<EndowmentProductConfig>(DEFAULT_CONFIG);
   const [form, setForm] = useState<BenefitIllustrationRequest>({
     annualisedPremium: 50000,
-    annualPremium: 50000,
+    annualPremium: 0,
     ppt: 7,
     policyTerm: 15,
     entryAge: 35,
@@ -169,11 +169,9 @@ export default function BenefitIllustration() {
           </div>
 
           <Field label="Annualised Premium (₹)">
-            <input type="number" value={form.annualisedPremium ?? form.annualPremium}
-              onChange={e => {
-                const val = +e.target.value;
-                setForm(p => ({ ...p, annualisedPremium: val, annualPremium: val }));
-              }} className={INPUT_CLS} />
+            <input type="number" value={form.annualisedPremium ?? 0}
+              onChange={e => set('annualisedPremium', +e.target.value)}
+              className={INPUT_CLS} />
           </Field>
 
           <Field label="Premium Payment Mode">

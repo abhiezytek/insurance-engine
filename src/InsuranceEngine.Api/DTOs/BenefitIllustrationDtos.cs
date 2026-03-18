@@ -10,9 +10,8 @@ public class BenefitIllustrationRequest
     public decimal? AnnualisedPremium { get; set; }
 
     /// <summary>
-    /// Annual Premium (excluding taxes, riders, extra premium).
-    /// If AnnualisedPremium is provided this is ignored (computed from modal factor).
-    /// Kept for backward compatibility.
+    /// Annual Premium — backward-compatible fallback.
+    /// Used only when AnnualisedPremium is not provided.
     /// </summary>
     public decimal AnnualPremium { get; set; }
 

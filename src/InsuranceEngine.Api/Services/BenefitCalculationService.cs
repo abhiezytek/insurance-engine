@@ -60,10 +60,10 @@ public class BenefitCalculationService : IBenefitCalculationService
         // 2. High Premium benefit %
         var highPremiumPct = GetHighPremiumPct(ap, option);
 
-        // 3. Channel benefit % (combine channel + staff policy)
-        var channelPct = GetChannelPct(channel, option);
-        if (request.StaffPolicy)
-            channelPct = GetStaffPct(option);
+        // 3. Channel benefit % (staff policy overrides channel benefit)
+        var channelPct = request.StaffPolicy
+            ? GetStaffPct(option)
+            : GetChannelPct(channel, option);
 
         // 4-6. Compute GMB (Sum Assured on Maturity)
         var baseGmb = ap * gmbFactor;
