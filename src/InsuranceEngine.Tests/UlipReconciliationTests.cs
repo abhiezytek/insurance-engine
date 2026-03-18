@@ -418,4 +418,82 @@ public class UlipReconciliationTests
             Assert.That(row.FundAtEndOfYear8, Is.GreaterThanOrEqualTo(row.FundAtEndOfYear4),
                 $"Year {row.Year}: FV8 ≥ FV4");
     }
+
+    // =========================================================================
+    // New calculated fields (per Quick-Action-Guide specification)
+    // =========================================================================
+
+    [Test]
+    public async Task MaturityAge_IsEntryAgePlusPolicyTerm()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // MaturityAge must be a formula: EntryAge + PolicyTerm = 37 + 20 = 57
+        Assert.That(result.MaturityAge, Is.EqualTo(57), "MaturityAge = EntryAge(37) + PT(20) = 57");
+    }
+
+    [Test]
+    public async Task PremiumInstallment_IsAPTimesModalFactor_Yearly()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // For Yearly frequency, ModalFactor = 1.0, so PremiumInstallment = AP = 24,000
+        Assert.That(result.PremiumInstallment, Is.EqualTo(24000m), "PremiumInstallment = AP × 1.0 for Yearly");
+    }
+
+    [Test]
+    public async Task NetYield8_IsReasonable()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // Net Yield at 8% gross should be between 5% and 8% (charges reduce the yield)
+        // The Part B header shows Net Yield = 7.037% for 8% gross
+        Assert.That(result.NetYield8, Is.GreaterThan(5m).And.LessThan(8m),
+            "Net Yield at 8% gross should be between 5% and 8%");
+    }
+
+    [Test]
+    public async Task NetYield4_IsReasonable()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // Net Yield at 4% gross should be between 1% and 4%
+        Assert.That(result.NetYield4, Is.GreaterThan(1m).And.LessThan(4m),
+            "Net Yield at 4% gross should be between 1% and 4%");
+    }
+
+    [Test]
+    public async Task NetYield8_GreaterThan_NetYield4()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        Assert.That(result.NetYield8, Is.GreaterThan(result.NetYield4),
+            "Net Yield at 8% should be greater than at 4%");
+    }
+
+    // =========================================================================
+    // Part B — 4% scenario values (verify all years)
+    // =========================================================================
+
+    [Test]
+    public async Task PartB4_Year1_FundAtEnd_MatchesWorkbook()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        var row = result.PartBRows4.First(r => r.Year == 1);
+        // Workbook Part B (4%): 23,036
+        Assert.That(row.FundAtEndOfYear, Is.EqualTo(23036m).Within(Tolerance), "Part B 4% Year 1 FV ≈ 23,036");
+    }
+
+    [Test]
+    public async Task PartB4_Year10_FundAtEnd_MatchesWorkbook()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        var row = result.PartBRows4.First(r => r.Year == 10);
+        // Workbook Part B (4%): 2,81,415
+        Assert.That(row.FundAtEndOfYear, Is.EqualTo(281415m).Within(Tolerance), "Part B 4% Year 10 FV ≈ 2,81,415");
+    }
+
+    [Test]
+    public async Task PartB4_Year20_FundAtEnd_MatchesWorkbook()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        var row = result.PartBRows4.First(r => r.Year == 20);
+        // Workbook Part B (4%): 3,88,072
+        Assert.That(row.FundAtEndOfYear, Is.EqualTo(388072m).Within(Tolerance), "Part B 4% Year 20 FV ≈ 3,88,072");
+    }
 }

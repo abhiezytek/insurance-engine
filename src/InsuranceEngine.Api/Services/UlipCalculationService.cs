@@ -614,6 +614,11 @@ public class UlipCalculationService : IUlipCalculationService
         double fv = (double)maturityFv;
 
         // Newton–Raphson for IRR: Σ( CF_t / (1+r)^t ) = 0
+        // DerivativeTolerance: if |f'(r)| is below this threshold the derivative is effectively zero; stop to avoid division by zero.
+        const double DerivativeTolerance = 1e-12;
+        // RateTolerance: stop iterating once the rate change between iterations is below this threshold (converged).
+        const double RateTolerance = 1e-10;
+
         double r = 0.06; // initial guess
         for (int iter = 0; iter < 100; iter++)
         {
@@ -629,9 +634,9 @@ public class UlipCalculationService : IUlipCalculationService
             npv  += fv / matDiscount;
             dnpv -= pt * fv / (matDiscount * (1 + r));
 
-            if (Math.Abs(dnpv) < 1e-12) break;
+            if (Math.Abs(dnpv) < DerivativeTolerance) break;
             double newR = r - npv / dnpv;
-            if (Math.Abs(newR - r) < 1e-10) { r = newR; break; }
+            if (Math.Abs(newR - r) < RateTolerance) { r = newR; break; }
             r = newR;
         }
 

@@ -162,7 +162,7 @@ export interface UlipCalculationRequest {
   policyholderDateOfBirth?: string;
   policyholderAge?: number;
   policyholderGender?: 'Male' | 'Female';
-  typeOfPpt?: string;          // "Limited" or "Till_Maturity"
+  typeOfPpt?: 'Limited' | 'Till_Maturity';
   policyTerm: number;
   ppt: number;
   annualizedPremium: number;
@@ -171,7 +171,7 @@ export interface UlipCalculationRequest {
   policyEffectiveDate?: string;  // ISO date string (used for birthday-month tracking)
   fundOption?: string;          // Fund option category
   investmentStrategy?: string;
-  riskPreference?: string;      // Conservative, Moderate, Aggressive
+  riskPreference?: 'Conservative' | 'Moderate' | 'Aggressive';
   fundAllocations: UlipFundAllocation[];
   distributionChannel?: string;
   isStaffFamily?: boolean;

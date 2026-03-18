@@ -42,6 +42,7 @@ export default function UlipIllustration() {
     gender:              'Male',
     dateOfBirth:         '',
     entryAge:            37,
+    policyholderDateOfBirth: '',
     policyholderAge:     37,
     policyholderGender:  'Male',
     typeOfPpt:           'Limited',
@@ -444,7 +445,7 @@ export default function UlipIllustration() {
           {/* Type of PPT */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Type of PPT</label>
-            <select value={form.typeOfPpt ?? 'Limited'} onChange={e => set('typeOfPpt', e.target.value)} className={INPUT_CLS}>
+            <select value={form.typeOfPpt ?? 'Limited'} onChange={e => set('typeOfPpt', e.target.value as 'Limited' | 'Till_Maturity')} className={INPUT_CLS}>
               <option value="Limited">Limited</option>
               <option value="Till_Maturity">Till Maturity</option>
             </select>
@@ -463,7 +464,7 @@ export default function UlipIllustration() {
           {/* Risk Preference */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Risk Preference</label>
-            <select value={form.riskPreference ?? 'Conservative'} onChange={e => set('riskPreference', e.target.value)} className={INPUT_CLS}>
+            <select value={form.riskPreference ?? 'Conservative'} onChange={e => set('riskPreference', e.target.value as 'Conservative' | 'Moderate' | 'Aggressive')} className={INPUT_CLS}>
               <option value="Conservative">Conservative</option>
               <option value="Moderate">Moderate</option>
               <option value="Aggressive">Aggressive</option>
