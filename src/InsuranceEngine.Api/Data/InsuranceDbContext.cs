@@ -21,6 +21,12 @@ public class InsuranceDbContext : DbContext
     public DbSet<SsvFactor> SsvFactors => Set<SsvFactor>();
     public DbSet<LoyaltyFactor> LoyaltyFactors => Set<LoyaltyFactor>();
     public DbSet<DeferredIncomeFactor> DeferredIncomeFactors => Set<DeferredIncomeFactor>();
+    public DbSet<IncomeScheduleRate> IncomeScheduleRates => Set<IncomeScheduleRate>();
+    public DbSet<RevivalInterestRate> RevivalInterestRates => Set<RevivalInterestRate>();
+    public DbSet<ArbRate> ArbRates => Set<ArbRate>();
+    public DbSet<UlipFundFmc> UlipFundFmcs => Set<UlipFundFmc>();
+    public DbSet<PdfFieldRenderRule> PdfFieldRenderRules => Set<PdfFieldRenderRule>();
+    public DbSet<ProjectionConfig> ProjectionConfigs => Set<ProjectionConfig>();
     public DbSet<MortalityRate> MortalityRates => Set<MortalityRate>();
     public DbSet<UlipCharge> UlipCharges => Set<UlipCharge>();
     public DbSet<UlipIllustrationResult> UlipIllustrationResults => Set<UlipIllustrationResult>();
@@ -272,6 +278,66 @@ public class InsuranceDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Username).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<IncomeScheduleRate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProductCode).HasMaxLength(100);
+            e.Property(x => x.Option).HasMaxLength(50);
+            e.Property(x => x.BenefitType).HasMaxLength(20);
+            e.Property(x => x.RateType).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<RevivalInterestRate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProductCode).HasMaxLength(100);
+            e.Property(x => x.RateKey).HasMaxLength(100);
+            e.Property(x => x.Compounding).HasMaxLength(50);
+            e.Property(x => x.BasisDescription).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<ArbRate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProductCode).HasMaxLength(100);
+            e.Property(x => x.Gender).HasMaxLength(20);
+            e.Property(x => x.UwClass).HasMaxLength(50);
+            e.Property(x => x.SmokerStatus).HasMaxLength(20);
+            e.Property(x => x.SourceAnnexure).HasMaxLength(100);
+            e.Property(x => x.SourceVersion).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<UlipFundFmc>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ProductCode).HasMaxLength(100);
+            e.Property(x => x.FundCode).HasMaxLength(50);
+            e.Property(x => x.FundName).HasMaxLength(200);
+            e.Property(x => x.Sfin).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<PdfFieldRenderRule>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TemplateCode).HasMaxLength(100);
+            e.Property(x => x.FieldKey).HasMaxLength(200);
+            e.Property(x => x.ProductType).HasMaxLength(50);
+            e.Property(x => x.Section).HasMaxLength(100);
+            e.Property(x => x.DataType).HasMaxLength(50);
+            e.Property(x => x.EmptyDisplayRule).HasMaxLength(50);
+            e.Property(x => x.FormatMask).HasMaxLength(50);
+            e.Property(x => x.Label).HasMaxLength(200);
+            e.Property(x => x.TemplateSource).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<ProjectionConfig>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TemplateCode).HasMaxLength(100);
+            e.Property(x => x.ProjectionMethod).HasMaxLength(100);
+            e.Property(x => x.AlternateProjectionRateNote).HasMaxLength(500);
         });
     }
 }
