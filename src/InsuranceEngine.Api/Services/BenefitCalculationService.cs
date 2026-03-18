@@ -6,6 +6,7 @@ namespace InsuranceEngine.Api.Services;
 
 public class BenefitCalculationService : IBenefitCalculationService
 {
+    private const decimal NonStandardAgeProofLoadingRate = 1.5m;
     private readonly InsuranceDbContext _db;
 
     public BenefitCalculationService(InsuranceDbContext db) => _db = db;
@@ -45,7 +46,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         // Installment premium with loading when standard age proof is missing
         var sumAssuredForLoading = request.SumAssured ?? Round(10m * annualisedPremium);
         var installmentPremium = Round(annualisedPremium * modalFactor
-            + modalFactor * (request.StandardAgeProof ? 0m : 1.5m * sumAssuredForLoading / 1000m), 0);
+            + modalFactor * (request.StandardAgeProof ? 0m : NonStandardAgeProofLoadingRate * sumAssuredForLoading / 1000m), 0);
 
         // Annual premium payable across the year (installment × number of payments)
         var annualPremiumPayable = Round(installmentPremium * paymentsPerYear);
@@ -53,12 +54,12 @@ public class BenefitCalculationService : IBenefitCalculationService
         var ppt = request.Ppt;
         var pt = request.PolicyTerm;
         var option = NormalizeOption(request.Option);
-        var entryAge = request.EntryAge;
+        var lifeAssuredAge = request.EntryAge;
 
         // Life Assured age is always the driver for age-based lookups.
 
         // GMB factor lookup (age-specific, option-specific)
-        var gmbFactor = await LookupGmbFactorAsync(ppt, pt, entryAge, option);
+        var gmbFactor = await LookupGmbFactorAsync(ppt, pt, lifeAssuredAge, option);
         var maturityBenefit = Round(annualisedPremium * gmbFactor);
 
         // SA on death = 10 × annualised premium (unless explicitly overridden)
@@ -159,7 +160,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             AnnualPremium = Round(annualPremiumPayable),
             Ppt = ppt,
             PolicyTerm = pt,
-            EntryAge = entryAge,
+            EntryAge = lifeAssuredAge,
             Option = option,
             Channel = request.Channel,
             PremiumFrequency = frequency,
@@ -171,12 +172,12 @@ public class BenefitCalculationService : IBenefitCalculationService
         };
     }
 
-    private async Task<decimal> LookupGmbFactorAsync(int ppt, int pt, int entryAge, string option)
+    private async Task<decimal> LookupGmbFactorAsync(int ppt, int pt, int lifeAssuredAge, string option)
     {
         // Exact match
         var exact = await _db.GmbFactors.FirstOrDefaultAsync(x =>
             x.Ppt == ppt && x.Pt == pt &&
-            x.EntryAgeMin <= entryAge && x.EntryAgeMax >= entryAge &&
+            x.EntryAgeMin <= lifeAssuredAge && x.EntryAgeMax >= lifeAssuredAge &&
             x.Option == option);
         if (exact != null) return exact.Factor;
 
@@ -185,7 +186,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, Age={entryAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} is present and loaded.");
+        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} is present and loaded.");
     }
 
     /// <summary>

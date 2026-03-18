@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using InsuranceEngine.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,11 +52,17 @@ public static class CenturyIncomeFactorLoader
 
         foreach (var path in candidates)
         {
-            if (Directory.Exists(path)) return path;
+            if (Directory.Exists(path))
+            {
+                var missing = RequiredFiles()
+                    .Where(f => !File.Exists(Path.Combine(path, f)))
+                    .ToList();
+                if (!missing.Any()) return path;
+            }
         }
 
         throw new InvalidOperationException(
-            $"Unable to locate docs directory for Century Income CSV factor loading. Ensure the /docs folder exists at the repository root and is accessible from the application base path. Tried paths: {string.Join(", ", candidates)}");
+            $"Unable to locate docs directory for Century Income CSV factor loading. Ensure the /docs folder exists at the repository root and contains {string.Join(", ", RequiredFiles())}. Tried paths: {string.Join(", ", candidates)}");
     }
 
     private static IEnumerable<GmbFactor> ReadGmbFactors(string docsPath)
@@ -113,7 +120,7 @@ public static class CenturyIncomeFactorLoader
         {
             var parts = line.Split(',', StringSplitOptions.TrimEntries);
             var factorType = parts[0];
-            var option = NormalizeOption(parts[1]);
+            var optionRaw = parts[1];
             var policyYear = int.Parse(parts[2], CultureInfo.InvariantCulture);
             var ppt = int.Parse(parts[3], CultureInfo.InvariantCulture);
             var pt = int.Parse(parts[4], CultureInfo.InvariantCulture);
@@ -125,6 +132,7 @@ public static class CenturyIncomeFactorLoader
             }
             else
             {
+                var option = NormalizeOption(optionRaw);
                 factor2Rows.Add((option, ppt, pt, policyYear, value));
             }
         }
@@ -157,9 +165,12 @@ public static class CenturyIncomeFactorLoader
             "immediate income" or "immediate" => "Immediate",
             "deferred income" or "deferred" => "Deferred",
             "twin income" or "twin" => "Twin",
-            _ => option ?? string.Empty
+            null or "" => throw new InvalidOperationException("Option is required for Century Income factor lookup."),
+            _ => throw new InvalidOperationException($"Unsupported option value '{option}'. Expected Immediate, Deferred, or Twin.")
         };
 
     private static decimal ParseDecimal(string value) =>
         decimal.Parse(value, NumberStyles.Any, CultureInfo.InvariantCulture);
+
+    private static IEnumerable<string> RequiredFiles() => new[] { GmbFile, GsvFile, SsvFile };
 }
