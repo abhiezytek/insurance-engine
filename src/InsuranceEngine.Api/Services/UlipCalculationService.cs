@@ -653,5 +653,9 @@ public class UlipCalculationService : IUlipCalculationService
         Math.Round((decimal)value, 2, MidpointRounding.AwayFromZero);
 
     private bool HasAgeBasedAllocationMaster(string productCode) =>
-        _db.ProductParameters.Any(p => p.Name.Contains("AgeBasedAllocation", StringComparison.OrdinalIgnoreCase));
+        _db.ProductParameters.Any(p =>
+            p.Name.Contains("AgeBasedAllocation", StringComparison.OrdinalIgnoreCase) &&
+            p.ProductVersion != null &&
+            p.ProductVersion.Product != null &&
+            p.ProductVersion.Product.Code == productCode);
 }

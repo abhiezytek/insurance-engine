@@ -89,14 +89,21 @@ export default function UlipIllustration() {
   ) => setForm(prev => ({ ...prev, [key]: value }));
 
   const handleStrategyChange = (value: UlipCalculationRequest['investmentStrategy']) => {
-    setForm(prev => ({
-      ...prev,
-      investmentStrategy: value,
-      riskPreference: value === 'Age-based Investment Strategy'
+    setForm(prev => {
+      const nextRiskPref = value === 'Age-based Investment Strategy'
         ? (prev.riskPreference ?? 'Aggressive')
-        : undefined,
-      fundAllocations: value === 'Age-based Investment Strategy' ? [] : (prev.fundAllocations.length ? prev.fundAllocations : [{ fundType: '', allocationPercent: 0 }]),
-    }));
+        : undefined;
+      const nextAllocations = value === 'Age-based Investment Strategy'
+        ? []
+        : (prev.fundAllocations.length ? prev.fundAllocations : [{ fundType: '', allocationPercent: 0 }]);
+
+      return {
+        ...prev,
+        investmentStrategy: value,
+        riskPreference: nextRiskPref,
+        fundAllocations: nextAllocations,
+      };
+    });
   };
 
   const handleCalculate = async () => {
