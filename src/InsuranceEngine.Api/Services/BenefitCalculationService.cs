@@ -107,14 +107,14 @@ public class BenefitCalculationService : IBenefitCalculationService
             cumulativeLoyalty = Round(cumulativeLoyalty + li);
 
             // GSV
-            var gsvFactor = LookupGsvFactor(py, gsvFactors);
-            var gsv = Math.Max(0m, Round(totalPremiumsPaid * gsvFactor - cumulativeGuaranteed - cumulativeLoyalty));
+            var gsvRatio = LookupGsvFactor(py, gsvFactors); // CSV stores ratios directly (e.g., 0.35 = 35%)
+            var gsv = Math.Max(0m, Round(totalPremiumsPaid * gsvRatio - cumulativeGuaranteed - cumulativeLoyalty));
 
             // Paid-up maturity benefit
             var paidUpMaturity = Round(paidUpRatio * maturityBenefit);
 
             // SSV
-            var (ssvF1, ssvF2) = LookupSsvFactors(py, ssvFactors);
+            var (ssvF1, ssvF2) = LookupSsvFactors(py, ssvFactors); // CSV values already decimal (no /100)
             // benefit-at-inception component
             var incomeComponentBase = option == "Immediate"
                 ? giBase + liBase
@@ -185,7 +185,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, Age={entryAge}, Option={option}. Ensure CSV seed data is loaded.");
+        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, Age={entryAge}, Option={option}. Ensure century_income_gmb_factors.csv is present and loaded.");
     }
 
     /// <summary>

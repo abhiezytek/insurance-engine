@@ -55,7 +55,7 @@ public static class CenturyIncomeFactorLoader
         }
 
         throw new InvalidOperationException(
-            $"Unable to locate docs directory for Century Income CSV factor loading. Tried: {string.Join("; ", candidates)}");
+            $"Unable to locate docs directory for Century Income CSV factor loading. Ensure the /docs folder exists at the repository root and is accessible from the application base path. Tried: {string.Join("; ", candidates)}");
     }
 
     private static IEnumerable<GmbFactor> ReadGmbFactors(string docsPath)
@@ -135,7 +135,7 @@ public static class CenturyIncomeFactorLoader
             if (!factor1.TryGetValue((row.ppt, row.pt, row.policyYear), out var f1))
             {
                 throw new InvalidOperationException(
-                    $"Missing SSV_FACTOR_1 for PPT={row.ppt}, PT={row.pt}, PY={row.policyYear} while processing option {row.option}.");
+                    $"Missing SSV_FACTOR_1 in century_income_ssv_factors.csv for PPT={row.ppt}, PT={row.pt}, PY={row.policyYear}, option={row.option}.");
             }
             results.Add(new SsvFactor
             {
