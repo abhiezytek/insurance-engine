@@ -1,3 +1,4 @@
+using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
 using System.Threading;
 
@@ -65,6 +66,13 @@ internal static class RiskPreferenceRuleBook
 
         return (true, null);
     }
+
+    public static bool HasAgeBasedAllocationMaster(InsuranceDbContext db, string productCode) =>
+        db.ProductParameters.Any(p =>
+            p.Name.Contains("AgeBasedAllocation", StringComparison.OrdinalIgnoreCase) &&
+            p.ProductVersion != null &&
+            p.ProductVersion.Product != null &&
+            p.ProductVersion.Product.Code == productCode);
 
     private static void NormalizeAliases(UlipCalculationRequest req)
     {

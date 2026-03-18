@@ -100,7 +100,9 @@ public class UlipController : ControllerBase
         if (request.EntryAge < 0 || request.EntryAge > 65)
             return BadRequest("EntryAge must be between 0 and 65.");
 
-        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(request, () => HasAgeBasedAllocationMaster(request.ProductCode));
+        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(
+            request,
+            () => RiskPreferenceRuleBook.HasAgeBasedAllocationMaster(_db, request.ProductCode));
         if (!riskPrefValidation.IsValid)
             return BadRequest(riskPrefValidation.Error);
 
@@ -152,13 +154,6 @@ public class UlipController : ControllerBase
         var bytes = Encoding.UTF8.GetBytes(html);
         return File(bytes, "text/html", $"ULIP_BI_{policyNumber}.html");
     }
-
-    private bool HasAgeBasedAllocationMaster(string productCode) =>
-        _db.ProductParameters.Any(p =>
-            p.Name.Contains("AgeBasedAllocation", StringComparison.OrdinalIgnoreCase) &&
-            p.ProductVersion != null &&
-            p.ProductVersion.Product != null &&
-            p.ProductVersion.Product.Code == productCode);
 
     // -----------------------------------------------------------------------
     // POST /api/ulip/upload-mortality

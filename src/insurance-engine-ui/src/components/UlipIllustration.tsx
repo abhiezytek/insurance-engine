@@ -128,7 +128,7 @@ export default function UlipIllustration() {
   };
 
   // ---- fund allocation helpers ----
-  const isSelfManaged = form.investmentStrategy === 'Self-Managed Investment Strategy' || form.investmentStrategy === 'Self-Managed';
+  const isSelfManaged = form.investmentStrategy === 'Self-Managed Investment Strategy';
   const totalAlloc = form.fundAllocations.reduce((s, f) => s + f.allocationPercent, 0);
   const allocError = isSelfManaged && Math.abs(totalAlloc - 100) > 0.01;
   const allocationStepError = isSelfManaged && form.fundAllocations.some(f => f.allocationPercent % 5 !== 0);

@@ -73,7 +73,9 @@ public class UlipCalculationService : IUlipCalculationService
 
     public async Task<UlipCalculationResponse> CalculateAsync(UlipCalculationRequest req)
     {
-        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(req, () => HasAgeBasedAllocationMaster(req.ProductCode));
+        var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(
+            req,
+            () => RiskPreferenceRuleBook.HasAgeBasedAllocationMaster(_db, req.ProductCode));
         if (!riskPrefValidation.IsValid)
             throw new InvalidOperationException(riskPrefValidation.Error);
 
@@ -652,10 +654,4 @@ public class UlipCalculationService : IUlipCalculationService
     private static decimal Round2(double value) =>
         Math.Round((decimal)value, 2, MidpointRounding.AwayFromZero);
 
-    private bool HasAgeBasedAllocationMaster(string productCode) =>
-        _db.ProductParameters.Any(p =>
-            p.Name.Contains("AgeBasedAllocation", StringComparison.OrdinalIgnoreCase) &&
-            p.ProductVersion != null &&
-            p.ProductVersion.Product != null &&
-            p.ProductVersion.Product.Code == productCode);
 }
