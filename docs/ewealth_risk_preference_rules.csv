@@ -1,0 +1,4 @@
+investment_strategy,risk_preference,field_required,mapping_rule,allocation_rule,notes
+Age-based Investment Strategy,Conservative,Yes,Required only when investment strategy is Age-based Investment Strategy,Apply age-based allocation between Blue Chip Equity Fund and Gilt Fund as per product rules,Do not ask when strategy is Self-Managed Investment Strategy
+Age-based Investment Strategy,Aggressive,Yes,Required only when investment strategy is Age-based Investment Strategy,Apply age-based allocation between Blue Chip Equity Fund and Gilt Fund as per product rules,Do not ask when strategy is Self-Managed Investment Strategy
+Self-Managed Investment Strategy,Not Applicable,No,Hide or disable field,User enters fund allocation; total must be 100 and each value must be multiple of 5,Risk preference should not be shown for self-managed strategy

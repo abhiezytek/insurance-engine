@@ -1,0 +1,18 @@
+ppt_type,ppt,plan_option,la_minor_flag,pt_min,pt_max
+Single,1,Platinum,NA,10,40
+Limited,5,Platinum,NA,10,40
+Limited,7,Platinum,NA,10,40
+Limited,10,Platinum,NA,15,40
+Regular,10,Platinum,NA,10,40
+Regular,11,Platinum,NA,11,40
+Regular,12,Platinum,NA,12,40
+Regular,40,Platinum,NA,40,40
+Limited,5,Platinum Plus,MINOR,10,40
+Limited,7,Platinum Plus,MINOR,10,40
+Limited,10,Platinum Plus,MINOR,15,40
+Regular,10,Platinum Plus,MINOR,10,30
+Regular,40,Platinum Plus,MAJOR,10,40
+Limited,5,Platinum Plus,MAJOR,10,40
+Limited,7,Platinum Plus,MAJOR,10,40
+Limited,10,Platinum Plus,MAJOR,15,40
+Regular,10,Platinum Plus,MAJOR,10,40
