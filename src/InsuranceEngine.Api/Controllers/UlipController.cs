@@ -351,11 +351,15 @@ public class UlipController : ControllerBase
         gl("Policy Number",                r.PolicyNumber);
         gl("Customer Name",                r.CustomerName);
         gl("Entry Age",                    $"{r.EntryAge} years");
+        gl("Maturity Age",                 $"{r.MaturityAge} years");
         gl("Policy Term (PT)",             $"{r.PolicyTerm} years");
         gl("Premium Payment Term (PPT)",   $"{r.Ppt} years");
         gl("Annualized Premium (AP)",      $"₹{r.AnnualizedPremium:N0}");
+        gl("Premium Installment",          $"₹{r.PremiumInstallment:N0}");
         gl("Sum Assured (SA)",             $"₹{r.SumAssured:N0}");
         gl("Premium Frequency",            r.PremiumFrequency);
+        gl("Net Yield @ 4%",               $"{r.NetYield4}%");
+        gl("Net Yield @ 8%",               $"{r.NetYield8}%");
         gl("GST Rate",                     "0%");
         sb.AppendLine("</table>");
 
@@ -452,12 +456,10 @@ public class UlipController : ControllerBase
             sb.AppendLine("</tbody></table>");
         }
 
-        // Net yield = workbook reference values derived from gross return minus all charges
-        // (FMC 0.1118%/m, Policy Admin ₹100/m first 10 yrs); PA=0%.
-        // These are indicative figures from the product workbook for PT=20/PPT=10/AP=24000.
-        renderPartB(r.PartBRows8, "8% p.a.", "7.037%");
+        // Net yield values are now dynamically calculated from IRR of premium cash flows vs maturity fund value
+        renderPartB(r.PartBRows8, "8% p.a.", $"{r.NetYield8}%");
         sb.AppendLine("<div style='margin-top:16px'></div>");
-        renderPartB(r.PartBRows4, "4% p.a.", "3.068%");
+        renderPartB(r.PartBRows4, "4% p.a.", $"{r.NetYield4}%");
 
         sb.AppendLine("<div class='disclaimer'>");
         sb.AppendLine("<strong>Legend:</strong> PAC = Premium Allocation Charge; FMC = Fund Management Charge (0.1118% p.m.); ");

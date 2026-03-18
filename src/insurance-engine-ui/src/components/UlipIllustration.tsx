@@ -42,20 +42,30 @@ export default function UlipIllustration() {
     gender:              'Male',
     dateOfBirth:         '',
     entryAge:            37,
+    policyholderDateOfBirth: '',
     policyholderAge:     37,
     policyholderGender:  'Male',
+    typeOfPpt:           'Limited',
     policyTerm:          20,
     ppt:                 10,
     annualizedPremium:   24000,
     sumAssured:          240000,
     premiumFrequency:    'Yearly',
     policyEffectiveDate: '',
+    fundOption:          '',
     investmentStrategy:  'Self-Managed',
+    riskPreference:      'Conservative',
     fundAllocations:     [{ fundType: 'SUD Life Nifty Alpha 50 Index Fund', allocationPercent: 100 }],
     distributionChannel: 'Corporate Agency',
     isStaffFamily:       false,
+    ageRiskCommencement: 37,
     standardAgeProofLA:  true,
     standardAgeProofPH:  true,
+    emrClassLifeAssured: 'Standard',
+    emrClassPolicyholder:'Standard',
+    flatExtraLifeAssured: 0,
+    flatExtraPolicyholder: 0,
+    keralaFloodCess:     false,
   });
   const [result,  setResult]  = useState<UlipCalculationResult | null>(null);
   const [error,   setError]   = useState<string | null>(null);
@@ -336,6 +346,34 @@ export default function UlipIllustration() {
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Effective Date <span className="text-slate-400 text-xs">(optional)</span></label>
             <input type="date" value={form.policyEffectiveDate ?? ''} onChange={e => set('policyEffectiveDate', e.target.value || undefined)} className={INPUT_CLS} />
           </div>
+
+          {/* Policyholder Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Policyholder Name</label>
+            <input type="text" value={form.policyholderName ?? ''} onChange={e => set('policyholderName', e.target.value)}
+              placeholder="Full name (if different from Life Assured)" className={INPUT_CLS} />
+          </div>
+
+          {/* Policyholder Gender */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Policyholder)</label>
+            <select value={form.policyholderGender ?? 'Male'} onChange={e => set('policyholderGender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          {/* Policyholder DOB */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Policyholder)</label>
+            <input type="date" value={form.policyholderDateOfBirth ?? ''} onChange={e => set('policyholderDateOfBirth', e.target.value || undefined)} className={INPUT_CLS} />
+          </div>
+
+          {/* Policyholder Age */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Age (Policyholder)</label>
+            <input type="number" value={form.policyholderAge ?? 0} onChange={e => set('policyholderAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
+          </div>
         </div>
 
         {/* Section 2 — Plan Parameters */}
@@ -402,6 +440,83 @@ export default function UlipIllustration() {
               onChange={e => set('isStaffFamily', e.target.checked)}
               className="accent-[#004282]" />
             <label htmlFor="staffFamily">Staff / Family Policy</label>
+          </div>
+
+          {/* Type of PPT */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Type of PPT</label>
+            <select value={form.typeOfPpt ?? 'Limited'} onChange={e => set('typeOfPpt', e.target.value as 'Limited' | 'Till_Maturity')} className={INPUT_CLS}>
+              <option value="Limited">Limited</option>
+              <option value="Till_Maturity">Till Maturity</option>
+            </select>
+          </div>
+
+          {/* Investment Strategy */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Investment Strategy</label>
+            <select value={form.investmentStrategy ?? 'Self-Managed'} onChange={e => set('investmentStrategy', e.target.value)} className={INPUT_CLS}>
+              <option value="Self-Managed">Self-Managed Investment Strategy</option>
+              <option value="Life-Stage Aggressive">Life-Stage Aggressive</option>
+              <option value="Life-Stage Conservative">Life-Stage Conservative</option>
+            </select>
+          </div>
+
+          {/* Risk Preference */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Risk Preference</label>
+            <select value={form.riskPreference ?? 'Conservative'} onChange={e => set('riskPreference', e.target.value as 'Conservative' | 'Moderate' | 'Aggressive')} className={INPUT_CLS}>
+              <option value="Conservative">Conservative</option>
+              <option value="Moderate">Moderate</option>
+              <option value="Aggressive">Aggressive</option>
+            </select>
+          </div>
+
+          {/* Age at Risk Commencement */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Age at Risk Commencement</label>
+            <input type="number" value={form.ageRiskCommencement ?? 0} onChange={e => set('ageRiskCommencement', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* EMR Class LA */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">EMR Class (Life Assured)</label>
+              <select value={form.emrClassLifeAssured ?? 'Standard'} onChange={e => set('emrClassLifeAssured', e.target.value)} className={INPUT_CLS}>
+                <option value="Standard">Standard</option>
+                {[1,2,3,4,5,6,7,8,9].map(n => <option key={n} value={String(n)}>{n}</option>)}
+              </select>
+            </div>
+
+            {/* EMR Class PH */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">EMR Class (Policyholder)</label>
+              <select value={form.emrClassPolicyholder ?? 'Standard'} onChange={e => set('emrClassPolicyholder', e.target.value)} className={INPUT_CLS}>
+                <option value="Standard">Standard</option>
+                {[1,2,3,4,5,6,7,8,9].map(n => <option key={n} value={String(n)}>{n}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Flat Extra LA */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Flat Extra (LA) ₹/1000 SAR</label>
+              <input type="number" value={form.flatExtraLifeAssured ?? 0} onChange={e => set('flatExtraLifeAssured', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
+            </div>
+
+            {/* Flat Extra PH */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Flat Extra (PH) ₹/1000 SAR</label>
+              <input type="number" value={form.flatExtraPolicyholder ?? 0} onChange={e => set('flatExtraPolicyholder', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
+            </div>
+          </div>
+
+          {/* Kerala Flood Cess */}
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" id="keralaFloodCess" checked={form.keralaFloodCess ?? false}
+              onChange={e => set('keralaFloodCess', e.target.checked)}
+              className="accent-[#004282]" />
+            <label htmlFor="keralaFloodCess">Kerala Flood Cess (applicable only for State of Kerala)</label>
           </div>
 
           {/* Fund Allocation */}
@@ -495,9 +610,13 @@ export default function UlipIllustration() {
                 ['Option',               result.option],
                 ['Gender',               result.gender],
                 ['Entry Age',            `${result.entryAge} yrs`],
+                ['Maturity Age',         `${result.maturityAge} yrs`],
                 ['Policy Term (PT)',     `${result.policyTerm} yrs`],
                 ['PPT',                  `${result.ppt} yrs`],
                 ['Premium Frequency',    result.premiumFrequency],
+                ['Premium Installment',  `₹${INR(result.premiumInstallment)}`],
+                ['Net Yield @ 4%',       `${result.netYield4}%`],
+                ['Net Yield @ 8%',       `${result.netYield8}%`],
                 ['GST Rate',             '0%'],
               ].map(([k, v]) => (
                 <div key={k} className="flex gap-2">

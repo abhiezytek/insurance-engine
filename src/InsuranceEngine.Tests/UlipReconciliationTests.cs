@@ -44,27 +44,25 @@ public class UlipReconciliationTests
         var product = new Product { Id = 10, InsurerId = 1, Name = "e-Wealth Royale", Code = "EWEALTH-ROYALE", ProductType = "ULIP" };
         _db.Products.Add(product);
 
-        // Seed IALM 2012-14 Male mortality rates (sourced from workbook back-calculation)
+        // Seed product mortality rates from the uploaded commission/mortality CSV table
         var ialmMaleRates = new (int Age, decimal Rate)[]
         {
-            (0,  5.15m), (1,  1.15m), (2,  0.85m), (3,  0.69m), (4,  0.60m),
-            (5,  0.54m), (6,  0.48m), (7,  0.43m), (8,  0.40m), (9,  0.38m),
-            (10, 0.36m), (11, 0.35m), (12, 0.36m), (13, 0.40m), (14, 0.46m),
-            (15, 0.55m), (16, 0.65m), (17, 0.77m), (18, 0.89m), (19, 1.01m),
-            (20, 1.11m), (21, 1.19m), (22, 1.25m), (23, 1.29m), (24, 1.32m),
-            (25, 1.34m), (26, 1.36m), (27, 1.38m), (28, 1.40m), (29, 1.43m),
-            (30, 1.46m), (31, 1.50m), (32, 1.53m), (33, 1.56m), (34, 1.58m),
-            (35, 1.59m), (36, 1.61m),
-            (37, 1.6298m), (38, 1.7440m), (39, 1.8722m),
-            (40, 2.0160m), (41, 2.1780m), (42, 2.3628m),
-            (43, 2.5730m), (44, 2.8143m), (45, 3.0772m), (46, 3.4188m),
-            (47, 3.78m),  (48, 4.18m),  (49, 4.60m),
-            (50, 5.06m),  (51, 5.55m),  (52, 6.06m),  (53, 6.60m),  (54, 7.17m),
-            (55, 7.77m),  (56, 8.41m),  (57, 9.09m),  (58, 9.81m),  (59, 10.57m),
-            (60, 11.37m), (61, 12.22m), (62, 13.12m), (63, 14.07m), (64, 15.07m),
-            (65, 16.13m), (66, 17.24m), (67, 18.41m), (68, 19.65m), (69, 20.95m),
-            (70, 22.31m), (71, 23.75m), (72, 25.26m), (73, 26.84m), (74, 28.50m),
-            (75, 30.25m),
+            (0,  5.01m), (1,  4.10m), (2,  1.10m), (3,  0.56m), (4,  0.33m),
+            (5,  0.22m), (6,  0.18m), (7,  0.18m), (8,  0.20m), (9,  0.25m),
+            (10, 0.32m), (11, 0.41m), (12, 0.52m), (13, 0.63m), (14, 0.74m),
+            (15, 0.84m), (16, 0.92m), (17, 1.00m), (18, 1.05m), (19, 1.09m),
+            (20, 1.11m), (21, 1.12m), (22, 1.12m), (23, 1.12m), (24, 1.12m),
+            (25, 1.12m), (26, 1.12m), (27, 1.12m), (28, 1.13m), (29, 1.15m),
+            (30, 1.17m), (31, 1.21m), (32, 1.25m), (33, 1.30m), (34, 1.37m),
+            (35, 1.44m), (36, 1.53m), (37, 1.63m), (38, 1.74m), (39, 1.87m),
+            (40, 2.02m), (41, 2.18m), (42, 2.36m), (43, 2.57m), (44, 2.81m),
+            (45, 3.10m), (46, 3.42m), (47, 3.80m), (48, 4.24m), (49, 4.75m),
+            (50, 5.32m), (51, 5.96m), (52, 6.66m), (53, 7.41m), (54, 8.20m),
+            (55, 9.02m), (56, 9.85m), (57, 10.71m),(58, 11.58m),(59, 12.47m),
+            (60, 13.39m),(61, 14.36m),(62, 15.40m),(63, 16.52m),(64, 17.75m),
+            (65, 19.12m),(66, 20.65m),(67, 22.36m),(68, 24.29m),(69, 26.45m),
+            (70, 28.87m),(71, 31.58m),(72, 34.60m),(73, 37.97m),(74, 41.71m),
+            (75, 45.87m),
         };
         int idCtr = 1000;
         foreach (var (age, rate) in ialmMaleRates)
@@ -419,5 +417,83 @@ public class UlipReconciliationTests
         foreach (var row in result.PartARows)
             Assert.That(row.FundAtEndOfYear8, Is.GreaterThanOrEqualTo(row.FundAtEndOfYear4),
                 $"Year {row.Year}: FV8 ≥ FV4");
+    }
+
+    // =========================================================================
+    // New calculated fields (per Quick-Action-Guide specification)
+    // =========================================================================
+
+    [Test]
+    public async Task MaturityAge_IsEntryAgePlusPolicyTerm()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // MaturityAge must be a formula: EntryAge + PolicyTerm = 37 + 20 = 57
+        Assert.That(result.MaturityAge, Is.EqualTo(57), "MaturityAge = EntryAge(37) + PT(20) = 57");
+    }
+
+    [Test]
+    public async Task PremiumInstallment_IsAPTimesModalFactor_Yearly()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // For Yearly frequency, ModalFactor = 1.0, so PremiumInstallment = AP = 24,000
+        Assert.That(result.PremiumInstallment, Is.EqualTo(24000m), "PremiumInstallment = AP × 1.0 for Yearly");
+    }
+
+    [Test]
+    public async Task NetYield8_IsReasonable()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // Net Yield at 8% gross should be between 5% and 8% (charges reduce the yield)
+        // The Part B header shows Net Yield = 7.037% for 8% gross
+        Assert.That(result.NetYield8, Is.GreaterThan(5m).And.LessThan(8m),
+            "Net Yield at 8% gross should be between 5% and 8%");
+    }
+
+    [Test]
+    public async Task NetYield4_IsReasonable()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        // Net Yield at 4% gross should be between 1% and 4%
+        Assert.That(result.NetYield4, Is.GreaterThan(1m).And.LessThan(4m),
+            "Net Yield at 4% gross should be between 1% and 4%");
+    }
+
+    [Test]
+    public async Task NetYield8_GreaterThan_NetYield4()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        Assert.That(result.NetYield8, Is.GreaterThan(result.NetYield4),
+            "Net Yield at 8% should be greater than at 4%");
+    }
+
+    // =========================================================================
+    // Part B — 4% scenario values (verify all years)
+    // =========================================================================
+
+    [Test]
+    public async Task PartB4_Year1_FundAtEnd_MatchesWorkbook()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        var row = result.PartBRows4.First(r => r.Year == 1);
+        // Workbook Part B (4%): 23,036
+        Assert.That(row.FundAtEndOfYear, Is.EqualTo(23036m).Within(Tolerance), "Part B 4% Year 1 FV ≈ 23,036");
+    }
+
+    [Test]
+    public async Task PartB4_Year10_FundAtEnd_MatchesWorkbook()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        var row = result.PartBRows4.First(r => r.Year == 10);
+        // Workbook Part B (4%): 2,81,415
+        Assert.That(row.FundAtEndOfYear, Is.EqualTo(281415m).Within(Tolerance), "Part B 4% Year 10 FV ≈ 2,81,415");
+    }
+
+    [Test]
+    public async Task PartB4_Year20_FundAtEnd_MatchesWorkbook()
+    {
+        var result = await _svc.CalculateAsync(WorkbookRequest());
+        var row = result.PartBRows4.First(r => r.Year == 20);
+        // Workbook Part B (4%): 3,88,072
+        Assert.That(row.FundAtEndOfYear, Is.EqualTo(388072m).Within(Tolerance), "Part B 4% Year 20 FV ≈ 3,88,072");
     }
 }

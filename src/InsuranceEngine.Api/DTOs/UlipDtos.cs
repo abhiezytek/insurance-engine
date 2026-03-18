@@ -97,10 +97,21 @@ public class UlipCalculationRequest
     /// </summary>
     public DateTime? PolicyEffectiveDate { get; set; }
 
+    // ---- PPT type ----
+
+    /// <summary>Type of Premium Payment Term: "Limited" or "Till_Maturity".</summary>
+    public string TypeOfPpt { get; set; } = "Limited";
+
     // ---- Investment strategy ----
+
+    /// <summary>Fund option category: Self-Managed, Target_Maturity, Structured.</summary>
+    public string FundOption { get; set; } = string.Empty;
 
     /// <summary>Investment strategy: Self-Managed, Life-Stage Aggressive, Life-Stage Conservative.</summary>
     public string InvestmentStrategy { get; set; } = "Self-Managed";
+
+    /// <summary>Risk preference: Conservative, Moderate, Aggressive.</summary>
+    public string RiskPreference { get; set; } = "Conservative";
 
     /// <summary>Fund allocations — must sum to 100% for Self-Managed strategy.</summary>
     public List<UlipFundAllocation> FundAllocations { get; set; } = new();
@@ -113,11 +124,31 @@ public class UlipCalculationRequest
     /// <summary>Whether the policyholder/LA is a staff / family member of the distributor.</summary>
     public bool IsStaffFamily { get; set; }
 
+    /// <summary>Age at risk commencement (typically = Entry Age for adults).</summary>
+    public int AgeRiskCommencement { get; set; }
+
     /// <summary>Whether standard age proof has been submitted for the Life Assured (Yes/No).</summary>
     public bool StandardAgeProofLA { get; set; } = true;
 
     /// <summary>Whether standard age proof has been submitted for the Policyholder (Yes/No).</summary>
     public bool StandardAgeProofPH { get; set; } = true;
+
+    // ---- EMR / extra charges ----
+
+    /// <summary>EMR class for Life Assured: Standard, or EMR level (1-9).</summary>
+    public string EmrClassLifeAssured { get; set; } = "Standard";
+
+    /// <summary>EMR class for Policyholder: Standard, or EMR level (1-9).</summary>
+    public string EmrClassPolicyholder { get; set; } = "Standard";
+
+    /// <summary>Flat Extra per ₹1,000 Sum At Risk for Life Assured (occupational/avocation loading).</summary>
+    public decimal FlatExtraLifeAssured { get; set; }
+
+    /// <summary>Flat Extra per ₹1,000 Sum At Risk for Policyholder.</summary>
+    public decimal FlatExtraPolicyholder { get; set; }
+
+    /// <summary>Whether Kerala Flood Cess is applicable (state-specific levy).</summary>
+    public bool KeralaFloodCess { get; set; }
 }
 
 /// <summary>
@@ -294,6 +325,20 @@ public class UlipCalculationResponse
     public decimal SumAssured { get; set; }
 
     public string PremiumFrequency { get; set; } = string.Empty;
+
+    // -- Derived / calculated fields --
+
+    /// <summary>Maturity Age = EntryAge + PolicyTerm (must be formula-derived, not hardcoded).</summary>
+    public int MaturityAge { get; set; }
+
+    /// <summary>Premium Installment = AnnualizedPremium × ModalFactor (depends on PremiumFrequency).</summary>
+    public decimal PremiumInstallment { get; set; }
+
+    /// <summary>Net Yield at 4% gross return (IRR of premiums vs maturity fund value).</summary>
+    public decimal NetYield4 { get; set; }
+
+    /// <summary>Net Yield at 8% gross return (IRR of premiums vs maturity fund value).</summary>
+    public decimal NetYield8 { get; set; }
 
     // -- Summary values --
 
