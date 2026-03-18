@@ -75,6 +75,7 @@ public static class CenturyIncomeFactorLoader
             {
                 var parts = line.Split(',', StringSplitOptions.TrimEntries);
                 var age = int.Parse(parts[0], CultureInfo.InvariantCulture);
+                // CSV provides age-specific factors, so min/max collapse to a single age band.
                 return new GmbFactor
                 {
                     EntryAgeMin = age,
@@ -159,7 +160,8 @@ public static class CenturyIncomeFactorLoader
         return results;
     }
 
-    internal static string NormalizeOption(string? option) =>
+    /// <summary>Canonicalises Century Income options to Immediate/Deferred/Twin.</summary>
+    public static string NormalizeOption(string? option) =>
         option?.Trim().ToLowerInvariant() switch
         {
             "immediate income" or "immediate" => "Immediate",

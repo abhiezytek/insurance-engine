@@ -95,7 +95,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             decimal giBase = ComputeGiBase(py, ppt, annualisedPremium, option, deferredFactors, twinYears);
 
             // LI base (full, before reduction)
-            decimal liBase = option == "Immediate"
+            decimal liBase = HasLoyaltyIncome(option)
                 ? ComputeLiBase(py, annualisedPremium, loyaltyFactors)
                 : 0m;
 
@@ -117,7 +117,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             // SSV
             var (ssvF1, ssvF2) = LookupSsvFactors(py, ssvFactors); // CSV values already decimal (no /100)
             // benefit-at-inception component
-            var incomeComponentBase = option == "Immediate"
+            var incomeComponentBase = HasLoyaltyIncome(option)
                 ? giBase + liBase
                 : giBase;
             var benefitAtInceptionComponent = Round(paidUpRatio * incomeComponentBase);
@@ -186,7 +186,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} is present and loaded.");
+        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
     }
 
     /// <summary>
@@ -269,6 +269,8 @@ public class BenefitCalculationService : IBenefitCalculationService
         var nearest = factors.MinBy(x => Math.Abs(x.PolicyYear - py));
         return nearest != null ? (nearest.Factor1, nearest.Factor2) : (0m, 0m);
     }
+
+    private static bool HasLoyaltyIncome(string option) => option == "Immediate";
 
     private static decimal Round(decimal value, int digits = 2) =>
         Math.Round(value, digits, MidpointRounding.AwayFromZero);
