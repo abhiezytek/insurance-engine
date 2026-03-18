@@ -83,6 +83,24 @@ interface YpygResult {
   maturityBenefit4?: number;
   maturityBenefit8?: number;
   ulipYearlyTable?: YpygUlipRow[];
+  // Total Benefit Value fields
+  calculationDate?: string;
+  currentPolicyYear?: number;
+  currentSurvivalBenefit: number;
+  maturitySurvivalBenefit: number;
+  currentMaturityBenefit: number;
+  maturityMaturityBenefit: number;
+  currentDeathBenefit: number;
+  maturityDeathBenefit: number;
+  // ULIP current-date values
+  currentFundValue4?: number;
+  currentFundValue8?: number;
+  maturityFundValue4?: number;
+  maturityFundValue8?: number;
+  currentDeathBenefit4?: number;
+  currentDeathBenefit8?: number;
+  maturityDeathBenefit4?: number;
+  maturityDeathBenefit8?: number;
 }
 
 // ─── Sub-page: Policy Number mode ───────────────────────────────────────────
@@ -138,7 +156,6 @@ function PolicyNumberMode() {
         option: policy.option,
         channel: policy.channel,
         fundValue: policy.fundValue,
-        surrenderFactor: 0.8,
         riskCommencementDate: policy.riskCommencementDate || undefined,
       });
       setResult(res.data);
@@ -256,7 +273,6 @@ const DEFAULT_INPUTS = {
   option: 'Immediate',
   channel: 'Other',
   fundValue: 0,
-  surrenderFactor: 0.8,
   riskCommencementDate: '' as string,
   policyStatus: 'In-Force' as string,
   investmentStrategy: 'Self-Managed' as string,
@@ -409,11 +425,6 @@ function InputValueMode() {
             </>
           ) : (
             <>
-              <Field label="Surrender Factor">
-                <input type="number" step="0.01" value={form.surrenderFactor}
-                  onChange={e => set('surrenderFactor', +e.target.value)}
-                  className={INPUT_CLS} />
-              </Field>
               <Field label="Option">
                 <select value={form.option}
                   onChange={e => set('option', e.target.value)}
@@ -474,46 +485,93 @@ function InputValueMode() {
 
 function ResultSection({ result }: { result: YpygResult }) {
   const isUlip = result.productCategory === 'ULIP';
+  const calcDate = result.calculationDate
+    ? new Date(result.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
-      {isUlip ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'Maturity @4%', value: result.maturityBenefit4 ?? 0, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-            { label: 'Maturity @8%', value: result.maturityBenefit8 ?? 0, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-            { label: 'Surrender Value', value: result.surrenderValue, color: 'text-[#004282]', bg: 'bg-blue-50 border-blue-200' },
-            { label: 'Death Benefit', value: result.deathBenefit, color: 'text-[#d32f2f]', bg: 'bg-red-50 border-red-200' },
-          ].map(c => (
-            <div key={c.label} className={`rounded-xl p-4 border ${c.bg}`}>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{c.label}</p>
-              <p className={`text-xl font-extrabold ${c.color}`}>₹ {INR(c.value)}</p>
-            </div>
-          ))}
+      {/* ── Total Benefit Value table ── */}
+      <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
+        <div className="px-6 py-4 border-b-2 border-[#00796b]">
+          <h3 className="text-center text-lg font-extrabold text-[#004282] tracking-wide">Total Benefit Value</h3>
         </div>
-      ) : (
-        <div className="grid sm:grid-cols-3 gap-4">
-          {[
-            { label: 'Maturity Value', value: result.maturityValue, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-            { label: 'Surrender Value', value: result.surrenderValue, color: 'text-[#004282]', bg: 'bg-blue-50 border-blue-200' },
-            { label: 'Death Benefit', value: result.deathBenefit, color: 'text-[#d32f2f]', bg: 'bg-red-50 border-red-200' },
-          ].map(c => (
-            <div key={c.label} className={`rounded-xl p-4 border ${c.bg}`}>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{c.label}</p>
-              <p className={`text-2xl font-extrabold ${c.color}`}>₹ {INR(c.value)}</p>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 uppercase tracking-wider text-xs">
+                <th className="px-6 py-3 text-left font-semibold w-1/3"></th>
+                <th className="px-6 py-3 text-right font-semibold w-1/3">As on Current Date</th>
+                <th className="px-6 py-3 text-right font-semibold w-1/3">At Maturity</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {isUlip ? (
+                <>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Fund Value (@4%)</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue4 ?? 0)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityFundValue4 ?? 0)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Fund Value (@8%)</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue8 ?? 0)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityFundValue8 ?? 0)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@4%)</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit4 ?? 0)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@8%)</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit8 ?? 0)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit (@4%)</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit4 ?? 0)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit4 ?? 0)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit (@8%)</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit8 ?? 0)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit8 ?? 0)}</td>
+                  </tr>
+                </>
+              ) : (
+                <>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Survival Benefit</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentSurvivalBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturitySurvivalBenefit)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityMaturityBenefit)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit)}</td>
+                  </tr>
+                </>
+              )}
+              <tr className="bg-slate-50/50">
+                <td className="px-6 py-3 font-semibold text-slate-700">Calculation Date</td>
+                <td className="px-6 py-3 text-right font-semibold text-slate-600" colSpan={2}>{calcDate}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {/* Additional info */}
+      {/* ── Additional info ── */}
       <div className="grid sm:grid-cols-2 gap-4">
         <InfoCard label="Sum Assured on Death" value={`₹ ${INR(result.sumAssuredOnDeath)}`} />
         {isUlip ? (
-          <>
-            <InfoCard label="Fund Value @4%" value={`₹ ${INR(result.fundValue4 ?? 0)}`} />
-          </>
+          <InfoCard label="Current Policy Year" value={`Year ${result.currentPolicyYear ?? 1}`} />
         ) : (
           <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
         )}
@@ -541,6 +599,15 @@ function ResultSection({ result }: { result: YpygResult }) {
                   sumAssured: result.sumAssuredOnDeath,
                   maturityBenefit4: result.maturityBenefit4 ?? 0,
                   maturityBenefit8: result.maturityBenefit8 ?? 0,
+                  currentFundValue4: result.currentFundValue4,
+                  currentFundValue8: result.currentFundValue8,
+                  maturityFundValue4: result.maturityFundValue4,
+                  maturityFundValue8: result.maturityFundValue8,
+                  currentDeathBenefit4: result.currentDeathBenefit4,
+                  currentDeathBenefit8: result.currentDeathBenefit8,
+                  maturityDeathBenefit4: result.maturityDeathBenefit4,
+                  maturityDeathBenefit8: result.maturityDeathBenefit8,
+                  calculationDate: result.calculationDate,
                   yearlyTable: result.ulipYearlyTable,
                 });
               } else {

@@ -143,6 +143,11 @@ public class YpygController : ControllerBase
         // Pull last year values for summary
         var lastRow = result.YearlyTable.Count > 0 ? result.YearlyTable[^1] : null;
 
+        int elapsedYears = ComputeElapsedPolicyYears(req.RiskCommencementDate, req.PremiumsPaid, req.PolicyTerm);
+
+        var currentRow = result.YearlyTable.FirstOrDefault(r => r.PolicyYear == elapsedYears)
+                         ?? result.YearlyTable.FirstOrDefault();
+
         var response = new YpygCalculationResponse
         {
             PolicyNumber = req.PolicyNumber,
@@ -170,7 +175,17 @@ public class YpygController : ControllerBase
                 SurrenderValue = r.SurrenderValue,
                 DeathBenefit = r.DeathBenefit,
                 MaturityBenefit = r.MaturityBenefit
-            }).ToList()
+            }).ToList(),
+
+            // Total Benefit Value fields
+            CalculationDate = DateTime.UtcNow,
+            CurrentPolicyYear = elapsedYears,
+            CurrentSurvivalBenefit = currentRow?.CumulativeSurvivalBenefits ?? 0m,
+            MaturitySurvivalBenefit = lastRow?.CumulativeSurvivalBenefits ?? 0m,
+            CurrentMaturityBenefit = currentRow?.SurrenderValue ?? 0m,
+            MaturityMaturityBenefit = result.GuaranteedMaturityBenefit,
+            CurrentDeathBenefit = currentRow?.DeathBenefit ?? 0m,
+            MaturityDeathBenefit = lastRow?.DeathBenefit ?? 0m,
         };
 
         await LogCalculation("YPYG-Endowment", req, response);
@@ -199,6 +214,8 @@ public class YpygController : ControllerBase
 
         var result = await _ulipService.CalculateAsync(ulipReq);
 
+        int elapsedYears = ComputeElapsedPolicyYears(req.RiskCommencementDate, req.PremiumsPaid, req.PolicyTerm);
+
         // Build the ULIP yearly table from the legacy YearlyTable + PartARows for surrender values
         var ulipYearlyRows = new List<YpygUlipYearlyRow>();
         for (int i = 0; i < result.YearlyTable.Count; i++)
@@ -225,6 +242,11 @@ public class YpygController : ControllerBase
         // Get final-year PartA for summary fund values
         var lastPartA = result.PartARows.Count > 0 ? result.PartARows[^1] : null;
 
+        // Get current-year row for current-date values
+        var currentYearIndex = Math.Max(0, Math.Min(elapsedYears - 1, result.YearlyTable.Count - 1));
+        var currentYearRow = result.YearlyTable.Count > 0 ? result.YearlyTable[currentYearIndex] : null;
+        var currentPartA = currentYearIndex < result.PartARows.Count ? result.PartARows[currentYearIndex] : null;
+
         var response = new YpygCalculationResponse
         {
             PolicyNumber = req.PolicyNumber,
@@ -244,11 +266,41 @@ public class YpygController : ControllerBase
             FundValue8 = lastPartA?.FundAtEndOfYear8,
             MaturityBenefit4 = result.MaturityBenefit4,
             MaturityBenefit8 = result.MaturityBenefit8,
-            UlipYearlyTable = ulipYearlyRows
+            UlipYearlyTable = ulipYearlyRows,
+
+            // Total Benefit Value fields
+            CalculationDate = DateTime.UtcNow,
+            CurrentPolicyYear = elapsedYears,
+            CurrentSurvivalBenefit = 0m,
+            MaturitySurvivalBenefit = 0m,
+            CurrentMaturityBenefit = currentPartA?.SurrenderValue8 ?? currentYearRow?.FundValue8 ?? 0m,
+            MaturityMaturityBenefit = result.MaturityBenefit8,
+            CurrentDeathBenefit = currentYearRow?.DeathBenefit8 ?? 0m,
+            MaturityDeathBenefit = lastPartA?.DeathBenefit8 ?? 0m,
+            CurrentFundValue4 = currentYearRow?.FundValue4 ?? 0m,
+            CurrentFundValue8 = currentYearRow?.FundValue8 ?? 0m,
+            MaturityFundValue4 = lastPartA?.FundAtEndOfYear4 ?? 0m,
+            MaturityFundValue8 = lastPartA?.FundAtEndOfYear8 ?? 0m,
+            CurrentDeathBenefit4 = currentYearRow?.DeathBenefit4 ?? 0m,
+            CurrentDeathBenefit8 = currentYearRow?.DeathBenefit8 ?? 0m,
+            MaturityDeathBenefit4 = lastPartA?.DeathBenefit4 ?? 0m,
+            MaturityDeathBenefit8 = lastPartA?.DeathBenefit8 ?? 0m,
         };
 
         await LogCalculation("YPYG-ULIP", req, response);
         return Ok(response);
+    }
+
+    private const double AverageDaysPerYear = 365.25;
+
+    private static int ComputeElapsedPolicyYears(DateTime? riskCommencementDate, int premiumsPaid, int policyTerm)
+    {
+        if (riskCommencementDate.HasValue)
+        {
+            var elapsed = (int)((DateTime.UtcNow - riskCommencementDate.Value).TotalDays / AverageDaysPerYear);
+            return Math.Max(1, Math.Min(elapsed, policyTerm));
+        }
+        return Math.Max(1, premiumsPaid);
     }
 
     private async Task LogCalculation(string module, YpygCalculationRequest req, YpygCalculationResponse response)
@@ -350,6 +402,28 @@ public class YpygCalculationResponse
     public decimal? MaturityBenefit4 { get; set; }
     public decimal? MaturityBenefit8 { get; set; }
     public List<YpygUlipYearlyRow>? UlipYearlyTable { get; set; }
+
+    // ── Total Benefit Value fields (current-date vs maturity) ──
+    public DateTime CalculationDate { get; set; }
+    public int CurrentPolicyYear { get; set; }
+
+    // Traditional current-date values
+    public decimal CurrentSurvivalBenefit { get; set; }
+    public decimal MaturitySurvivalBenefit { get; set; }
+    public decimal CurrentMaturityBenefit { get; set; }
+    public decimal MaturityMaturityBenefit { get; set; }
+    public decimal CurrentDeathBenefit { get; set; }
+    public decimal MaturityDeathBenefit { get; set; }
+
+    // ULIP current-date values
+    public decimal? CurrentFundValue4 { get; set; }
+    public decimal? CurrentFundValue8 { get; set; }
+    public decimal? MaturityFundValue4 { get; set; }
+    public decimal? MaturityFundValue8 { get; set; }
+    public decimal? CurrentDeathBenefit4 { get; set; }
+    public decimal? CurrentDeathBenefit8 { get; set; }
+    public decimal? MaturityDeathBenefit4 { get; set; }
+    public decimal? MaturityDeathBenefit8 { get; set; }
 }
 
 public class YpygYearlyRow
