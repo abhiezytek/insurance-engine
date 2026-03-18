@@ -1,0 +1,26 @@
+token_group,token_name,token_value,notes
+Color,primary,#0F4C81,Primary brand blue for headers and highlights
+Color,secondary,#1F7A8C,Secondary accent color
+Color,success,#2E8B57,Positive value accent
+Color,textPrimary,#1F2937,Main text color
+Color,textMuted,#6B7280,Muted label color
+Color,border,#D1D5DB,Card and section border color
+Color,background,#F8FAFC,Light page background
+Typography,fontFamily,Inter|Arial|Helvetica,Use fallbacks based on stack
+Typography,titleSize,22px,Policy at a Glance title
+Typography,sectionTitleSize,14px,Section headings
+Typography,labelSize,10px,Field labels
+Typography,valueSize,12px,Field values
+Typography,heroValueSize,18px,Highlighted value cards
+Spacing,pagePadding,24px,Outer page padding
+Spacing,sectionGap,16px,Gap between sections
+Spacing,cardPadding,12px,Inner card padding
+Spacing,gridGap,12px,Grid spacing
+Border,radius,10px,Rounded card corners
+Border,width,1px,Standard border width
+Shadow,cardShadow,0 1px 3px rgba(0,0,0,0.08),Use where PDF engine supports it
+Layout,pageWidth,A4 portrait,Target single printable page
+Layout,summaryColumns,2,Two-column summary grid
+Layout,valueCardColumns,3,Responsive fallback to 2 if needed
+Asset,qrPlaceholderSize,72px,QR block size
+Asset,logoHeight,32px,Header logo height

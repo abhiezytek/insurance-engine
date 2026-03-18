@@ -1,0 +1,49 @@
+pdf_type,section,field_label,field_key,data_type,default_rule,notes
+ULIP,Header,Policy Number,policyNumber,text,Not Applicable,Display prominently under Policy at a Glance
+ULIP,Summary,Customer Name,customerName,text,Not Applicable,
+ULIP,Summary,Product Details,productDetails,text,Not Applicable,
+ULIP,Summary,Premium Status,premiumStatus,text,Not Applicable,
+ULIP,Summary,Policy Status,policyStatus,text,Not Applicable,
+ULIP,Summary,Product Name,productName,text,Not Applicable,
+ULIP,Summary,Risk Cover / Death Benefit,riskCover,text,Not Applicable,
+ULIP,Summary,Premium Payment Term,ppt,text,Not Applicable,
+ULIP,Summary,Policy Term,policyTerm,text,Not Applicable,
+ULIP,Till Date vs On Maturity,Maturity Date,maturityDate,date,Not Applicable,
+ULIP,Till Date vs On Maturity,Last Premium Due Date,lastPremiumDueDate,date,Not Applicable,
+ULIP,Till Date vs On Maturity,Next Premium Due Date,nextPremiumDueDate,date,Not Applicable,
+ULIP,Till Date vs On Maturity,Pending Premium Installments till Maturity,pendingInstallments,text,Not Applicable,
+ULIP,Till Date vs On Maturity,Premium Frequency,premiumFrequency,text,Not Applicable,
+ULIP,Values,Value / Maturity Value,maturityValue,amount,0.00,Use till-date and on-maturity labels as per layout
+ULIP,Values,Balance Payable,balancePayable,amount,0.00,
+ULIP,Values,Premium Paid till Date,premiumPaidTillDate,amount,0.00,
+ULIP,Values,Revival Amount Due,revivalAmountDue,amount,Not Applicable,Show Not Applicable where not relevant
+ULIP,Values,Survival Benefit Instalment,survivalBenefitInstallment,amount,0.00,
+ULIP,Values,Survival Benefit Start Date,survivalBenefitStartDate,date,Not Applicable,
+ULIP,Values,Unclaimed Fund if Any,unclaimedFund,amount,0.00,
+ULIP,Values,Bonus Accrued till Date,bonusAccrued,amount,0.00,Only if output format retains this label
+ULIP,Values,Survival Benefit Paid till Date,survivalBenefitPaid,amount,0.00,
+ULIP,Footer,ULIP Risk Disclaimer,ulipDisclaimer,text,Not Applicable,Investment risk borne by policyholder wording
+Traditional,Header,Policy Number,policyNumber,text,Not Applicable,Display prominently under Policy at a Glance
+Traditional,Summary,Customer Name,customerName,text,Not Applicable,
+Traditional,Summary,Product Details,productDetails,text,Not Applicable,
+Traditional,Summary,Premium Status,premiumStatus,text,Not Applicable,
+Traditional,Summary,Policy Status,policyStatus,text,Not Applicable,
+Traditional,Summary,Product Name,productName,text,Not Applicable,
+Traditional,Summary,Risk Cover / Death Benefit,riskCover,text,Not Applicable,
+Traditional,Summary,Premium Payment Term,ppt,text,Not Applicable,
+Traditional,Summary,Policy Term,policyTerm,text,Not Applicable,
+Traditional,Till Date vs On Maturity,Maturity Date,maturityDate,date,Not Applicable,
+Traditional,Till Date vs On Maturity,Last Premium Due Date,lastPremiumDueDate,date,Not Applicable,
+Traditional,Till Date vs On Maturity,Next Premium Due Date,nextPremiumDueDate,date,Not Applicable,
+Traditional,Till Date vs On Maturity,Pending Premium Installments till Maturity,pendingInstallments,text,Not Applicable,
+Traditional,Till Date vs On Maturity,Premium Frequency,premiumFrequency,text,Not Applicable,
+Traditional,Values,Value / Maturity Value,maturityValue,amount,0.00,
+Traditional,Values,Balance Payable,balancePayable,amount,0.00,
+Traditional,Values,Premium Paid till Date,premiumPaidTillDate,amount,0.00,
+Traditional,Values,Revival Amount Due,revivalAmountDue,amount,Not Applicable,Revival quotation applicable only for lapsed policies
+Traditional,Values,Survival Benefit Instalment,survivalBenefitInstallment,amount,0.00,
+Traditional,Values,Survival Benefit Start Date,survivalBenefitStartDate,date,Not Applicable,
+Traditional,Values,Unclaimed Fund if Any,unclaimedFund,amount,0.00,
+Traditional,Values,Bonus Accrued till Date,bonusAccrued,amount,0.00,
+Traditional,Values,Survival Benefit Paid till Date,survivalBenefitPaid,amount,0.00,
+Traditional,Footer,Traditional Disclaimer,traditionalDisclaimer,text,Not Applicable,Tax bonus and guaranteed additions wording

@@ -1,0 +1,8 @@
+file_name,file_type,purpose,product_area,notes
+copilot_prompt.md,md,Primary prompt for GitHub Copilot,All,Use as main Copilot instruction prompt
+01_business_context.md,md,Business scope and application context,All,Explains PrecisionPro module and YPYG business requirements
+02_century_income_review.md,md,Traditional product formula and input review,Century Income,Covers GMB GSV SSV and surrender logic
+03_ewealth_royale_review.md,md,ULIP formula and input review,e-Wealth Royale,Covers mortality FMC PAC additions and lock-in logic
+04_ypyg_output_review.md,md,Download output validation guide,All,Validates ULIP and Traditional YPYG formats
+05_precisionpro_modules_admin.md,md,UI module and admin review guide,Application,Covers module structure audit simplification and admin features
+copilot_file_manifest.csv,csv,Manifest for Copilot reference,All,Lists all generated md/csv artifacts
