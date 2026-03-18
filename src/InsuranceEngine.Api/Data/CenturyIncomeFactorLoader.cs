@@ -8,9 +8,9 @@ namespace InsuranceEngine.Api.Data;
 /// <summary>Utility to load Century Income factor tables from the CSV sources in /docs.</summary>
 public static class CenturyIncomeFactorLoader
 {
-    private const string GmbFile = "century_income_gmb_factors.csv";
+    internal const string GmbFile = "century_income_gmb_factors.csv";
     private const string GsvFile = "century_income_gsv_factors.csv";
-    private const string SsvFile = "century_income_ssv_factors.csv";
+    internal const string SsvFile = "century_income_ssv_factors.csv";
 
     /// <summary>Seed GMB/GSV/SSV factors from the product CSVs if the tables are empty.</summary>
     public static async Task SeedFromCsvAsync(InsuranceDbContext context, string? docsPath = null)
@@ -55,7 +55,7 @@ public static class CenturyIncomeFactorLoader
         }
 
         throw new InvalidOperationException(
-            $"Unable to locate docs directory for Century Income CSV factor loading. Ensure the /docs folder exists at the repository root and is accessible from the application base path. Tried: {string.Join("; ", candidates)}");
+            $"Unable to locate docs directory for Century Income CSV factor loading. Ensure the /docs folder exists at the repository root and is accessible from the application base path. Tried paths: {string.Join(", ", candidates)}");
     }
 
     private static IEnumerable<GmbFactor> ReadGmbFactors(string docsPath)
@@ -135,7 +135,7 @@ public static class CenturyIncomeFactorLoader
             if (!factor1.TryGetValue((row.ppt, row.pt, row.policyYear), out var f1))
             {
                 throw new InvalidOperationException(
-                    $"Missing SSV_FACTOR_1 in century_income_ssv_factors.csv for PPT={row.ppt}, PT={row.pt}, PY={row.policyYear}, option={row.option}.");
+                    $"Missing SSV_FACTOR_1 in {SsvFile} for PPT={row.ppt}, PT={row.pt}, PY={row.policyYear}, option={row.option}.");
             }
             results.Add(new SsvFactor
             {

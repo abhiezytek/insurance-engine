@@ -185,7 +185,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, Age={entryAge}, Option={option}. Ensure century_income_gmb_factors.csv is present and loaded.");
+        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, Age={entryAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} is present and loaded.");
     }
 
     /// <summary>
