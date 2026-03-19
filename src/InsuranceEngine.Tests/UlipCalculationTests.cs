@@ -192,6 +192,25 @@ public class UlipCalculationTests
             "FV8 at year 10 should exceed FV8 at year 1");
     }
 
+    [Test]
+    public async Task SumAssured_IsDerived_ForSinglePay()
+    {
+        var req = DefaultRequest(ap: 100_000m, pt: 10, ppt: 1);
+        req.TypeOfPpt = "Single";
+        req.SumAssured = 0m;
+        var result = await _svc.CalculateAsync(req);
+        Assert.AreEqual(Math.Round(1.25m * 100_000m, 2, MidpointRounding.AwayFromZero), result.SumAssured);
+    }
+
+    [Test]
+    public async Task SumAssured_IsDerived_ForRegularPay()
+    {
+        var req = DefaultRequest(ap: 50_000m, pt: 10, ppt: 10);
+        req.SumAssured = 0m;
+        var result = await _svc.CalculateAsync(req);
+        Assert.AreEqual(Math.Round(10m * 50_000m, 2, MidpointRounding.AwayFromZero), result.SumAssured);
+    }
+
     // -----------------------------------------------------------------------
     // Death benefit tests
     // -----------------------------------------------------------------------

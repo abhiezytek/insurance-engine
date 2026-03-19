@@ -82,6 +82,15 @@ public class UlipCalculationService : IUlipCalculationService
     {
         var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
 
+        // Life Assured same as Policyholder → mirror fields for validation/calculation
+        if (req.LifeAssuredSameAsPolicyholder)
+        {
+            req.PolicyholderName = string.IsNullOrWhiteSpace(req.PolicyholderName) ? req.CustomerName : req.PolicyholderName;
+            req.PolicyholderGender = string.IsNullOrWhiteSpace(req.PolicyholderGender) ? req.Gender : req.PolicyholderGender;
+            req.PolicyholderDateOfBirth = req.PolicyholderDateOfBirth == default ? req.DateOfBirth : req.PolicyholderDateOfBirth;
+            req.PolicyholderAge = req.PolicyholderAge == 0 ? req.EntryAge : req.PolicyholderAge;
+        }
+
         // Derive EntryAge from DOB when not explicitly provided (UI should already
         // send DOB per correction prompt; EntryAge retained for backward compatibility).
         if (req.EntryAge <= 0 && req.DateOfBirth != default)
@@ -105,6 +114,9 @@ public class UlipCalculationService : IUlipCalculationService
         var product = await _db.Products
             .FirstOrDefaultAsync(p => p.Code == req.ProductCode && p.ProductType == "ULIP");
         var productName = product?.Name ?? req.ProductCode;
+
+        // Derive Sum Assured from premium and PPT type (single vs regular).
+        req.SumAssured = DeriveSumAssured(req);
 
         // Load mortality rates for the life assured's gender
         var mortalityRates = await _db.MortalityRates
@@ -196,6 +208,7 @@ public class UlipCalculationService : IUlipCalculationService
             ProductCode        = req.ProductCode,
             ProductName        = productName,
             Option             = req.Option,
+            LifeAssuredSameAsPolicyholder = req.LifeAssuredSameAsPolicyholder,
             Gender             = req.Gender,
             EntryAge           = req.EntryAge,
             PolicyTerm         = req.PolicyTerm,
@@ -467,6 +480,17 @@ public class UlipCalculationService : IUlipCalculationService
             "Monthly"                       => annualizedPremium / 12.0,
             _                               => annualizedPremium,   // Yearly / default
         };
+
+    /// <summary>Derive Sum Assured per product rules (single pay vs regular).</summary>
+    private static decimal DeriveSumAssured(UlipCalculationRequest req)
+    {
+        // Treat PPT=1 or TypeOfPpt="Single" as single-pay.
+        var isSinglePay = req.Ppt == 1 || string.Equals(req.TypeOfPpt, "Single", StringComparison.OrdinalIgnoreCase);
+        var multiplier = isSinglePay ? 1.25m : 10m;
+        var basePremium = isSinglePay ? req.AnnualizedPremium : req.AnnualizedPremium;
+        var derived = Round2((double)(multiplier * basePremium));
+        return (decimal)derived;
+    }
 
     /// <summary>
     /// Returns the set of month-within-year indices (1–12) on which a premium

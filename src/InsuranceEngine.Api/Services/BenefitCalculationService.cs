@@ -44,7 +44,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         var (modalFactor, paymentsPerYear) = GetModalFactor(frequency);
 
         // Installment premium with loading when standard age proof is missing
-        var sumAssuredForLoading = request.SumAssured ?? Round(10m * annualisedPremium);
+        var sumAssuredForLoading = Round(10m * annualisedPremium);
         var installmentPremium = Round(annualisedPremium * modalFactor
             + modalFactor * (request.StandardAgeProof ? 0m : NonStandardAgeProofLoadingRate * sumAssuredForLoading / 1000m), 0);
 
@@ -62,8 +62,8 @@ public class BenefitCalculationService : IBenefitCalculationService
         var gmbFactor = await LookupGmbFactorAsync(ppt, pt, lifeAssuredAge, option);
         var maturityBenefit = Round(annualisedPremium * gmbFactor);
 
-        // SA on death = 10 × annualised premium (unless explicitly overridden)
-        var sad = request.SumAssured ?? Round(10m * annualisedPremium);
+        // SA on death = 10 × annualised premium (derived, override ignored per product rules)
+        var sad = Round(10m * annualisedPremium);
 
         // Load factor tables up front
         var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
@@ -125,6 +125,7 @@ public class BenefitCalculationService : IBenefitCalculationService
 
             // SV
             var sv = Math.Max(0m, Math.Max(gsv, ssv));
+            var svSource = sv == ssv ? "SSV" : "GSV";
 
             // Death benefit = Max(SAD, SV, 105% × Total Premiums Paid)
             var deathBenefit = Round(Math.Max(sad, Math.Max(sv, 1.05m * annualisedPremium * paidInstallments)));
@@ -144,6 +145,12 @@ public class BenefitCalculationService : IBenefitCalculationService
                 Gsv = gsv,
                 Ssv = ssv,
                 SurrenderValue = sv,
+                GsvFactor = gsvRatio,
+                SsvFactor1 = ssvF1,
+                SsvFactor2 = ssvF2,
+                PaidUpMaturityBenefit = paidUpMaturity,
+                PaidUpIncomeComponent = benefitAtInceptionComponent,
+                SurrenderValueSource = svSource,
                 DeathBenefit = deathBenefit,
                 MaturityBenefit = Round(maturityBenefitRow),
                 IsPaidUp = isReducedPaidUp
@@ -158,6 +165,8 @@ public class BenefitCalculationService : IBenefitCalculationService
         {
             AnnualisedPremium = Round(annualisedPremium),
             AnnualPremium = Round(annualPremiumPayable),
+            InstallmentPremium = installmentPremium,
+            ModalFactor = modalFactor,
             Ppt = ppt,
             PolicyTerm = pt,
             EntryAge = lifeAssuredAge,
@@ -254,20 +263,27 @@ public class BenefitCalculationService : IBenefitCalculationService
 
     private static decimal LookupGsvFactor(int py, List<Models.GsvFactor> factors)
     {
+        if (factors.Count == 0)
+            throw new InvalidOperationException("GSV factor table is empty. Ensure Century Income factors are seeded.");
+
         var exact = factors.FirstOrDefault(x => x.PolicyYear == py);
         if (exact != null) return exact.FactorPercent;
 
         var nearest = factors.MinBy(x => Math.Abs(x.PolicyYear - py));
-        return nearest?.FactorPercent ?? 0m;
+        return nearest?.FactorPercent ?? throw new InvalidOperationException($"No GSV factor found for policy year {py}.");
     }
 
     private static (decimal f1, decimal f2) LookupSsvFactors(int py, List<Models.SsvFactor> factors)
     {
+        if (factors.Count == 0)
+            throw new InvalidOperationException("SSV factor table is empty. Ensure Century Income SSV factors are seeded.");
+
         var exact = factors.FirstOrDefault(x => x.PolicyYear == py);
         if (exact != null) return (exact.Factor1, exact.Factor2);
 
         var nearest = factors.MinBy(x => Math.Abs(x.PolicyYear - py));
-        return nearest != null ? (nearest.Factor1, nearest.Factor2) : (0m, 0m);
+        if (nearest != null) return (nearest.Factor1, nearest.Factor2);
+        throw new InvalidOperationException($"No SSV factor found for policy year {py}.");
     }
 
     private static bool HasLoyaltyIncome(string option) => option == "Immediate";

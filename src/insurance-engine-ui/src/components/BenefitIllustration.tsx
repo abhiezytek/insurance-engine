@@ -37,6 +37,7 @@ export default function BenefitIllustration() {
     nameOfLifeAssured: '',
     nameOfPolicyHolder: '',
     ageOfPolicyHolder: undefined,
+    lifeAssuredSameAsProposer: true,
     option: 'Immediate',
     channel: 'Agency',
     gender: 'Male',
@@ -128,6 +129,27 @@ export default function BenefitIllustration() {
               placeholder="Enter age" className={INPUT_CLS} />
           </Field>
 
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              id="laSame"
+              type="checkbox"
+              checked={form.lifeAssuredSameAsProposer ?? false}
+              onChange={e => {
+                const same = e.target.checked;
+                setForm(p => ({
+                  ...p,
+                  lifeAssuredSameAsProposer: same,
+                  nameOfPolicyHolder: same ? p.nameOfLifeAssured : p.nameOfPolicyHolder,
+                  ageOfPolicyHolder: same ? p.entryAge : p.ageOfPolicyHolder,
+                }));
+              }}
+              className="accent-[#004282]"
+            />
+            <label htmlFor="laSame" className="cursor-pointer">
+              Life Assured is the same as Policyholder
+            </label>
+          </div>
+
           <Field label="Gender">
             <select value={form.gender ?? 'Male'}
               onChange={e => set('gender', e.target.value as 'Male' | 'Female')}
@@ -137,10 +159,9 @@ export default function BenefitIllustration() {
             </select>
           </Field>
 
-          <Field label="Sum Assured (₹) — optional override">
-            <input type="number" value={form.sumAssured ?? ''} placeholder="Auto: Annual Premium × 10"
-              onChange={e => set('sumAssured', e.target.value === '' ? undefined : +e.target.value)}
-              className={INPUT_CLS} />
+          <Field label="Sum Assured (₹) — derived (10 × Annual Premium)">
+            <input type="number" value={(result?.sumAssuredOnDeath ?? 10 * (form.annualisedPremium ?? 0)).toFixed(0)}
+              readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
           </Field>
 
           <Field label="Standard Age Proof">
@@ -172,6 +193,11 @@ export default function BenefitIllustration() {
             <input type="number" value={form.annualisedPremium ?? 0}
               onChange={e => set('annualisedPremium', +e.target.value)}
               className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Calculated Installment Premium (₹)">
+            <input type="number" value={result?.installmentPremium ?? 0}
+              readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
           </Field>
 
           <Field label="Premium Payment Mode">
@@ -306,6 +332,9 @@ export default function BenefitIllustration() {
                   <tr className="bg-blue-50/50 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     <th className="px-3 py-3 text-center">PY</th>
                     <th className="px-3 py-3 text-right">Premium</th>
+                    <th className="px-3 py-3 text-right">GSV Factor</th>
+                    <th className="px-3 py-3 text-right">SSV F1</th>
+                    <th className="px-3 py-3 text-right">SSV F2</th>
                     <th className="px-3 py-3 text-right">Guar. Income</th>
                     <th className="px-3 py-3 text-right">Loyalty Inc.</th>
                     <th className="px-3 py-3 text-right">Total Inc.</th>
@@ -329,6 +358,9 @@ export default function BenefitIllustration() {
                     >
                       <td className="px-3 py-2.5 text-center font-bold text-[#004282]">{row.policyYear}</td>
                       <td className="px-3 py-2.5 text-right font-mono">{row.annualPremium > 0 ? INR(row.annualPremium) : '—'}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-slate-500">{row.gsvFactor?.toFixed(4) ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-slate-500">{row.ssvFactor1?.toFixed(4) ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-slate-500">{row.ssvFactor2?.toFixed(4) ?? '—'}</td>
                       <td className="px-3 py-2.5 text-right font-mono text-green-700">{row.guaranteedIncome > 0 ? INR(row.guaranteedIncome) : '—'}</td>
                       <td className="px-3 py-2.5 text-right font-mono text-green-600">{row.loyaltyIncome > 0 ? INR(row.loyaltyIncome) : '—'}</td>
                       <td className="px-3 py-2.5 text-right font-mono font-semibold">{INR(row.totalIncome)}</td>
@@ -344,6 +376,22 @@ export default function BenefitIllustration() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* GSV vs SSV summary */}
+            <div className="px-6 py-4 border-t border-slate-100 text-xs text-slate-600 grid sm:grid-cols-3 gap-3 bg-slate-50/40">
+              <div>
+                <p className="font-semibold text-slate-500">a) Guaranteed Surrender Value</p>
+                <p className="text-[#004282] font-bold">₹ {INR(result.yearlyTable.at(-1)?.gsv ?? 0)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-500">b) Special Surrender Value</p>
+                <p className="text-[#004282] font-bold">₹ {INR(result.yearlyTable.at(-1)?.ssv ?? 0)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-500">Surrender Value [Greater of (a) or (b)]</p>
+                <p className="text-[#d32f2f] font-extrabold">₹ {INR(result.yearlyTable.at(-1)?.surrenderValue ?? 0)}</p>
+              </div>
             </div>
           </div>
         </>

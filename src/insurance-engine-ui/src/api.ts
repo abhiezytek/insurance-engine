@@ -83,6 +83,7 @@ export interface BenefitIllustrationRequest {
   nameOfLifeAssured?: string;
   nameOfPolicyHolder?: string;
   ageOfPolicyHolder?: number;
+  lifeAssuredSameAsProposer?: boolean;
   option: 'Immediate' | 'Deferred' | 'Twin';
   channel: string;
   gender?: 'Male' | 'Female';
@@ -98,6 +99,7 @@ export interface BenefitIllustrationRequest {
 export interface BenefitIllustrationRow {
   policyYear: number;
   annualPremium: number;
+  installmentPremium?: number;
   totalPremiumsPaid: number;
   guaranteedIncome: number;
   loyaltyIncome: number;
@@ -106,6 +108,12 @@ export interface BenefitIllustrationRow {
   gsv: number;
   ssv: number;
   surrenderValue: number;
+  gsvFactor?: number;
+  ssvFactor1?: number;
+  ssvFactor2?: number;
+  paidUpMaturityBenefit?: number;
+  paidUpIncomeComponent?: number;
+  surrenderValueSource?: 'GSV' | 'SSV';
   deathBenefit: number;
   maturityBenefit: number;
   isPaidUp: boolean;
@@ -114,6 +122,8 @@ export interface BenefitIllustrationRow {
 export interface BenefitIllustrationResult {
   annualisedPremium: number;
   annualPremium: number;
+  installmentPremium: number;
+  modalFactor: number;
   ppt: number;
   policyTerm: number;
   entryAge: number;
@@ -154,6 +164,7 @@ export interface UlipCalculationRequest {
   policyNumber: string;
   customerName: string;
   policyholderName?: string;
+  lifeAssuredSameAsPolicyholder?: boolean;
   productCode: string;
   option: 'Platinum' | 'Platinum Plus';
   gender: 'Male' | 'Female';
@@ -162,7 +173,7 @@ export interface UlipCalculationRequest {
   policyholderDateOfBirth?: string;
   policyholderAge?: number;
   policyholderGender?: 'Male' | 'Female';
-  typeOfPpt?: 'Limited' | 'Till_Maturity';
+  typeOfPpt?: 'Limited' | 'Till_Maturity' | 'Single';
   policyTerm: number;
   ppt: number;
   annualizedPremium: number;
@@ -245,6 +256,7 @@ export interface UlipCalculationResult {
   productCode: string;
   productName: string;
   option: string;
+  lifeAssuredSameAsPolicyholder?: boolean;
   gender: string;
   entryAge: number;
   policyTerm: number;
