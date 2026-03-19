@@ -35,7 +35,7 @@ This document follows the required deliverables order: inventory → gap analysi
 
 ## 4) Backend patch plan (exact files)
 - **AuthController**: add `/api/auth/admin-login` that enforces `IsAdmin` + active status; issue JWT with `isAdmin` claim; log login attempts in `LoginHistory` with type.
-- **Authorization attributes**: add `[Authorize(Roles = \"Admin\")]` (or policy) to new admin controllers; enforce module/product permission via a custom `PermissionFilter` that reads JWT + DB.
+- **Authorization attributes**: add `[Authorize(Roles = "Admin")]` (or policy) to new admin controllers; enforce module/product permission via a custom `PermissionFilter` that reads JWT + DB.
 - **Controllers to add/extend**:
   - `AdminUsersController`: CRUD for AppUser/UserMaster, password reset, activation, module/product assignment.
   - `ModulesController`: list modules/submodules per user (`/api/modules/my`), CRUD for modules/submodules (admin-only).
