@@ -1,0 +1,17 @@
+# YPYG code review notes
+
+Scope: YPYG output against the MD/CSV business references (`docs/github_copilot_prompt_code_review_century_ewealth_ypyg.md`, `docs/github_copilot_code_review_support_notes.md`, `docs/github_copilot_code_review_checklist.csv`).
+
+## Findings
+
+1. **Traditional summary uses maturity-year figures instead of as-on-date values.** The controller populates `SurrenderValue` and `DeathBenefit` from the final policy-year row (`lastRow`) instead of the elapsed-year row used elsewhere for “current” values, so the summary shows maturity-year benefits even when the policy is mid-term ([src/InsuranceEngine.Api/Controllers/YpygController.cs:143-189](../src/InsuranceEngine.Api/Controllers/YpygController.cs#L143-L189)). The output references call for “current date” surrender/maturity values, not end-of-term only ([docs/github_copilot_prompt_code_review_century_ewealth_ypyg.md:46-55](github_copilot_prompt_code_review_century_ewealth_ypyg.md#L46-L55), [docs/04_ypyg_output_review.md:8-17](04_ypyg_output_review.md#L8-L17)).
+
+2. **UI still renders the full illustration tables instead of the compact three-value layout.** The React result section and PDF export render detailed yearly grids and multiple benefit rows (survival/maturity/death plus fund values at 4%/8% for ULIP), which conflicts with the instruction to show only current-date survival benefit, current maturity value, and value if premiums are paid till term ([src/insurance-engine-ui/src/components/YpygModule.tsx:485-679](../src/insurance-engine-ui/src/components/YpygModule.tsx#L485-L679), [src/insurance-engine-ui/src/utils/pdfExport.ts:243-306](../src/insurance-engine-ui/src/utils/pdfExport.ts#L243-L306)). The design guidance and checklist call for a simplified “policy at a glance” view, not full benefit illustrations ([docs/github_copilot_prompt_code_review_century_ewealth_ypyg.md:46-56](github_copilot_prompt_code_review_century_ewealth_ypyg.md#L46-L56), [docs/github_copilot_code_review_support_notes.md:13-15](github_copilot_code_review_support_notes.md#L13-L15), [docs/github_copilot_code_review_checklist.csv:13](github_copilot_code_review_checklist.csv#L13)).
+
+3. **ULIP view mixes illustration-style metrics beyond the requested summary.** The ULIP YPYG response and UI include fund projections, dual 4%/8% benefits, and surrender values per year (`ulipYearlyTable`), which exceeds the minimal ULIP scope described for YPYG outputs ([src/InsuranceEngine.Api/Controllers/YpygController.cs:215-288](../src/InsuranceEngine.Api/Controllers/YpygController.cs#L215-L288), [src/insurance-engine-ui/src/components/YpygModule.tsx:485-679](../src/insurance-engine-ui/src/components/YpygModule.tsx#L485-L679)). The business references request a compact summary view only ([docs/github_copilot_prompt_code_review_century_ewealth_ypyg.md:46-56](github_copilot_prompt_code_review_century_ewealth_ypyg.md#L46-L56), [docs/github_copilot_code_review_checklist.csv:13](github_copilot_code_review_checklist.csv#L13)).
+
+## Recommendations
+
+- Rebase the YPYG summary fields on the elapsed policy year (current as-on-date) and only show the three requested values in API and UI outputs.
+- Trim UI/PDF layouts to the compact “policy at a glance” card per the MD/CSV references and move detailed illustration grids behind a separate BI view if still needed.
+- Align ULIP YPYG to the same minimal surface: current surrender/fund value, maturity value if premiums continue, and current policy year/status.
