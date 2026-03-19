@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, type JSX } from 'react';
 import {
   ShieldCheck, Upload, Download, Check, X, Search,
-  FileSpreadsheet, BarChart3, AlertCircle, CheckCircle2, XCircle,
+  FileSpreadsheet, AlertCircle, CheckCircle2,
   Filter, ChevronDown,
 } from 'lucide-react';
 import axios from 'axios';
@@ -38,14 +38,6 @@ interface AuditCase {
   variance: number;
   status: 'Pending' | 'Approved' | 'Rejected';
   dateSearched?: string;
-}
-
-interface DashboardSummary {
-  totalAudits: number;
-  approved: number;
-  rejected: number;
-  pending: number;
-  totalVariance: number;
 }
 
 interface BatchRecord {
@@ -109,7 +101,6 @@ function varianceRowColor(variance: number) {
 const TAB_OPTIONS: { key: AuditSubOption; label: string; icon: typeof ShieldCheck }[] = [
   { key: 'single', label: 'Single Policy', icon: Search },
   { key: 'excel', label: 'Excel Upload', icon: FileSpreadsheet },
-  { key: 'dashboard', label: 'Audit Dashboard', icon: BarChart3 },
 ];
 
 function TabSwitcher({ active, onChange }: { active: AuditSubOption; onChange: (t: AuditSubOption) => void }) {
@@ -536,90 +527,9 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
   );
 }
 
-// ─── Audit Dashboard ─────────────────────────────────────────────────────────
-
-type DashboardTab = 'individual' | 'batch' | 'logs';
-
-function AuditDashboard({ sub }: { sub: AuditSubModule }) {
-  const auditType = auditTypeLabel(sub);
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [dashTab, setDashTab] = useState<DashboardTab>('individual');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    axios.get(`${API_URL}/api/audit/dashboard`)
-      .then(r => setSummary(r.data))
-      .catch(() => setError('Failed to load dashboard summary.'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48">
-        <Spinner size={32} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {error && <ErrBanner msg={error} />}
-
-      {/* Summary cards */}
-      {summary && (
-        <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[
-            { label: 'Total Audits', value: summary.totalAudits, icon: <ShieldCheck size={18} className="text-[#007bff]" />, color: 'text-[#004282]' },
-            { label: 'Approved', value: summary.approved, icon: <CheckCircle2 size={18} className="text-green-600" />, color: 'text-green-700' },
-            { label: 'Rejected', value: summary.rejected, icon: <XCircle size={18} className="text-[#d32f2f]" />, color: 'text-[#d32f2f]' },
-            { label: 'Pending', value: summary.pending, icon: <AlertCircle size={18} className="text-amber-500" />, color: 'text-amber-600' },
-            { label: 'Total Variance', value: `₹ ${INR(summary.totalVariance)}`, icon: <BarChart3 size={18} className="text-[#004282]" />, color: 'text-[#004282]' },
-          ].map(c => (
-            <div key={c.label} className={`${CARD_CLS} p-5`}>
-              <div className="flex items-center gap-2 mb-2">
-                {c.icon}
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{c.label}</p>
-              </div>
-              <p className={`text-2xl font-extrabold ${c.color}`}>
-                {typeof c.value === 'number' ? c.value.toLocaleString('en-IN') : c.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Dashboard tabs */}
-      <div className="flex gap-1 border-b border-slate-200">
-        {([
-          { key: 'individual' as const, label: 'Individual Policy Audit' },
-          { key: 'batch' as const, label: 'Batch / Excel Upload Audit' },
-          { key: 'logs' as const, label: 'Audit Logs' },
-        ]).map(t => (
-          <button
-            key={t.key}
-            onClick={() => setDashTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-semibold transition border-b-2
-              ${dashTab === t.key
-                ? 'border-[#004282] text-[#004282]'
-                : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {dashTab === 'individual' && <IndividualAuditTable auditType={auditType} />}
-      {dashTab === 'batch' && <BatchAuditTable auditType={auditType} />}
-      {dashTab === 'logs' && <AuditLogsTable />}
-    </div>
-  );
-}
-
 // ─── Individual Policy Audit Table ───────────────────────────────────────────
 
-function IndividualAuditTable({ auditType }: { auditType: string }) {
+export function IndividualAuditTable({ auditType }: { auditType: string }) {
   const [cases, setCases] = useState<AuditCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -707,7 +617,7 @@ function IndividualAuditTable({ auditType }: { auditType: string }) {
 
 // ─── Batch Audit Table ───────────────────────────────────────────────────────
 
-function BatchAuditTable({ auditType }: { auditType: string }) {
+export function BatchAuditTable({ auditType }: { auditType: string }) {
   const [batches, setBatches] = useState<BatchRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -833,7 +743,7 @@ function BatchAuditTable({ auditType }: { auditType: string }) {
 
 // ─── Audit Logs Table ────────────────────────────────────────────────────────
 
-function AuditLogsTable() {
+export function AuditLogsTable() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -897,7 +807,7 @@ function AuditLogsTable() {
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export type AuditSubModule = 'payout-verification' | 'addition-bonus';
-export type AuditSubOption = 'single' | 'excel' | 'dashboard';
+export type AuditSubOption = 'single' | 'excel';
 
 export default function AuditModule({ sub, subOption = 'single' }: { sub: AuditSubModule; subOption?: AuditSubOption }): JSX.Element {
   const [activeTab, setActiveTab] = useState<AuditSubOption>(subOption);
@@ -926,7 +836,6 @@ export default function AuditModule({ sub, subOption = 'single' }: { sub: AuditS
       {/* Active sub-option */}
       {activeTab === 'single' && <SinglePolicy sub={sub} />}
       {activeTab === 'excel' && <ExcelUpload sub={sub} />}
-      {activeTab === 'dashboard' && <AuditDashboard sub={sub} />}
     </div>
   );
 }
