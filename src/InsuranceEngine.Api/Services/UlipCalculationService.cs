@@ -113,7 +113,6 @@ public class UlipCalculationService : IUlipCalculationService
 
         // Determine months-since-last-birthday at policy commencement
         // (used to correctly shift the age in each month of the projection)
-        var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
         var birthMonth = req.DateOfBirth != default ? req.DateOfBirth.Month : effectiveDate.Month;
         var monthsSinceLastBirthday = ((effectiveDate.Month - birthMonth) % 12 + 12) % 12;
 
@@ -755,12 +754,13 @@ public class UlipCalculationService : IUlipCalculationService
             if (cols.Length < 3) continue;
             if (!int.TryParse(cols[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var age)) continue;
 
+            // CSV columns: age_last_birthday, male_rate, transgender_rate, female_rate, atpd_rate
             if (decimal.TryParse(cols.ElementAtOrDefault(1), NumberStyles.Number, CultureInfo.InvariantCulture, out var male))
                 dict["male"][age] = male;
-            if (decimal.TryParse(cols.ElementAtOrDefault(3), NumberStyles.Number, CultureInfo.InvariantCulture, out var female))
-                dict["female"][age] = female;
             if (decimal.TryParse(cols.ElementAtOrDefault(2), NumberStyles.Number, CultureInfo.InvariantCulture, out var trans))
                 dict["transgender"][age] = trans;
+            if (decimal.TryParse(cols.ElementAtOrDefault(3), NumberStyles.Number, CultureInfo.InvariantCulture, out var female))
+                dict["female"][age] = female;
         }
 
         return dict;

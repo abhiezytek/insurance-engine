@@ -229,7 +229,7 @@ public class UlipCalculationTests
     public async Task Calculate_DeathBenefitAtLeastSA_EarlyYears()
     {
         // In early years, FV < SA, so DB should equal SA
-        var req = DefaultRequest(sa: 10_000_000m, ap: 100_000m, pt: 5);
+        var req = DefaultRequest(sa: 10_000_000m, ap: 100_000m, pt: 10);
         var result = await _svc.CalculateAsync(req);
         Assert.AreEqual(req.SumAssured, result.YearlyTable[0].DeathBenefit4,
             "Year 1 death benefit should equal Sum Assured when FV < SA");
