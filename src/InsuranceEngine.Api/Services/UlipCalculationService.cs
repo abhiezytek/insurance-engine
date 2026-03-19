@@ -3,6 +3,7 @@ using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Text.Json;
 using System.Linq;
 using System.IO;
 using System.Threading;
@@ -201,7 +202,7 @@ public class UlipCalculationService : IUlipCalculationService
         var netYield4 = CalculateNetYield(req.AnnualizedPremium, req.Ppt, req.PolicyTerm, (decimal)lastR4.FundEnd);
         var netYield8 = CalculateNetYield(req.AnnualizedPremium, req.Ppt, req.PolicyTerm, (decimal)lastR8.FundEnd);
 
-        return new UlipCalculationResponse
+        var response = new UlipCalculationResponse
         {
             PolicyNumber       = req.PolicyNumber,
             CustomerName       = req.CustomerName,
@@ -227,10 +228,65 @@ public class UlipCalculationService : IUlipCalculationService
             PartBRows8         = partBRows8,
             YearlyTable        = legacyRows,
         };
+
+        // Persist rich input/output snapshot for reconstruction (PDF export, auditing)
+        try
+        {
+            _db.CalculationLogs.Add(new CalculationLog
+            {
+                Module = "ULIP",
+                ProductType = "ULIP",
+                PolicyNumber = req.PolicyNumber,
+                InputJson = JsonSerializer.Serialize(req),
+                ResultJson = JsonSerializer.Serialize(response),
+                RequestedBy = "System",
+                Status = "Completed"
+            });
+            await _db.SaveChangesAsync();
+        }
+        catch
+        {
+            // Non-critical: PDF reconstruction will still fall back to persisted yearly rows
+        }
+
+        return response;
     }
 
     public async Task<UlipCalculationResponse?> GetByPolicyNumberAsync(string policyNumber)
     {
+        // Prefer rich, previously-calculated response snapshot (includes Part A/B rows)
+        var calcLog = await _db.CalculationLogs
+            .Where(l => l.PolicyNumber == policyNumber && (l.Module == "ULIP" || l.ProductType == "ULIP"))
+            .OrderByDescending(l => l.CreatedDate)
+            .FirstOrDefaultAsync();
+
+        if (calcLog != null)
+        {
+            // 1) Try deserializing stored response directly
+            try
+            {
+                var loggedResponse = JsonSerializer.Deserialize<UlipCalculationResponse>(calcLog.ResultJson);
+                if (loggedResponse?.PartARows?.Count > 0 &&
+                    loggedResponse.PartBRows4?.Count > 0 &&
+                    loggedResponse.PartBRows8?.Count > 0)
+                {
+                    return loggedResponse;
+                }
+            }
+            catch { /* fallback to input-based rebuild */ }
+
+            // 2) Recalculate using stored input if available to rebuild Part A/B tables
+            try
+            {
+                var loggedRequest = JsonSerializer.Deserialize<UlipCalculationRequest>(calcLog.InputJson);
+                if (loggedRequest != null)
+                {
+                    return await CalculateAsync(loggedRequest);
+                }
+            }
+            catch { /* proceed to legacy fallback */ }
+        }
+
         var results = await _db.UlipIllustrationResults
             .Where(r => r.PolicyNumber == policyNumber)
             .OrderBy(r => r.Year)
@@ -259,6 +315,9 @@ public class UlipCalculationService : IUlipCalculationService
             YearlyTable       = rows,
             MaturityBenefit4  = last.FundValue4,
             MaturityBenefit8  = last.FundValue8,
+            PartARows         = new List<PartARow>(),    // legacy fallback: empty (forces caller to use richer snapshot when available)
+            PartBRows4        = new List<PartBRow>(),
+            PartBRows8        = new List<PartBRow>(),
         };
     }
 
