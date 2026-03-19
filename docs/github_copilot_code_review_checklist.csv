@@ -1,0 +1,13 @@
+module,review_area,requirement,source_refs
+Century Income,Formula review,"Verify GMB factor selection by age, PPT, PT, and option against BI and Annexure 1; do not hardcode scattered constants",file:42 file:24 file:43
+Century Income,Formula review,Verify GSV = GSV factor x total premium paid till surrender minus survival benefits paid till surrender,file:24 file:45
+Century Income,Formula review,Verify SSV = SSV Factor1 x paid-up maturity benefit + SSV Factor2 x guaranteed income or reduced paid-up loyalty income as applicable,file:24 file:44
+Century Income,Formula review,"Verify reduced paid-up factors for death, maturity, and survival benefits use number of premiums paid divided by number of premiums payable",file:24
+Century Income,Input validation,"Restrict PPT to 7, 10, 12 and PT to allowed combinations 15,20,25 as per PPT mapping",file:24 file:42
+Century Income,Output redesign,"Redesign YPYG output using attached traditional format and show only current date survival benefit, current maturity value, and value if premiums are paid till end of term",file:65
+eWealth Royale,Formula review,Generate 4% and 8% projection streams separately and build Part A from Part B yearly rows by policy year,file:55
+eWealth Royale,Formula review,"Verify mortality charges, additional risk benefit charges, other charges, fund at year end, surrender value, and death benefit mappings from yearly detail rows",file:55
+eWealth Royale,Master review,"Load FMC, mortality, PPT-PT linkage, fund master, and risk preference rules from CSV or backend masters, not from UI constants",code_file:56 code_file:58 code_file:59 code_file:60 code_file:62
+eWealth Royale,Risk preference,For age-based strategy require Aggressive or Conservative and map allocation between Blue Chip Equity Fund and Gilt Fund by attained age,file:54 code_file:63
+eWealth Royale,Input validation,"Use DOB only, derive age automatically, link Type of PPT -> PPT -> PT, and validate self-managed fund allocation total = 100 with multiples of 5",code_file:57 code_file:60
+YPYG,Output redesign,For YPYG output keep a compact policy-at-a-glance style using attached ULIP/traditional layouts and suppress extra illustration detail,file:65 file:66
