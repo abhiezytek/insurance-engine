@@ -27,12 +27,8 @@ type ViewId =
   | 'bi-ulip'
   | 'ypyg-policy'
   | 'ypyg-input'
-  | 'audit-payout-single'
-  | 'audit-payout-excel'
-  | 'audit-payout-dashboard'
-  | 'audit-bonus-single'
-  | 'audit-bonus-excel'
-  | 'audit-bonus-dashboard'
+  | 'audit-payout'
+  | 'audit-bonus'
   | 'admin-master';
 
 // ---------------------------------------------------------------------------
@@ -75,12 +71,8 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Audit',
     icon: <ClipboardCheck size={15} />,
     children: [
-      { id: 'audit-payout-single', label: 'Payout — Single Policy' },
-      { id: 'audit-payout-excel',  label: 'Payout — Excel Upload' },
-      { id: 'audit-payout-dashboard', label: 'Payout — Dashboard' },
-      { id: 'audit-bonus-single',  label: 'Bonus — Single Policy' },
-      { id: 'audit-bonus-excel',   label: 'Bonus — Excel Upload' },
-      { id: 'audit-bonus-dashboard', label: 'Bonus — Dashboard' },
+      { id: 'audit-payout', label: 'Payout Verification' },
+      { id: 'audit-bonus',  label: 'Bonus' },
     ],
   },
   { id: 'admin-master', label: 'Admin Master', icon: <Settings size={15} /> },
@@ -269,12 +261,8 @@ function AppInner() {
         {activeView === 'bi-ulip'       && <UlipIllustration />}
         {activeView === 'ypyg-policy'   && <YpygModule mode="policy-number" />}
         {activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
-        {activeView === 'audit-payout-single'    && <AuditModule sub="payout-verification" subOption="single" />}
-        {activeView === 'audit-payout-excel'     && <AuditModule sub="payout-verification" subOption="excel" />}
-        {activeView === 'audit-payout-dashboard'  && <AuditModule sub="payout-verification" subOption="dashboard" />}
-        {activeView === 'audit-bonus-single'     && <AuditModule sub="addition-bonus" subOption="single" />}
-        {activeView === 'audit-bonus-excel'      && <AuditModule sub="addition-bonus" subOption="excel" />}
-        {activeView === 'audit-bonus-dashboard'   && <AuditModule sub="addition-bonus" subOption="dashboard" />}
+        {activeView === 'audit-payout'    && <AuditModule sub="payout-verification" subOption="single" />}
+        {activeView === 'audit-bonus'     && <AuditModule sub="addition-bonus" subOption="single" />}
         {activeView === 'admin-master'  && <AdminMaster />}
       </main>
 
