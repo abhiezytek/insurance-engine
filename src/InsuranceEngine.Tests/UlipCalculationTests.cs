@@ -32,6 +32,7 @@ public class UlipCalculationTests
             EntryAge          = entryAge,
             PolicyTerm        = pt,
             Ppt               = ppt,
+            TypeOfPpt         = "Regular",
             AnnualizedPremium = ap,
             SumAssured        = sa,
             PremiumFrequency  = "Yearly",
@@ -107,7 +108,7 @@ public class UlipCalculationTests
     [Test]
     public async Task Calculate_AgeIncrementsEachYear()
     {
-        var req = DefaultRequest(entryAge: 35, pt: 5);
+        var req = DefaultRequest(entryAge: 35, pt: 10);
         var result = await _svc.CalculateAsync(req);
         for (int i = 0; i < result.YearlyTable.Count; i++)
             Assert.AreEqual(35 + i, result.YearlyTable[i].Age, $"Year {i + 1}");
@@ -122,6 +123,7 @@ public class UlipCalculationTests
     {
         // PPT=5, PT=10: years 6..10 should have AnnualPremium=0
         var req = DefaultRequest(pt: 10, ppt: 5);
+        req.TypeOfPpt = "Limited";
         var result = await _svc.CalculateAsync(req);
         foreach (var row in result.YearlyTable.Where(r => r.Year > 5))
             Assert.AreEqual(0m, row.AnnualPremium, $"Year {row.Year} should have no premium after PPT");
@@ -131,7 +133,8 @@ public class UlipCalculationTests
     public async Task Calculate_PremiumInvested_IsFullAPWithZeroPAC()
     {
         // PAC = 0% → PremiumInvested = AP × 1.0 (full premium invested)
-        var req = DefaultRequest(ap: 100_000m, pt: 1, ppt: 1);
+        var req = DefaultRequest(ap: 100_000m, pt: 10, ppt: 1);
+        req.TypeOfPpt = "Single";
         var result = await _svc.CalculateAsync(req);
         var expected = Math.Round(100_000m * 1.0m, 2, MidpointRounding.AwayFromZero);
         Assert.AreEqual(expected, result.YearlyTable[0].PremiumInvested);
@@ -226,7 +229,7 @@ public class UlipCalculationTests
     public async Task Calculate_DeathBenefitAtLeastSA_EarlyYears()
     {
         // In early years, FV < SA, so DB should equal SA
-        var req = DefaultRequest(sa: 10_000_000m, ap: 100_000m, pt: 5);
+        var req = DefaultRequest(sa: 10_000_000m, ap: 100_000m, pt: 10);
         var result = await _svc.CalculateAsync(req);
         Assert.AreEqual(req.SumAssured, result.YearlyTable[0].DeathBenefit4,
             "Year 1 death benefit should equal Sum Assured when FV < SA");
@@ -252,7 +255,7 @@ public class UlipCalculationTests
     [Test]
     public async Task Calculate_ThenRetrieve_ReturnsSameRows()
     {
-        var req = DefaultRequest(policyNumber: "PERSIST-001", pt: 5);
+        var req = DefaultRequest(policyNumber: "PERSIST-001", pt: 10);
         var calc = await _svc.CalculateAsync(req);
 
         var retrieved = await _svc.GetByPolicyNumberAsync("PERSIST-001");

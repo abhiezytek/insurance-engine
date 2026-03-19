@@ -2,6 +2,10 @@ using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Linq;
+using System.IO;
+using System.Threading;
 
 namespace InsuranceEngine.Api.Services;
 
@@ -34,9 +38,6 @@ public class UlipCalculationService : IUlipCalculationService
     /// <summary>Premium Allocation Charge (%): 0% — full AP is invested.</summary>
     private const decimal PacPercent = 0m;
 
-    /// <summary>Fund Management Charge per month: 0.1118%.</summary>
-    private const decimal FmcMonthly = 0.001118m;
-
     /// <summary>
     /// Policy Administration Charge (PolicyAdminCharge) per month in rupees (first 10 years only).
     /// Note: "PAC" in the IRDAI Part B column refers to "Premium Allocation Charge" (= 0% here);
@@ -46,6 +47,12 @@ public class UlipCalculationService : IUlipCalculationService
 
     /// <summary>Policy year through which PolicyAdminCharge is charged.</summary>
     private const int PolicyAdminChargeEndYear = 10;
+
+    /// <summary>Default FMC per month (0.1118%) used when CSV master is unavailable.</summary>
+    private const decimal DefaultFmcMonthly = 0.001118m;
+
+    private static readonly Lazy<Dictionary<string, decimal>> CsvFmcMonthlyRates = new(LoadFmcMonthlyRates, LazyThreadSafetyMode.ExecutionAndPublication);
+    private static readonly Lazy<Dictionary<string, Dictionary<int, decimal>>> CsvMortalityRates = new(LoadMortalityRates, LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>Loyalty Addition rate: 0.10% of average 12-month fund value.</summary>
     private const decimal LoyaltyAdditionRate = 0.001m;
@@ -73,6 +80,22 @@ public class UlipCalculationService : IUlipCalculationService
 
     public async Task<UlipCalculationResponse> CalculateAsync(UlipCalculationRequest req)
     {
+        var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
+
+        // Derive EntryAge from DOB when not explicitly provided (UI should already
+        // send DOB per correction prompt; EntryAge retained for backward compatibility).
+        if (req.EntryAge <= 0 && req.DateOfBirth != default)
+        {
+            var age = effectiveDate.Year - req.DateOfBirth.Year;
+            if (req.DateOfBirth.Date > effectiveDate.AddYears(-age)) age--;
+            req.EntryAge = Math.Max(0, age);
+        }
+
+        // Validate PPT/PT combination using CSV rulebook.
+        var pptValidation = PptPtRuleBook.Validate(req, req.EntryAge, effectiveDate);
+        if (!pptValidation.IsValid)
+            throw new InvalidOperationException(pptValidation.Error);
+
         var riskPrefValidation = RiskPreferenceRuleBook.ValidateAndNormalize(
             req,
             () => RiskPreferenceRuleBook.HasAgeBasedAllocationMaster(_db, req.ProductCode));
@@ -90,13 +113,15 @@ public class UlipCalculationService : IUlipCalculationService
 
         // Determine months-since-last-birthday at policy commencement
         // (used to correctly shift the age in each month of the projection)
-        var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
         var birthMonth = req.DateOfBirth != default ? req.DateOfBirth.Month : effectiveDate.Month;
         var monthsSinceLastBirthday = ((effectiveDate.Month - birthMonth) % 12 + 12) % 12;
 
+        // Resolve FMC (weighted by fund allocations if provided)
+        var fmcMonthly = ResolveFmcMonthly(req);
+
         // Run month-by-month projection for both rate scenarios
-        var rows4 = RunMonthlyProjection(req, 0.04m, mortalityRates, monthsSinceLastBirthday);
-        var rows8 = RunMonthlyProjection(req, 0.08m, mortalityRates, monthsSinceLastBirthday);
+        var rows4 = RunMonthlyProjection(req, 0.04m, mortalityRates, monthsSinceLastBirthday, fmcMonthly);
+        var rows8 = RunMonthlyProjection(req, 0.08m, mortalityRates, monthsSinceLastBirthday, fmcMonthly);
 
         // Build output lists
         var partARows = new List<PartARow>();
@@ -110,28 +135,31 @@ public class UlipCalculationService : IUlipCalculationService
             var r8 = rows8[py - 1];
             var ap = py <= req.Ppt ? req.AnnualizedPremium : 0m;
 
+            var partBRow4 = BuildPartBRow(py, ap, req.AnnualizedPremium, r4);
+            var partBRow8 = BuildPartBRow(py, ap, req.AnnualizedPremium, r8);
+
             partARows.Add(new PartARow
             {
                 Year = py,
                 AnnualizedPremium = ap,
-                MortalityCharges4 = Round2(r4.TotalMc),
-                ArbCharges4 = 0m,
-                OtherCharges4 = Round2(r4.TotalPac + r4.TotalFmc),
-                Gst4 = 0m,
-                FundAtEndOfYear4 = Round2(r4.FundEnd),
-                SurrenderValue4 = Round2(r4.SurrenderValue),
-                DeathBenefit4 = Round2(r4.DeathBenefit),
-                MortalityCharges8 = Round2(r8.TotalMc),
-                ArbCharges8 = 0m,
-                OtherCharges8 = Round2(r8.TotalPac + r8.TotalFmc),
-                Gst8 = 0m,
-                FundAtEndOfYear8 = Round2(r8.FundEnd),
-                SurrenderValue8 = Round2(r8.SurrenderValue),
-                DeathBenefit8 = Round2(r8.DeathBenefit),
+                MortalityCharges4 = partBRow4.MortalityCharges,
+                ArbCharges4 = partBRow4.ArbCharges,
+                OtherCharges4 = Round2(partBRow4.PolicyAdministrationCharges + partBRow4.FundManagementCharge),
+                Gst4 = partBRow4.Gst,
+                FundAtEndOfYear4 = partBRow4.FundAtEndOfYear,
+                SurrenderValue4 = partBRow4.SurrenderValue,
+                DeathBenefit4 = partBRow4.DeathBenefit,
+                MortalityCharges8 = partBRow8.MortalityCharges,
+                ArbCharges8 = partBRow8.ArbCharges,
+                OtherCharges8 = Round2(partBRow8.PolicyAdministrationCharges + partBRow8.FundManagementCharge),
+                Gst8 = partBRow8.Gst,
+                FundAtEndOfYear8 = partBRow8.FundAtEndOfYear,
+                SurrenderValue8 = partBRow8.SurrenderValue,
+                DeathBenefit8 = partBRow8.DeathBenefit,
             });
 
-            partBRows4.Add(BuildPartBRow(py, ap, req.AnnualizedPremium, r4));
-            partBRows8.Add(BuildPartBRow(py, ap, req.AnnualizedPremium, r8));
+            partBRows4.Add(partBRow4);
+            partBRows8.Add(partBRow8);
 
             legacyRows.Add(new UlipIllustrationRow
             {
@@ -247,7 +275,8 @@ public class UlipCalculationService : IUlipCalculationService
         UlipCalculationRequest req,
         decimal annualRate,
         Dictionary<int, decimal> mortalityRates,
-        int monthsSinceLastBirthday)
+        int monthsSinceLastBirthday,
+        double fmcMonthly)
     {
         var policyTerm = req.PolicyTerm;
         var ppt        = req.Ppt;
@@ -256,7 +285,6 @@ public class UlipCalculationService : IUlipCalculationService
 
         // Effective monthly gross return: (1 + annual)^(1/12) − 1
         var monthlyRate = Math.Pow(1.0 + (double)annualRate, 1.0 / 12.0) - 1.0;
-        var fmcMonthly  = (double)FmcMonthly;
         var pacMonthly  = (double)PolicyAdminChargeMonthly;
 
         // Installment premium for each premium month
@@ -306,7 +334,7 @@ public class UlipCalculationService : IUlipCalculationService
 
                 // --- Mortality Charge ---
                 double sar = Math.Max(sa - fv, Math.Max(1.05 * cumTpp - fv, 0.0));
-                double annualMortalityRate = GetMortalityRate(mortalityRates, currentAge);
+                double annualMortalityRate = GetMortalityRate(mortalityRates, currentAge, req.Gender);
                 double mc = sar * annualMortalityRate / 12000.0;
                 fv -= mc;
                 yearMc += mc;
@@ -473,12 +501,21 @@ public class UlipCalculationService : IUlipCalculationService
         return dc;
     }
 
-    private static double GetMortalityRate(Dictionary<int, decimal> rates, int age)
+    private static double GetMortalityRate(Dictionary<int, decimal> rates, int age, string gender)
     {
         if (rates.TryGetValue(age, out var rate)) return (double)rate;
-        if (rates.Count == 0) return (double)FallbackMortalityRate(age);
-        var nearest = rates.MinBy(kv => Math.Abs(kv.Key - age));
-        return (double)nearest.Value;
+        if (rates.Count > 0)
+        {
+            var nearest = rates.MinBy(kv => Math.Abs(kv.Key - age));
+            return (double)nearest.Value;
+        }
+
+        var csvRates = CsvMortalityRates.Value;
+        var genderKey = NormalizeGender(gender);
+        if (csvRates.TryGetValue(genderKey, out var genderRates) && genderRates.TryGetValue(age, out var csvRate))
+            return (double)csvRate;
+
+        return (double)FallbackMortalityRate(age);
     }
 
     /// <summary>
@@ -654,4 +691,96 @@ public class UlipCalculationService : IUlipCalculationService
     private static decimal Round2(double value) =>
         Math.Round((decimal)value, 2, MidpointRounding.AwayFromZero);
 
+    private static double ResolveFmcMonthly(UlipCalculationRequest req)
+    {
+        var fmcTable = CsvFmcMonthlyRates.Value;
+        if (fmcTable.Count == 0)
+            return (double)DefaultFmcMonthly;
+
+        if (req.FundAllocations != null && req.FundAllocations.Count > 0)
+        {
+            decimal totalPct = req.FundAllocations.Sum(f => f.AllocationPercent);
+            if (totalPct > 0)
+            {
+                decimal weighted = 0m;
+                foreach (var alloc in req.FundAllocations)
+                {
+                    if (!fmcTable.TryGetValue(alloc.FundType ?? string.Empty, out var fmc))
+                        fmc = DefaultFmcMonthly;
+                    weighted += (alloc.AllocationPercent / totalPct) * fmc;
+                }
+                return (double)weighted;
+            }
+        }
+
+        if (fmcTable.TryGetValue("Blue-chip Equity Fund", out var defaultFmc))
+            return (double)defaultFmc;
+
+        return (double)DefaultFmcMonthly;
+    }
+
+    private static Dictionary<string, decimal> LoadFmcMonthlyRates()
+    {
+        var path = FindDocFile("ewealth_fmc_factors.csv");
+        if (path == null) return new(StringComparer.OrdinalIgnoreCase);
+
+        var dict = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in File.ReadAllLines(path).Skip(1))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = line.Split(',', StringSplitOptions.TrimEntries);
+            if (cols.Length < 3) continue;
+            if (decimal.TryParse(cols[2], NumberStyles.Number, CultureInfo.InvariantCulture, out var fmcPm))
+                dict[cols[0]] = fmcPm;
+        }
+        return dict;
+    }
+
+    private static Dictionary<string, Dictionary<int, decimal>> LoadMortalityRates()
+    {
+        var path = FindDocFile("ewealth_mortality_factors.csv");
+        var dict = new Dictionary<string, Dictionary<int, decimal>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["male"] = new(),
+            ["female"] = new(),
+            ["transgender"] = new(),
+        };
+        if (path == null) return dict;
+
+        foreach (var line in File.ReadAllLines(path).Skip(1))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = line.Split(',', StringSplitOptions.TrimEntries);
+            if (cols.Length < 3) continue;
+            if (!int.TryParse(cols[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var age)) continue;
+
+            // CSV columns: age_last_birthday, male_rate, transgender_rate, female_rate, atpd_rate
+            if (decimal.TryParse(cols.ElementAtOrDefault(1), NumberStyles.Number, CultureInfo.InvariantCulture, out var male))
+                dict["male"][age] = male;
+            if (decimal.TryParse(cols.ElementAtOrDefault(2), NumberStyles.Number, CultureInfo.InvariantCulture, out var trans))
+                dict["transgender"][age] = trans;
+            if (decimal.TryParse(cols.ElementAtOrDefault(3), NumberStyles.Number, CultureInfo.InvariantCulture, out var female))
+                dict["female"][age] = female;
+        }
+
+        return dict;
+    }
+
+    private static string NormalizeGender(string gender) =>
+        string.IsNullOrWhiteSpace(gender) ? "male" : gender.Trim().ToLowerInvariant();
+
+    private static string? FindDocFile(string fileName)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current != null)
+        {
+            var candidate = Path.Combine(current.FullName, "docs", fileName);
+            if (File.Exists(candidate)) return candidate;
+            var direct = Path.Combine(current.FullName, fileName);
+            if (File.Exists(direct)) return direct;
+            current = current.Parent;
+        }
+
+        return null;
+    }
 }
