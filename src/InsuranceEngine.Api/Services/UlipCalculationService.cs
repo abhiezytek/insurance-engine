@@ -232,13 +232,16 @@ public class UlipCalculationService : IUlipCalculationService
         // Persist rich input/output snapshot for reconstruction (PDF export, auditing)
         try
         {
+            var snapshot = UlipCalculationSnapshot.FromResponse(response);
             _db.CalculationLogs.Add(new CalculationLog
             {
                 Module = "ULIP",
                 ProductType = "ULIP",
                 PolicyNumber = req.PolicyNumber,
-                InputJson = JsonSerializer.Serialize(req),
-                ResultJson = JsonSerializer.Serialize(response),
+                // Store only minimal identifying info in input log
+                InputJson = JsonSerializer.Serialize(new { PolicyNumber = req.PolicyNumber, ProductCode = req.ProductCode }),
+                // Store a minimized snapshot of the calculation output (no DOB, addresses, contact info, or fund allocations)
+                ResultJson = JsonSerializer.Serialize(snapshot),
                 RequestedBy = "System",
                 Status = "Completed"
             });
@@ -262,15 +265,37 @@ public class UlipCalculationService : IUlipCalculationService
 
         if (calcLog != null)
         {
-            // 1) Try deserializing stored response directly
+            // 1) Try deserializing stored minimized snapshot
             try
             {
-                var loggedResponse = JsonSerializer.Deserialize<UlipCalculationResponse>(calcLog.ResultJson);
-                if (loggedResponse?.PartARows?.Count > 0 &&
-                    loggedResponse.PartBRows4?.Count > 0 &&
-                    loggedResponse.PartBRows8?.Count > 0)
+                var snapshot = JsonSerializer.Deserialize<UlipCalculationSnapshot>(calcLog.ResultJson);
+                if (snapshot?.PartARows?.Count > 0 &&
+                    snapshot.PartBRows4?.Count > 0 &&
+                    snapshot.PartBRows8?.Count > 0)
                 {
-                    return loggedResponse;
+                    var resp = snapshot.ToResponse();
+                    // Supplement with legacy yearly rows (non-PII financial data) from DB for backward compatibility/testing
+                    var yearly = await _db.UlipIllustrationResults
+                        .Where(r => r.PolicyNumber == policyNumber)
+                        .OrderBy(r => r.Year)
+                        .ToListAsync();
+                    if (yearly.Count > 0)
+                    {
+                        resp.YearlyTable = yearly.Select(r => new UlipIllustrationRow
+                        {
+                            Year = r.Year,
+                            Age = r.Age,
+                            AnnualPremium = r.Premium,
+                            PremiumInvested = r.PremiumInvested,
+                            MortalityCharge = r.MortalityCharge,
+                            PolicyCharge = r.PolicyCharge,
+                            FundValue4 = r.FundValue4,
+                            DeathBenefit4 = r.DeathBenefit4,
+                            FundValue8 = r.FundValue8,
+                            DeathBenefit8 = r.DeathBenefit8
+                        }).ToList();
+                    }
+                    return resp;
                 }
             }
             catch { /* fallback to input-based rebuild */ }
@@ -800,6 +825,70 @@ public class UlipCalculationService : IUlipCalculationService
             return (double)defaultFmc;
 
         return (double)DefaultFmcMonthly;
+    }
+
+    // -----------------------------------------------------------------------
+    // Minimal snapshot used for secure persistence/reconstruction
+    // -----------------------------------------------------------------------
+    public sealed record UlipCalculationSnapshot
+    {
+        public string PolicyNumber { get; init; } = string.Empty;
+        public string ProductCode { get; init; } = string.Empty;
+        public string Option { get; init; } = string.Empty;
+        public int EntryAge { get; init; }
+        public int PolicyTerm { get; init; }
+        public int Ppt { get; init; }
+        public decimal AnnualizedPremium { get; init; }
+        public decimal SumAssured { get; init; }
+        public string PremiumFrequency { get; init; } = string.Empty;
+        public int MaturityAge { get; init; }
+        public decimal PremiumInstallment { get; init; }
+        public decimal NetYield4 { get; init; }
+        public decimal NetYield8 { get; init; }
+        public List<PartARow> PartARows { get; init; } = new();
+        public List<PartBRow> PartBRows4 { get; init; } = new();
+        public List<PartBRow> PartBRows8 { get; init; } = new();
+
+        public static UlipCalculationSnapshot FromResponse(UlipCalculationResponse r) => new()
+        {
+            PolicyNumber = r.PolicyNumber,
+            ProductCode = r.ProductCode,
+            Option = r.Option,
+            EntryAge = r.EntryAge,
+            PolicyTerm = r.PolicyTerm,
+            Ppt = r.Ppt,
+            AnnualizedPremium = r.AnnualizedPremium,
+            SumAssured = r.SumAssured,
+            PremiumFrequency = r.PremiumFrequency,
+            MaturityAge = r.MaturityAge,
+            PremiumInstallment = r.PremiumInstallment,
+            NetYield4 = r.NetYield4,
+            NetYield8 = r.NetYield8,
+            PartARows = r.PartARows,
+            PartBRows4 = r.PartBRows4,
+            PartBRows8 = r.PartBRows8
+        };
+
+        public UlipCalculationResponse ToResponse() => new()
+        {
+            PolicyNumber = PolicyNumber,
+            ProductCode = ProductCode,
+            Option = Option,
+            EntryAge = EntryAge,
+            PolicyTerm = PolicyTerm,
+            Ppt = Ppt,
+            AnnualizedPremium = AnnualizedPremium,
+            SumAssured = SumAssured,
+            PremiumFrequency = PremiumFrequency,
+            MaturityAge = MaturityAge,
+            PremiumInstallment = PremiumInstallment,
+            NetYield4 = NetYield4,
+            NetYield8 = NetYield8,
+            PartARows = PartARows,
+            PartBRows4 = PartBRows4,
+            PartBRows8 = PartBRows8,
+            // YearlyTable not required for PDF reconstruction; left null/empty
+        };
     }
 
     private static Dictionary<string, decimal> LoadFmcMonthlyRates()
