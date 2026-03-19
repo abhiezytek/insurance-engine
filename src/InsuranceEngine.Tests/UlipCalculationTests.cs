@@ -45,6 +45,8 @@ public class UlipCalculationTests
     [OneTimeSetUp]
     public void SetUp()
     {
+        DocFileHelper.EnsureDocFilesAvailable();
+
         var options = new DbContextOptionsBuilder<InsuranceDbContext>()
             .UseInMemoryDatabase("UlipCalcTestDb_" + Guid.NewGuid())
             .Options;
