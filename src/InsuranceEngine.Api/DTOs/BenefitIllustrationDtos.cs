@@ -85,6 +85,13 @@ public class BenefitIllustrationResponse
 
     /// <summary>Annual Premium (Annualised Premium × Modal Factor × Payments/Year).</summary>
     public decimal AnnualPremium { get; set; }
+
+    /// <summary>Installment premium per payment event (shows modal factor impact).</summary>
+    public decimal InstallmentPremium { get; set; }
+
+    /// <summary>Modal factor applied for the chosen premium frequency.</summary>
+    public decimal ModalFactor { get; set; }
+
     public int Ppt { get; set; }
     public int PolicyTerm { get; set; }
     public int EntryAge { get; set; }
@@ -141,6 +148,24 @@ public class BenefitIllustrationRow
 
     /// <summary>Surrender Value = MAX(GSV, SSV).</summary>
     public decimal SurrenderValue { get; set; }
+
+    /// <summary>GSV factor applied for this policy year.</summary>
+    public decimal GsvFactor { get; set; }
+
+    /// <summary>SSV factor 1 applied for this policy year.</summary>
+    public decimal SsvFactor1 { get; set; }
+
+    /// <summary>SSV factor 2 applied for this policy year.</summary>
+    public decimal SsvFactor2 { get; set; }
+
+    /// <summary>Paid-up maturity benefit used in SSV computation.</summary>
+    public decimal PaidUpMaturityBenefit { get; set; }
+
+    /// <summary>Paid-up income component (GI/LI) used in SSV computation.</summary>
+    public decimal PaidUpIncomeComponent { get; set; }
+
+    /// <summary>Indicates whether GSV or SSV was the max for surrender value.</summary>
+    public string SurrenderValueSource { get; set; } = "GSV";
 
     /// <summary>Death benefit payable if death occurs in this policy year.</summary>
     public decimal DeathBenefit { get; set; }

@@ -42,6 +42,9 @@ public class UlipCalculationRequest
     /// <summary>Full name of the policyholder (if different from life assured).</summary>
     public string PolicyholderName { get; set; } = string.Empty;
 
+    /// <summary>Whether Life Assured is the same as Policyholder.</summary>
+    public bool LifeAssuredSameAsPolicyholder { get; set; } = true;
+
     /// <summary>Product code for the ULIP (e.g. "EWEALTH-ROYALE").</summary>
     public string ProductCode { get; set; } = "EWEALTH-ROYALE";
 
@@ -99,7 +102,7 @@ public class UlipCalculationRequest
 
     // ---- PPT type ----
 
-    /// <summary>Type of Premium Payment Term: "Limited" or "Till_Maturity".</summary>
+    /// <summary>Type of Premium Payment Term: "Limited", "Single", or "Till_Maturity".</summary>
     public string TypeOfPpt { get; set; } = "Limited";
 
     // ---- Investment strategy ----
@@ -313,6 +316,7 @@ public class UlipCalculationResponse
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public string Option { get; set; } = "Platinum";
+    public bool LifeAssuredSameAsPolicyholder { get; set; }
     public string Gender { get; set; } = string.Empty;
     public int EntryAge { get; set; }
     public int PolicyTerm { get; set; }

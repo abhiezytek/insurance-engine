@@ -353,9 +353,9 @@ public class UlipController : ControllerBase
         gl("Maturity Age",                 $"{r.MaturityAge} years");
         gl("Policy Term (PT)",             $"{r.PolicyTerm} years");
         gl("Premium Payment Term (PPT)",   $"{r.Ppt} years");
-        gl("Annualized Premium (AP)",      $"₹{r.AnnualizedPremium:N0}");
+        gl("Annualized Premium",           $"₹{r.AnnualizedPremium:N0}");
         gl("Premium Installment",          $"₹{r.PremiumInstallment:N0}");
-        gl("Sum Assured (SA)",             $"₹{r.SumAssured:N0}");
+        gl("Sum Assured",                  $"₹{r.SumAssured:N0}");
         gl("Premium Frequency",            r.PremiumFrequency);
         gl("Net Yield @ 4%",               $"{r.NetYield4}%");
         gl("Net Yield @ 8%",               $"{r.NetYield8}%");
@@ -375,8 +375,8 @@ public class UlipController : ControllerBase
         foreach (var _ in new[] { 0, 1 })
         {
             sb.AppendLine("  <th>Mortality<br/>Charges</th>");
-            sb.AppendLine("  <th>ARB<br/>Charges</th>");
-            sb.AppendLine("  <th>Other<br/>Charges*</th>");
+            sb.AppendLine("  <th>Additional Risk Benefit<br/>Charges</th>");
+            sb.AppendLine("  <th>Other<br/>Charges</th>");
             sb.AppendLine("  <th>GST</th>");
             sb.AppendLine("  <th>Fund at End<br/>of Year</th>");
             sb.AppendLine("  <th>Surrender<br/>Value</th>");
@@ -395,7 +395,7 @@ public class UlipController : ControllerBase
             sb.AppendLine("</tr>");
         }
         sb.AppendLine("</tbody></table>");
-        sb.AppendLine("<p class='note'>* Other Charges = Policy Administration Charge + Fund Management Charge.<br/>");
+        sb.AppendLine("<p class='note'>Other Charges = Policy Administration Charges + Fund Management Charges.<br/>");
         sb.AppendLine("Surrender Value = Fund Value minus Discontinuance Charge (as per IRDAI regulations, applicable in years 1–4).</p>");
 
         sb.AppendLine("<div class='disclaimer'>");
@@ -413,19 +413,19 @@ public class UlipController : ControllerBase
             sb.AppendLine("<table>");
             sb.AppendLine("<thead><tr>");
             sb.AppendLine("<th>Policy<br/>Year</th>");
-            sb.AppendLine("<th>Annualised<br/>Premium (AP)</th>");
-            sb.AppendLine("<th>Premium<br/>Alloc.<br/>Charge</th>");
-            sb.AppendLine("<th>AP − PAC</th>");
+            sb.AppendLine("<th>Annualized<br/>Premium</th>");
+            sb.AppendLine("<th>Premium Allocation<br/>Charges</th>");
+            sb.AppendLine("<th>Annualized Premium<br/>less Premium Allocation Charges</th>");
             sb.AppendLine("<th>Mortality<br/>Charges</th>");
-            sb.AppendLine("<th>ARB<br/>Charges</th>");
+            sb.AppendLine("<th>Additional Risk Benefit<br/>Charges</th>");
             sb.AppendLine("<th>GST</th>");
-            sb.AppendLine("<th>Policy<br/>Admin<br/>Charge</th>");
-            sb.AppendLine("<th>Extra<br/>Alloc.</th>");
-            sb.AppendLine("<th>Fund<br/>Before<br/>FMC</th>");
-            sb.AppendLine("<th>FMC</th>");
+            sb.AppendLine("<th>Policy<br/>Administration Charges</th>");
+            sb.AppendLine("<th>Extra Premium<br/>Allocation</th>");
+            sb.AppendLine("<th>Fund Before<br/>Fund Management Charges</th>");
+            sb.AppendLine("<th>Fund Management<br/>Charges</th>");
             sb.AppendLine("<th>Loyalty<br/>Addition</th>");
             sb.AppendLine("<th>Wealth<br/>Booster</th>");
-            sb.AppendLine("<th>Return<br/>of<br/>Charges</th>");
+            sb.AppendLine("<th>Return of Charges<br/>(combined)</th>");
             sb.AppendLine("<th>Fund at<br/>End of Year</th>");
             sb.AppendLine("<th>Surrender<br/>Value</th>");
             sb.AppendLine("<th>Death<br/>Benefit</th>");
@@ -461,9 +461,9 @@ public class UlipController : ControllerBase
         renderPartB(r.PartBRows4, "4% p.a.", $"{r.NetYield4}%");
 
         sb.AppendLine("<div class='disclaimer'>");
-        sb.AppendLine("<strong>Legend:</strong> PAC = Premium Allocation Charge; FMC = Fund Management Charge (0.1118% p.m.); ");
-        sb.AppendLine("ARB = Additional Risk Benefit (Platinum Plus only); LA = Loyalty Addition; WB = Wealth Booster; ");
-        sb.AppendLine("Return of Charges = Return of Policy Admin Charges (Year 10) + Return of Mortality Charges (Maturity).<br/><br/>");
+        sb.AppendLine("<strong>Legend:</strong> Premium Allocation Charges; Fund Management Charges (0.1118% p.m.); ");
+        sb.AppendLine("Additional Risk Benefit Charges (Platinum Plus only); Loyalty Addition; Wealth Booster; ");
+        sb.AppendLine("Return of Charges (combined) = Return of Policy Administration Charges (Year 10) + Return of Mortality Charges (Maturity).<br/><br/>");
         sb.AppendLine("Star Union Dai-ichi Life Insurance Company Limited | IRDAI Regn. No: 142 | UIN: 142L082V03<br/>");
         sb.AppendLine("Registered Office: 11th Floor, Vishwaroop I.T. Park, Vashi, Navi Mumbai – 400 703 | 1800 266 8833 (Toll Free)");
         sb.AppendLine("</div>");

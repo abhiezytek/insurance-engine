@@ -3,6 +3,7 @@ using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Text.Json;
 using System.Linq;
 using System.IO;
 using System.Threading;
@@ -82,6 +83,15 @@ public class UlipCalculationService : IUlipCalculationService
     {
         var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
 
+        // Life Assured same as Policyholder → mirror fields for validation/calculation
+        if (req.LifeAssuredSameAsPolicyholder)
+        {
+            req.PolicyholderName = string.IsNullOrWhiteSpace(req.PolicyholderName) ? req.CustomerName : req.PolicyholderName;
+            req.PolicyholderGender = string.IsNullOrWhiteSpace(req.PolicyholderGender) ? req.Gender : req.PolicyholderGender;
+            req.PolicyholderDateOfBirth = req.PolicyholderDateOfBirth == default ? req.DateOfBirth : req.PolicyholderDateOfBirth;
+            req.PolicyholderAge = req.PolicyholderAge == 0 ? req.EntryAge : req.PolicyholderAge;
+        }
+
         // Derive EntryAge from DOB when not explicitly provided (UI should already
         // send DOB per correction prompt; EntryAge retained for backward compatibility).
         if (req.EntryAge <= 0 && req.DateOfBirth != default)
@@ -105,6 +115,9 @@ public class UlipCalculationService : IUlipCalculationService
         var product = await _db.Products
             .FirstOrDefaultAsync(p => p.Code == req.ProductCode && p.ProductType == "ULIP");
         var productName = product?.Name ?? req.ProductCode;
+
+        // Derive Sum Assured from premium and PPT type (single vs regular).
+        req.SumAssured = DeriveSumAssured(req);
 
         // Load mortality rates for the life assured's gender
         var mortalityRates = await _db.MortalityRates
@@ -189,13 +202,14 @@ public class UlipCalculationService : IUlipCalculationService
         var netYield4 = CalculateNetYield(req.AnnualizedPremium, req.Ppt, req.PolicyTerm, (decimal)lastR4.FundEnd);
         var netYield8 = CalculateNetYield(req.AnnualizedPremium, req.Ppt, req.PolicyTerm, (decimal)lastR8.FundEnd);
 
-        return new UlipCalculationResponse
+        var response = new UlipCalculationResponse
         {
             PolicyNumber       = req.PolicyNumber,
             CustomerName       = req.CustomerName,
             ProductCode        = req.ProductCode,
             ProductName        = productName,
             Option             = req.Option,
+            LifeAssuredSameAsPolicyholder = req.LifeAssuredSameAsPolicyholder,
             Gender             = req.Gender,
             EntryAge           = req.EntryAge,
             PolicyTerm         = req.PolicyTerm,
@@ -214,10 +228,90 @@ public class UlipCalculationService : IUlipCalculationService
             PartBRows8         = partBRows8,
             YearlyTable        = legacyRows,
         };
+
+        // Persist rich input/output snapshot for reconstruction (PDF export, auditing)
+        try
+        {
+            var snapshot = UlipCalculationSnapshot.FromResponse(response);
+            _db.CalculationLogs.Add(new CalculationLog
+            {
+                Module = "ULIP",
+                ProductType = "ULIP",
+                PolicyNumber = req.PolicyNumber,
+                // Store only minimal identifying info in input log
+                InputJson = JsonSerializer.Serialize(new { PolicyNumber = req.PolicyNumber, ProductCode = req.ProductCode }),
+                // Store a minimized snapshot of the calculation output (no DOB, addresses, contact info, or fund allocations)
+                ResultJson = JsonSerializer.Serialize(snapshot),
+                RequestedBy = "System",
+                Status = "Completed"
+            });
+            await _db.SaveChangesAsync();
+        }
+        catch
+        {
+            // Non-critical: PDF reconstruction will still fall back to persisted yearly rows
+        }
+
+        return response;
     }
 
     public async Task<UlipCalculationResponse?> GetByPolicyNumberAsync(string policyNumber)
     {
+        // Prefer rich, previously-calculated response snapshot (includes Part A/B rows)
+        var calcLog = await _db.CalculationLogs
+            .Where(l => l.PolicyNumber == policyNumber && (l.Module == "ULIP" || l.ProductType == "ULIP"))
+            .OrderByDescending(l => l.CreatedDate)
+            .FirstOrDefaultAsync();
+
+        if (calcLog != null)
+        {
+            // 1) Try deserializing stored minimized snapshot
+            try
+            {
+                var snapshot = JsonSerializer.Deserialize<UlipCalculationSnapshot>(calcLog.ResultJson);
+                if (snapshot?.PartARows?.Count > 0 &&
+                    snapshot.PartBRows4?.Count > 0 &&
+                    snapshot.PartBRows8?.Count > 0)
+                {
+                    var resp = snapshot.ToResponse();
+                    // Supplement with legacy yearly rows (non-PII financial data) from DB for backward compatibility/testing
+                    var yearly = await _db.UlipIllustrationResults
+                        .Where(r => r.PolicyNumber == policyNumber)
+                        .OrderBy(r => r.Year)
+                        .ToListAsync();
+                    if (yearly.Count > 0)
+                    {
+                        resp.YearlyTable = yearly.Select(r => new UlipIllustrationRow
+                        {
+                            Year = r.Year,
+                            Age = r.Age,
+                            AnnualPremium = r.Premium,
+                            PremiumInvested = r.PremiumInvested,
+                            MortalityCharge = r.MortalityCharge,
+                            PolicyCharge = r.PolicyCharge,
+                            FundValue4 = r.FundValue4,
+                            DeathBenefit4 = r.DeathBenefit4,
+                            FundValue8 = r.FundValue8,
+                            DeathBenefit8 = r.DeathBenefit8
+                        }).ToList();
+                    }
+                    return resp;
+                }
+            }
+            catch { /* fallback to input-based rebuild */ }
+
+            // 2) Recalculate using stored input if available to rebuild Part A/B tables
+            try
+            {
+                var loggedRequest = JsonSerializer.Deserialize<UlipCalculationRequest>(calcLog.InputJson);
+                if (loggedRequest != null)
+                {
+                    return await CalculateAsync(loggedRequest);
+                }
+            }
+            catch { /* proceed to legacy fallback */ }
+        }
+
         var results = await _db.UlipIllustrationResults
             .Where(r => r.PolicyNumber == policyNumber)
             .OrderBy(r => r.Year)
@@ -246,6 +340,9 @@ public class UlipCalculationService : IUlipCalculationService
             YearlyTable       = rows,
             MaturityBenefit4  = last.FundValue4,
             MaturityBenefit8  = last.FundValue8,
+            PartARows         = new List<PartARow>(),    // legacy fallback: empty (forces caller to use richer snapshot when available)
+            PartBRows4        = new List<PartBRow>(),
+            PartBRows8        = new List<PartBRow>(),
         };
     }
 
@@ -467,6 +564,17 @@ public class UlipCalculationService : IUlipCalculationService
             "Monthly"                       => annualizedPremium / 12.0,
             _                               => annualizedPremium,   // Yearly / default
         };
+
+    /// <summary>Derive Sum Assured per product rules (single pay vs regular).</summary>
+    private static decimal DeriveSumAssured(UlipCalculationRequest req)
+    {
+        // Treat PPT=1 or TypeOfPpt="Single" as single-pay.
+        var isSinglePay = req.Ppt == 1 || string.Equals(req.TypeOfPpt, "Single", StringComparison.OrdinalIgnoreCase);
+        var multiplier = isSinglePay ? 1.25m : 10m;
+        var basePremium = isSinglePay ? req.AnnualizedPremium : req.AnnualizedPremium;
+        var derived = Round2((double)(multiplier * basePremium));
+        return (decimal)derived;
+    }
 
     /// <summary>
     /// Returns the set of month-within-year indices (1–12) on which a premium
@@ -717,6 +825,70 @@ public class UlipCalculationService : IUlipCalculationService
             return (double)defaultFmc;
 
         return (double)DefaultFmcMonthly;
+    }
+
+    // -----------------------------------------------------------------------
+    // Minimal snapshot used for secure persistence/reconstruction
+    // -----------------------------------------------------------------------
+    public sealed record UlipCalculationSnapshot
+    {
+        public string PolicyNumber { get; init; } = string.Empty;
+        public string ProductCode { get; init; } = string.Empty;
+        public string Option { get; init; } = string.Empty;
+        public int EntryAge { get; init; }
+        public int PolicyTerm { get; init; }
+        public int Ppt { get; init; }
+        public decimal AnnualizedPremium { get; init; }
+        public decimal SumAssured { get; init; }
+        public string PremiumFrequency { get; init; } = string.Empty;
+        public int MaturityAge { get; init; }
+        public decimal PremiumInstallment { get; init; }
+        public decimal NetYield4 { get; init; }
+        public decimal NetYield8 { get; init; }
+        public List<PartARow> PartARows { get; init; } = new();
+        public List<PartBRow> PartBRows4 { get; init; } = new();
+        public List<PartBRow> PartBRows8 { get; init; } = new();
+
+        public static UlipCalculationSnapshot FromResponse(UlipCalculationResponse r) => new()
+        {
+            PolicyNumber = r.PolicyNumber,
+            ProductCode = r.ProductCode,
+            Option = r.Option,
+            EntryAge = r.EntryAge,
+            PolicyTerm = r.PolicyTerm,
+            Ppt = r.Ppt,
+            AnnualizedPremium = r.AnnualizedPremium,
+            SumAssured = r.SumAssured,
+            PremiumFrequency = r.PremiumFrequency,
+            MaturityAge = r.MaturityAge,
+            PremiumInstallment = r.PremiumInstallment,
+            NetYield4 = r.NetYield4,
+            NetYield8 = r.NetYield8,
+            PartARows = r.PartARows,
+            PartBRows4 = r.PartBRows4,
+            PartBRows8 = r.PartBRows8
+        };
+
+        public UlipCalculationResponse ToResponse() => new()
+        {
+            PolicyNumber = PolicyNumber,
+            ProductCode = ProductCode,
+            Option = Option,
+            EntryAge = EntryAge,
+            PolicyTerm = PolicyTerm,
+            Ppt = Ppt,
+            AnnualizedPremium = AnnualizedPremium,
+            SumAssured = SumAssured,
+            PremiumFrequency = PremiumFrequency,
+            MaturityAge = MaturityAge,
+            PremiumInstallment = PremiumInstallment,
+            NetYield4 = NetYield4,
+            NetYield8 = NetYield8,
+            PartARows = PartARows,
+            PartBRows4 = PartBRows4,
+            PartBRows8 = PartBRows8,
+            // YearlyTable not required for PDF reconstruction; left null/empty
+        };
     }
 
     private static Dictionary<string, decimal> LoadFmcMonthlyRates()

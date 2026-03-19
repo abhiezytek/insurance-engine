@@ -45,6 +45,8 @@ public class UlipCalculationTests
     [OneTimeSetUp]
     public void SetUp()
     {
+        DocFileHelper.EnsureDocFilesAvailable();
+
         var options = new DbContextOptionsBuilder<InsuranceDbContext>()
             .UseInMemoryDatabase("UlipCalcTestDb_" + Guid.NewGuid())
             .Options;
@@ -190,6 +192,57 @@ public class UlipCalculationTests
         var result = await _svc.CalculateAsync(DefaultRequest(pt: 10, ppt: 10));
         Assert.Greater(result.YearlyTable[9].FundValue8, result.YearlyTable[0].FundValue8,
             "FV8 at year 10 should exceed FV8 at year 1");
+    }
+
+    [Test]
+    public async Task SumAssured_IsDerived_ForSinglePay()
+    {
+        var req = DefaultRequest(ap: 100_000m, pt: 10, ppt: 1);
+        req.TypeOfPpt = "Single";
+        req.SumAssured = 0m;
+        var result = await _svc.CalculateAsync(req);
+        Assert.AreEqual(Math.Round(1.25m * 100_000m, 2, MidpointRounding.AwayFromZero), result.SumAssured);
+    }
+
+    [Test]
+    public async Task SumAssured_IsDerived_ForRegularPay()
+    {
+        var req = DefaultRequest(ap: 50_000m, pt: 10, ppt: 10);
+        req.SumAssured = 0m;
+        var result = await _svc.CalculateAsync(req);
+        Assert.AreEqual(Math.Round(10m * 50_000m, 2, MidpointRounding.AwayFromZero), result.SumAssured);
+    }
+
+    [Test]
+    public async Task PartA_HasRequiredColumnsAndValues()
+    {
+        var result = await _svc.CalculateAsync(DefaultRequest(pt: 10, ppt: 10));
+        var row = result.PartARows.First();
+        Assert.GreaterOrEqual(row.MortalityCharges4, 0);
+        Assert.GreaterOrEqual(row.OtherCharges4, 0);
+        Assert.GreaterOrEqual(row.SurrenderValue4, 0);
+        Assert.GreaterOrEqual(row.DeathBenefit4, 0);
+        Assert.GreaterOrEqual(row.MortalityCharges8, 0);
+        Assert.GreaterOrEqual(row.OtherCharges8, 0);
+        Assert.GreaterOrEqual(row.SurrenderValue8, 0);
+        Assert.GreaterOrEqual(row.DeathBenefit8, 0);
+    }
+
+    [Test]
+    public async Task PartB_HasDetailedChargeColumns()
+    {
+        var result = await _svc.CalculateAsync(DefaultRequest(pt: 10, ppt: 10));
+        var row4 = result.PartBRows4.First();
+        Assert.GreaterOrEqual(row4.MortalityCharges, 0);
+        Assert.GreaterOrEqual(row4.PolicyAdministrationCharges, 0);
+        Assert.GreaterOrEqual(row4.FundBeforeFmc, 0);
+        Assert.GreaterOrEqual(row4.FundManagementCharge, 0);
+        Assert.GreaterOrEqual(row4.LoyaltyAddition, 0);
+        Assert.GreaterOrEqual(row4.WealthBooster, 0);
+        Assert.GreaterOrEqual(row4.ReturnOfCharges, 0);
+        Assert.GreaterOrEqual(row4.FundAtEndOfYear, 0);
+        Assert.GreaterOrEqual(row4.SurrenderValue, 0);
+        Assert.GreaterOrEqual(row4.DeathBenefit, 0);
     }
 
     // -----------------------------------------------------------------------

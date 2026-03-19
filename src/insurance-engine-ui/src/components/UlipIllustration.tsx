@@ -37,6 +37,7 @@ export default function UlipIllustration() {
     policyNumber:        '',
     customerName:        '',
     policyholderName:    '',
+    lifeAssuredSameAsPolicyholder: true,
     productCode:         'EWEALTH-ROYALE',
     option:              'Platinum',
     gender:              'Male',
@@ -72,6 +73,12 @@ export default function UlipIllustration() {
   const [loading, setLoading] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [activeTab, setActiveTab] = useState<'partA' | 'partB4' | 'partB8'>('partA');
+
+  const derivedSumAssured = () => {
+    const isSingle = form.ppt === 1 || form.typeOfPpt === 'Single';
+    const multiplier = isSingle ? 1.25 : 10;
+    return Math.round((form.annualizedPremium || 0) * multiplier);
+  };
 
   // Load ULIP products
   useEffect(() => {
@@ -111,7 +118,12 @@ export default function UlipIllustration() {
     setError(null);
     setResult(null);
     try {
-      const resp = await runUlipCalculation(form);
+      const payload: UlipCalculationRequest = {
+        ...form,
+        sumAssured: derivedSumAssured(),
+        lifeAssuredSameAsPolicyholder: form.lifeAssuredSameAsPolicyholder ?? false,
+      };
+      const resp = await runUlipCalculation(payload);
       setResult(resp.data);
       setActiveTab('partA');
     } catch (e: unknown) {
@@ -173,15 +185,15 @@ export default function UlipIllustration() {
         <thead>
           <tr className="bg-[#004282] text-white">
             <th className="px-3 py-2 text-center" rowSpan={2}>Year</th>
-            <th className="px-3 py-2 text-right" rowSpan={2}>AP</th>
+            <th className="px-3 py-2 text-right" rowSpan={2}>Annualized Premium</th>
             <th className="px-3 py-2 text-center bg-indigo-700" colSpan={7}>At 4% p.a. Gross Return</th>
             <th className="px-3 py-2 text-center bg-emerald-700" colSpan={7}>At 8% p.a. Gross Return</th>
           </tr>
           <tr className="bg-[#003070] text-white text-xs">
-            {['MC','ARB','Other*','GST','Fund','SV','DB'].map(h => (
+            {['Mortality Charges','ARB Charges','Other Charges','GST','Fund at End of Year','Surrender Value','Death Benefit'].map(h => (
               <th key={h+'4'} className="px-2 py-1.5 text-right bg-indigo-800">{h}</th>
             ))}
-            {['MC','ARB','Other*','GST','Fund','SV','DB'].map(h => (
+            {['Mortality Charges','ARB Charges','Other Charges','GST','Fund at End of Year','Surrender Value','Death Benefit'].map(h => (
               <th key={h+'8'} className="px-2 py-1.5 text-right bg-emerald-800">{h}</th>
             ))}
           </tr>
@@ -219,20 +231,20 @@ export default function UlipIllustration() {
         <thead>
           <tr className="bg-[#004282] text-white">
             <th className="px-2 py-2 text-center">Year</th>
-            <th className="px-2 py-2 text-right">AP</th>
-            <th className="px-2 py-2 text-right">PAC%</th>
-            <th className="px-2 py-2 text-right">AP−PAC</th>
-            <th className="px-2 py-2 text-right">MC</th>
-            <th className="px-2 py-2 text-right">ARB</th>
-            <th className="px-2 py-2 text-right">Admin</th>
-            <th className="px-2 py-2 text-right">Fund<br/>Bef.FMC</th>
-            <th className="px-2 py-2 text-right">FMC</th>
-            <th className="px-2 py-2 text-right text-yellow-200">LA</th>
-            <th className="px-2 py-2 text-right text-yellow-200">WB</th>
-            <th className="px-2 py-2 text-right text-yellow-200">RoC</th>
-            <th className="px-2 py-2 text-right">Fund End</th>
-            <th className="px-2 py-2 text-right">SV</th>
-            <th className="px-2 py-2 text-right">DB</th>
+            <th className="px-2 py-2 text-right">Annualized Premium</th>
+            <th className="px-2 py-2 text-right">Premium Allocation Charge</th>
+            <th className="px-2 py-2 text-right">Premium after PAC</th>
+            <th className="px-2 py-2 text-right">Mortality Charges</th>
+            <th className="px-2 py-2 text-right">ARB Charges</th>
+            <th className="px-2 py-2 text-right">Policy Admin Charges</th>
+            <th className="px-2 py-2 text-right">Fund before FMC</th>
+            <th className="px-2 py-2 text-right">Fund Management Charge</th>
+            <th className="px-2 py-2 text-right text-yellow-200">Loyalty Addition</th>
+            <th className="px-2 py-2 text-right text-yellow-200">Wealth Booster</th>
+            <th className="px-2 py-2 text-right text-yellow-200">Return of Charges</th>
+            <th className="px-2 py-2 text-right">Fund at End of Year</th>
+            <th className="px-2 py-2 text-right">Surrender Value</th>
+            <th className="px-2 py-2 text-right">Death Benefit</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -371,13 +383,13 @@ export default function UlipIllustration() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Policyholder Name</label>
             <input type="text" value={form.policyholderName ?? ''} onChange={e => set('policyholderName', e.target.value)}
-              placeholder="Full name (if different from Life Assured)" className={INPUT_CLS} />
+              placeholder="Full name (if different from Life Assured)" className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder} />
           </div>
 
           {/* Policyholder Gender */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Policyholder)</label>
-            <select value={form.policyholderGender ?? 'Male'} onChange={e => set('policyholderGender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
+            <select value={form.policyholderGender ?? 'Male'} onChange={e => set('policyholderGender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder}>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
@@ -386,13 +398,34 @@ export default function UlipIllustration() {
           {/* Policyholder DOB */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Policyholder)</label>
-            <input type="date" value={form.policyholderDateOfBirth ?? ''} onChange={e => set('policyholderDateOfBirth', e.target.value || undefined)} className={INPUT_CLS} />
+            <input type="date" value={form.policyholderDateOfBirth ?? ''} onChange={e => set('policyholderDateOfBirth', e.target.value || undefined)} className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder} />
           </div>
 
           {/* Policyholder Age */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Age (Policyholder)</label>
-            <input type="number" value={form.policyholderAge ?? 0} onChange={e => set('policyholderAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
+            <input type="number" value={form.policyholderAge ?? 0} onChange={e => set('policyholderAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder} />
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-slate-700 col-span-2">
+            <input
+              type="checkbox"
+              id="laSameUlip"
+              checked={form.lifeAssuredSameAsPolicyholder ?? false}
+              onChange={e => {
+                const same = e.target.checked;
+                setForm(p => ({
+                  ...p,
+                  lifeAssuredSameAsPolicyholder: same,
+                  policyholderName: same ? p.customerName : p.policyholderName,
+                  policyholderGender: same ? p.gender : p.policyholderGender,
+                  policyholderDateOfBirth: same ? p.dateOfBirth : p.policyholderDateOfBirth,
+                  policyholderAge: same ? p.entryAge : p.policyholderAge,
+                }));
+              }}
+              className="accent-[#004282]"
+            />
+            <label htmlFor="laSameUlip">Life Assured is the same as Policyholder</label>
           </div>
         </div>
 
@@ -425,8 +458,8 @@ export default function UlipIllustration() {
 
           {/* Sum Assured */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Sum Assured (SA) ₹</label>
-            <input type="number" value={form.sumAssured} onChange={e => set('sumAssured', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Sum Assured (SA) ₹ — derived</label>
+            <input type="number" value={derivedSumAssured()} readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
           </div>
 
           {/* Premium Frequency */}
