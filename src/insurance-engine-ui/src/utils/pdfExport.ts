@@ -184,7 +184,7 @@ export function downloadEndowmentBiPdf(result: BenefitIllustrationResult) {
 
   addTable(
     doc,
-    ['Yr','AP (Rs.)' ,'Total Paid (Rs.)', 'GI (Rs.)', 'LI (Rs.)', 'Total Inc (Rs.)', 'Cumul. SB (Rs.)', 'GSV (Rs.)', 'SSV (Rs.)', 'SV (Rs.)', 'Death Benefit (Rs.)', 'Maturity (Rs.)'],
+    ['Yr','Annual Premium (Rs.)' ,'Total Paid (Rs.)', 'Guaranteed Income (Rs.)', 'Loyalty Income (Rs.)', 'Total Income (Rs.)', 'Cumulative Survival Benefits (Rs.)', 'Guaranteed Surrender Value (Rs.)', 'Special Surrender Value (Rs.)', 'Surrender Value [Greater of (a) or (b)] (Rs.)', 'Death Benefit (Rs.)', 'Maturity Benefit (Rs.)'],
     (result.yearlyTable as BenefitIllustrationRow[]).map(r => [
       String(r.policyYear),
       INR(r.annualPremium),
@@ -330,6 +330,7 @@ export interface UlipPdfData {
   policyTerm: number;
   ppt: number;
   annualizedPremium: number;
+   premiumInstallment?: number;
   sumAssured: number;
   maturityBenefit4: number;
   maturityBenefit8: number;
@@ -350,7 +351,8 @@ export function downloadUlipBiPdf(data: UlipPdfData) {
     ['Product', data.productCode],
     ['Gender', data.gender],
     ['Entry Age', `${data.entryAge} yrs`],
-    ['Annual Premium', `Rs. ${INR(data.annualizedPremium)}`],
+    ['Annualized Premium', `Rs. ${INR(data.annualizedPremium)}`],
+    ['Premium Installment', `Rs. ${INR(data.premiumInstallment ?? 0)}`],
     ['PPT', `${data.ppt} yrs`],
     ['Policy Term', `${data.policyTerm} yrs`],
     ['Sum Assured', `Rs. ${INR(data.sumAssured)}`],
@@ -360,7 +362,7 @@ export function downloadUlipBiPdf(data: UlipPdfData) {
 
   addTable(
     doc,
-    ['Yr', 'Age', 'AP (Rs.)', 'Invested (Rs.)', 'MC (Rs.)', 'PC (Rs.)', 'FV @4% (Rs.)', 'DB @4% (Rs.)', 'FV @8% (Rs.)', 'DB @8% (Rs.)'],
+    ['Yr', 'Age', 'Annualized Premium (Rs.)', 'Premium Invested (Rs.)', 'Mortality Charges (Rs.)', 'Policy Charges (Rs.)', 'Fund Value @4% (Rs.)', 'Death Benefit @4% (Rs.)', 'Fund Value @8% (Rs.)', 'Death Benefit @8% (Rs.)'],
     data.yearlyTable.map(r => [
       String(r.year),
       String(r.age),

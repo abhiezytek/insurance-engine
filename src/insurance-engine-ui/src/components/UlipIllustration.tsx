@@ -185,15 +185,15 @@ export default function UlipIllustration() {
         <thead>
           <tr className="bg-[#004282] text-white">
             <th className="px-3 py-2 text-center" rowSpan={2}>Year</th>
-            <th className="px-3 py-2 text-right" rowSpan={2}>AP</th>
+            <th className="px-3 py-2 text-right" rowSpan={2}>Annualized Premium</th>
             <th className="px-3 py-2 text-center bg-indigo-700" colSpan={7}>At 4% p.a. Gross Return</th>
             <th className="px-3 py-2 text-center bg-emerald-700" colSpan={7}>At 8% p.a. Gross Return</th>
           </tr>
           <tr className="bg-[#003070] text-white text-xs">
-            {['MC','ARB','Other*','GST','Fund','SV','DB'].map(h => (
+            {['Mortality Charges','ARB Charges','Other Charges','GST','Fund at End of Year','Surrender Value','Death Benefit'].map(h => (
               <th key={h+'4'} className="px-2 py-1.5 text-right bg-indigo-800">{h}</th>
             ))}
-            {['MC','ARB','Other*','GST','Fund','SV','DB'].map(h => (
+            {['Mortality Charges','ARB Charges','Other Charges','GST','Fund at End of Year','Surrender Value','Death Benefit'].map(h => (
               <th key={h+'8'} className="px-2 py-1.5 text-right bg-emerald-800">{h}</th>
             ))}
           </tr>
@@ -231,20 +231,20 @@ export default function UlipIllustration() {
         <thead>
           <tr className="bg-[#004282] text-white">
             <th className="px-2 py-2 text-center">Year</th>
-            <th className="px-2 py-2 text-right">AP</th>
-            <th className="px-2 py-2 text-right">PAC%</th>
-            <th className="px-2 py-2 text-right">AP−PAC</th>
-            <th className="px-2 py-2 text-right">MC</th>
-            <th className="px-2 py-2 text-right">ARB</th>
-            <th className="px-2 py-2 text-right">Admin</th>
-            <th className="px-2 py-2 text-right">Fund<br/>Bef.FMC</th>
-            <th className="px-2 py-2 text-right">FMC</th>
-            <th className="px-2 py-2 text-right text-yellow-200">LA</th>
-            <th className="px-2 py-2 text-right text-yellow-200">WB</th>
-            <th className="px-2 py-2 text-right text-yellow-200">RoC</th>
-            <th className="px-2 py-2 text-right">Fund End</th>
-            <th className="px-2 py-2 text-right">SV</th>
-            <th className="px-2 py-2 text-right">DB</th>
+            <th className="px-2 py-2 text-right">Annualized Premium</th>
+            <th className="px-2 py-2 text-right">Premium Allocation Charge</th>
+            <th className="px-2 py-2 text-right">Premium after PAC</th>
+            <th className="px-2 py-2 text-right">Mortality Charges</th>
+            <th className="px-2 py-2 text-right">ARB Charges</th>
+            <th className="px-2 py-2 text-right">Policy Admin Charges</th>
+            <th className="px-2 py-2 text-right">Fund before FMC</th>
+            <th className="px-2 py-2 text-right">Fund Management Charge</th>
+            <th className="px-2 py-2 text-right text-yellow-200">Loyalty Addition</th>
+            <th className="px-2 py-2 text-right text-yellow-200">Wealth Booster</th>
+            <th className="px-2 py-2 text-right text-yellow-200">Return of Charges</th>
+            <th className="px-2 py-2 text-right">Fund at End of Year</th>
+            <th className="px-2 py-2 text-right">Surrender Value</th>
+            <th className="px-2 py-2 text-right">Death Benefit</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">

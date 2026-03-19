@@ -211,6 +211,38 @@ public class UlipCalculationTests
         Assert.AreEqual(Math.Round(10m * 50_000m, 2, MidpointRounding.AwayFromZero), result.SumAssured);
     }
 
+    [Test]
+    public async Task PartA_HasRequiredColumnsAndValues()
+    {
+        var result = await _svc.CalculateAsync(DefaultRequest(pt: 10, ppt: 10));
+        var row = result.PartARows.First();
+        Assert.GreaterOrEqual(row.MortalityCharges4, 0);
+        Assert.GreaterOrEqual(row.OtherCharges4, 0);
+        Assert.GreaterOrEqual(row.SurrenderValue4, 0);
+        Assert.GreaterOrEqual(row.DeathBenefit4, 0);
+        Assert.GreaterOrEqual(row.MortalityCharges8, 0);
+        Assert.GreaterOrEqual(row.OtherCharges8, 0);
+        Assert.GreaterOrEqual(row.SurrenderValue8, 0);
+        Assert.GreaterOrEqual(row.DeathBenefit8, 0);
+    }
+
+    [Test]
+    public async Task PartB_HasDetailedChargeColumns()
+    {
+        var result = await _svc.CalculateAsync(DefaultRequest(pt: 10, ppt: 10));
+        var row4 = result.PartBRows4.First();
+        Assert.GreaterOrEqual(row4.MortalityCharges, 0);
+        Assert.GreaterOrEqual(row4.PolicyAdministrationCharges, 0);
+        Assert.GreaterOrEqual(row4.FundBeforeFmc, 0);
+        Assert.GreaterOrEqual(row4.FundManagementCharge, 0);
+        Assert.GreaterOrEqual(row4.LoyaltyAddition, 0);
+        Assert.GreaterOrEqual(row4.WealthBooster, 0);
+        Assert.GreaterOrEqual(row4.ReturnOfCharges, 0);
+        Assert.GreaterOrEqual(row4.FundAtEndOfYear, 0);
+        Assert.GreaterOrEqual(row4.SurrenderValue, 0);
+        Assert.GreaterOrEqual(row4.DeathBenefit, 0);
+    }
+
     // -----------------------------------------------------------------------
     // Death benefit tests
     // -----------------------------------------------------------------------

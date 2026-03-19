@@ -101,6 +101,17 @@ public class BenefitCalculationTests
         }
     }
 
+    [Test]
+    public async Task Row_ExposesSurrenderBreakdownFields()
+    {
+        var result = await _svc.CalculateAsync(Request(50000m, 7, 15, 30, "Immediate"));
+        var first = result.YearlyTable.First();
+        Assert.GreaterOrEqual(first.GsvFactor, 0m);
+        Assert.GreaterOrEqual(first.SsvFactor1, 0m);
+        Assert.GreaterOrEqual(first.SsvFactor2, 0m);
+        Assert.IsNotNull(first.SurrenderValueSource);
+    }
+
     [TestCase(7, 15, "Immediate")]
     [TestCase(7, 20, "Immediate")]
     [TestCase(10, 20, "Deferred")]
