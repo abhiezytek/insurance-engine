@@ -58,6 +58,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
+        // Allow custom headers (e.g., X-Role) for Admin UI calls served from a different origin.
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
