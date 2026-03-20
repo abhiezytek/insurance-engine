@@ -7,15 +7,17 @@ export const apiClient = axios.create({ baseURL: API_BASE_URL });
 
 apiClient.interceptors.request.use(config => {
   // Prefer the new auth storage key; fall back to the legacy one for compatibility
-  const storedAuth = localStorage.getItem('precision_pro_auth');
-  let token: string | undefined;
-  if (storedAuth) {
+  const storedAuthJson = localStorage.getItem('precision_pro_auth');
+  let parsedAuth: { token?: string; role?: string } | undefined;
+  if (storedAuthJson) {
     try {
-      token = (JSON.parse(storedAuth) as { token?: string }).token;
+      parsedAuth = JSON.parse(storedAuthJson) as { token?: string; role?: string };
     } catch {
-      token = undefined;
+      parsedAuth = undefined;
     }
   }
+  let token: string | undefined;
+  token = parsedAuth?.token;
   token = token ?? localStorage.getItem('auth_token') ?? undefined;
   const headers: AxiosRequestHeaders = (config.headers ?? {}) as AxiosRequestHeaders;
   if (token) {
@@ -23,14 +25,8 @@ apiClient.interceptors.request.use(config => {
   }
 
   // Attach role header for Admin APIs (header-driven mock RBAC).
-  try {
-    const storedAuthJson = localStorage.getItem('precision_pro_auth');
-    if (storedAuthJson) {
-      const parsed = JSON.parse(storedAuthJson) as { role?: string };
-      if (parsed.role) headers['X-Role'] = parsed.role;
-    }
-  } catch {
-    // ignore parse errors
+  if (parsedAuth?.role) {
+    headers['X-Role'] = parsedAuth.role;
   }
   const legacyRole = localStorage.getItem('auth_role');
   if (!headers['X-Role'] && legacyRole) headers['X-Role'] = legacyRole;
