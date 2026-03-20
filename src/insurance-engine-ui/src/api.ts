@@ -92,7 +92,11 @@ export interface UploadBatch {
   totalRows: number;
   processedRows: number;
   errorRows: number;
-  uploadedAt: string;
+  status: string;
+  productVersionId?: number | null;
+  versionTag?: string | null;
+  createdAt?: string;
+  completedAt?: string | null;
 }
 export const getOutputTemplates = (productVersionId: number) =>
   api.get<OutputTemplate[]>(`/api/admin/output-templates?productVersionId=${productVersionId}`);

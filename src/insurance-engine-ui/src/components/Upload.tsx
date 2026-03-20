@@ -308,6 +308,7 @@ PPT,int,true`}
                   <th className="px-6 py-3 text-left">ID</th>
                   <th className="px-6 py-3 text-left">File</th>
                   <th className="px-6 py-3 text-left">Type</th>
+                  <th className="px-6 py-3 text-left">Version Tag</th>
                   <th className="px-6 py-3 text-right">Total</th>
                   <th className="px-6 py-3 text-right">Processed</th>
                   <th className="px-6 py-3 text-right">Errors</th>
@@ -324,6 +325,14 @@ PPT,int,true`}
                         {b.uploadType}
                       </span>
                     </td>
+                    <td className="px-6 py-3">
+                      <div className="text-xs text-slate-500">
+                        PV #{b.productVersionId ?? '—'}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400">
+                        {b.versionTag ?? '—'}
+                      </div>
+                    </td>
                     <td className="px-6 py-3 text-right">{b.totalRows}</td>
                     <td className="px-6 py-3 text-right text-green-600 font-medium">{b.processedRows}</td>
                     <td className="px-6 py-3 text-right">
@@ -332,7 +341,9 @@ PPT,int,true`}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-xs text-slate-400">
-                      {b.uploadedAt ? new Date(b.uploadedAt).toLocaleString('en-IN') : '—'}
+                      {(b.createdAt || b.completedAt)
+                        ? new Date(b.completedAt || b.createdAt!).toLocaleString('en-IN')
+                        : '—'}
                     </td>
                   </tr>
                 ))}
