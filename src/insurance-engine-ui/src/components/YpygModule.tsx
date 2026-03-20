@@ -550,6 +550,12 @@ function InputValueMode() {
 function ResultSection({ result }: { result: YpygResult }) {
   const isUlip = result.productCategory === 'ULIP';
   const resultMeta = YPYG_RESULT_META[isUlip ? 'ULIP' : 'Traditional'];
+  const readVal = (key: string) => {
+    const raw = (result as unknown as Record<string, unknown>)[key];
+    if (typeof raw === 'number') return raw;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
   const calcDate = result.calculationDate
     ? new Date(result.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -575,10 +581,10 @@ function ResultSection({ result }: { result: YpygResult }) {
                 <tr key={row.label} className="hover:bg-slate-50">
                   <td className="px-6 py-3 font-semibold text-slate-700">{row.label}</td>
                   <td className="px-6 py-3 text-right font-bold text-[#004282]">
-                    ₹ {INR((result as any)[row.currentKey] ?? 0)}
+                    ₹ {INR(readVal(row.currentKey))}
                   </td>
                   <td className="px-6 py-3 text-right font-bold text-green-700">
-                    ₹ {INR((result as any)[row.maturityKey] ?? 0)}
+                    ₹ {INR(readVal(row.maturityKey))}
                   </td>
                 </tr>
               ))}
@@ -633,6 +639,7 @@ function ResultSection({ result }: { result: YpygResult }) {
                 subtitle: `Policy Number: ${result.policyNumber || 'N/A'}`,
                 tbvRows: resultMeta.tbvRows.map(r => ({ ...r })),
                 tableHeaders: [...resultMeta.yearlyHeaders],
+                sectionTitle: resultMeta.tableTitle,
               };
               if (isUlip && result.ulipYearlyTable) {
                 downloadYpygUlipPdf({

@@ -3,6 +3,7 @@ using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace InsuranceEngine.Api.Controllers;
 
@@ -321,20 +322,43 @@ public class YpygController : ControllerBase
     {
         try
         {
-            var versionContext = $"\"version\":\"{req.ProductVersion ?? "default"}\",\"factorVersion\":\"{req.FactorVersion ?? "table-default"}\",\"formulaVersion\":\"{req.FormulaVersion ?? "v-default"}\"";
+            var versionContext = new
+            {
+                version = req.ProductVersion ?? "default",
+                factorVersion = req.FactorVersion ?? "table-default",
+                formulaVersion = req.FormulaVersion ?? "v-default"
+            };
             _db.CalculationLogs.Add(new Models.CalculationLog
             {
                 Module = module,
                 ProductType = req.ProductCode,
                 PolicyNumber = req.PolicyNumber,
-                InputJson = $"{{\"annualPremium\":{req.AnnualPremium},\"policyTerm\":{req.PolicyTerm},\"ppt\":{req.PremiumPayingTerm},{versionContext}}}",
-                ResultJson = $"{{\"maturityValue\":{response.MaturityValue},\"surrenderValue\":{response.SurrenderValue},{versionContext}}}",
+                InputJson = JsonSerializer.Serialize(new
+                {
+                    annualPremium = req.AnnualPremium,
+                    policyTerm = req.PolicyTerm,
+                    ppt = req.PremiumPayingTerm,
+                    versionContext.version,
+                    versionContext.factorVersion,
+                    versionContext.formulaVersion
+                }),
+                ResultJson = JsonSerializer.Serialize(new
+                {
+                    maturityValue = response.MaturityValue,
+                    surrenderValue = response.SurrenderValue,
+                    versionContext.version,
+                    versionContext.factorVersion,
+                    versionContext.formulaVersion
+                }),
                 RequestedBy = User.Identity?.Name ?? "Anonymous",
                 Status = "Completed"
             });
             await _db.SaveChangesAsync();
         }
-        catch { /* non-critical */ }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CalculationLog] failed: {ex.Message}");
+        }
     }
 
     private static List<string> BuildValidationRules(YpygCalculationRequest req)

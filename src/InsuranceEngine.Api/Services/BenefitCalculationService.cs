@@ -22,10 +22,12 @@ public class BenefitCalculationService : IBenefitCalculationService
     private readonly InsuranceDbContext _db;
     private readonly IBenefitFormulaStrategy _strategy;
 
-    public BenefitCalculationService(InsuranceDbContext db, IBenefitFormulaStrategy? strategy = null)
+    public BenefitCalculationService(InsuranceDbContext db) : this(db, new DefaultBenefitFormulaStrategy(db)) { }
+
+    public BenefitCalculationService(InsuranceDbContext db, IBenefitFormulaStrategy strategy)
     {
         _db = db;
-        _strategy = strategy ?? new DefaultBenefitFormulaStrategy(db);
+        _strategy = strategy;
     }
 
     /// <summary>

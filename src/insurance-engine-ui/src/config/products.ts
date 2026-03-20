@@ -35,10 +35,14 @@ export async function loadYpygProductMap(): Promise<YpygProductMap> {
     const map: YpygProductMap = { ...DEFAULT_YPYG_PRODUCTS };
     res.data.forEach((p: Product) => {
       const key = p.productType || p.name || p.code;
+      const defaultOptions =
+        (p.productType ?? '').toLowerCase().includes('ulip')
+          ? DEFAULT_YPYG_PRODUCTS.ULIP.options
+          : DEFAULT_YPYG_PRODUCTS.Traditional.options;
       map[key] = {
         code: p.code,
         displayName: p.name,
-        options: (p.versions?.length ? ['Default'] : DEFAULT_YPYG_PRODUCTS.Traditional.options),
+        options: defaultOptions,
         channels: DEFAULT_YPYG_PRODUCTS.Traditional.channels,
         versions: p.versions?.map((v: ProductVersion) => v.version) ?? [],
       };

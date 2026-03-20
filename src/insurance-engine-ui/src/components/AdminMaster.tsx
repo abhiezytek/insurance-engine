@@ -31,6 +31,7 @@ interface ModuleAccess { moduleId: number; moduleName: string; subModules: SubMo
 interface SubModuleAccess { subModuleId: number; subModuleName: string; permissions: Record<string, boolean>; }
 interface IntegrationConfig { id: number; name: string; baseUrl: string; authType: string; timeout: number; mockMode: boolean; isActive: boolean; }
 interface AuditLog { logId: number; eventType: string; caseId?: string; doneBy: string; doneAt: string; }
+interface ProductListItem { code: string; name: string; }
 
 // ---------------------------------------------------------------------------
 // Helper: generic editable table
@@ -790,7 +791,7 @@ export default function AdminMaster() {
     setAuditPage(page);
   }, []);
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const [gmb, gsv, ssv, ulip, mort, loyal] = await Promise.all([
@@ -814,12 +815,12 @@ export default function AdminMaster() {
     } finally { setLoading(false); }
     // Load new tabs in parallel, gracefully
     loadUsers(); loadRoles(); loadModules(); loadIntegrations(); loadAuditLogs();
-  };
+  }, [scoped, loadUsers, loadRoles, loadModules, loadIntegrations, loadAuditLogs]);
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   useEffect(() => {
-    safeFetch<any[]>('/api/admin/products', [], setError).then(list => {
+    safeFetch<ProductListItem[]>('/api/admin/products', [], setError).then(list => {
       setProducts(list.map(p => ({ code: p.code, name: p.name })));
     }).catch(() => setProducts([]));
   }, []);

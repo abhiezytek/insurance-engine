@@ -245,7 +245,15 @@ export type YpygPdfTemplate = {
   subtitle?: string;
   tbvRows?: { label: string; currentKey: string; maturityKey: string }[];
   tableHeaders?: string[];
+  sectionTitle?: string;
 };
+
+function readNumeric(obj: Record<string, unknown>, key: string): number {
+  const val = obj[key];
+  if (typeof val === 'number') return val;
+  const parsed = Number(val);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string, template?: YpygPdfTemplate) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -280,8 +288,8 @@ export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string, tem
   const tbvRows = template?.tbvRows
     ? template.tbvRows.map(r => [
         r.label,
-        `Rs. ${INR((result as any)[r.currentKey] ?? 0)}`,
-        `Rs. ${INR((result as any)[r.maturityKey] ?? 0)}`,
+        `Rs. ${INR(readNumeric(result as unknown as Record<string, unknown>, r.currentKey))}`,
+        `Rs. ${INR(readNumeric(result as unknown as Record<string, unknown>, r.maturityKey))}`,
       ])
     : [
         ['Survival Benefit', `Rs. ${INR(result.currentSurvivalBenefit ?? 0)}`, `Rs. ${INR(result.maturitySurvivalBenefit ?? 0)}`],
@@ -295,7 +303,7 @@ export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string, tem
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(COL_BLUE);
-  doc.text(template?.title || 'Yearly Benefit Table', MARGIN, tbvY + 2);
+  doc.text(template?.sectionTitle || 'Yearly Benefit Table', MARGIN, tbvY + 2);
 
   addTable(
     doc,
@@ -476,8 +484,8 @@ export function downloadYpygUlipPdf(data: YpygUlipPdfData, template?: YpygPdfTem
   const tbvRows = template?.tbvRows
     ? template.tbvRows.map(r => [
         r.label,
-        `Rs. ${INR((data as any)[r.currentKey] ?? 0)}`,
-        `Rs. ${INR((data as any)[r.maturityKey] ?? 0)}`,
+        `Rs. ${INR(readNumeric(data as unknown as Record<string, unknown>, r.currentKey))}`,
+        `Rs. ${INR(readNumeric(data as unknown as Record<string, unknown>, r.maturityKey))}`,
       ])
     : [
         ['Fund Value (@4%)', `Rs. ${INR(data.currentFundValue4 ?? 0)}`, `Rs. ${INR(data.maturityFundValue4 ?? 0)}`],
@@ -492,7 +500,7 @@ export function downloadYpygUlipPdf(data: YpygUlipPdfData, template?: YpygPdfTem
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(COL_BLUE);
-  doc.text(template?.title || 'ULIP Fund Projection Table', MARGIN, tbvY + 2);
+  doc.text(template?.sectionTitle || 'ULIP Fund Projection Table', MARGIN, tbvY + 2);
 
   addTable(
     doc,
