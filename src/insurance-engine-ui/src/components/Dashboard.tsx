@@ -110,7 +110,7 @@ export default function Dashboard() {
 
   const batchRows: BatchRow[] = batches.map(b => ({
     id: b.id,
-    date: b.uploadedAt,
+    date: b.completedAt || b.createdAt || '',
     reportType: b.uploadType,
     requestedBy: 'admin',
     status: toStatus(b),

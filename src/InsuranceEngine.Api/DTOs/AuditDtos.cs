@@ -14,6 +14,11 @@ public class AuditCaseResultDto
     public decimal Variance { get; set; }
     public string Status { get; set; } = "Pending";
     public string? Remarks { get; set; }
+    public string? ProductVersion { get; set; }
+    public string? FactorVersion { get; set; }
+    public string? FormulaVersion { get; set; }
+    public string? CalculationSource { get; set; }
+    public DateTime? CalculatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }

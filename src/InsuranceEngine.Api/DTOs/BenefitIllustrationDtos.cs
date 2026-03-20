@@ -3,6 +3,18 @@ namespace InsuranceEngine.Api.DTOs;
 /// <summary>Request for generating a yearly Benefit Illustration table.</summary>
 public class BenefitIllustrationRequest
 {
+    /// <summary>Product code (for formula selection).</summary>
+    public string ProductCode { get; set; } = "CENTURY_INCOME";
+
+    /// <summary>Optional product version (for formula selection).</summary>
+    public string? ProductVersion { get; set; }
+
+    /// <summary>Optional factor table version tag.</summary>
+    public string? FactorVersion { get; set; }
+
+    /// <summary>Optional formula version tag.</summary>
+    public string? FormulaVersion { get; set; }
+
     /// <summary>
     /// Annualised Premium — the base premium entered by the user.
     /// When provided, AnnualPremium is computed as AnnualisedPremium × ModalFactor × PaymentsPerYear.
@@ -80,6 +92,18 @@ public class BenefitIllustrationRequest
 /// <summary>Full yearly Benefit Illustration table for an Endowment policy.</summary>
 public class BenefitIllustrationResponse
 {
+    /// <summary>Product code (echo).</summary>
+    public string ProductCode { get; set; } = "CENTURY_INCOME";
+
+    /// <summary>Product version / formula version tag (optional).</summary>
+    public string? ProductVersion { get; set; }
+
+    /// <summary>Factor table version tag (optional).</summary>
+    public string? FactorVersion { get; set; }
+
+    /// <summary>Formula version tag (optional).</summary>
+    public string? FormulaVersion { get; set; }
+
     /// <summary>Annualised Premium (base premium entered by user).</summary>
     public decimal AnnualisedPremium { get; set; }
 

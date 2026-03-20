@@ -240,7 +240,22 @@ export interface YpygPdfResult {
   }>;
 }
 
-export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string) {
+export type YpygPdfTemplate = {
+  title?: string;
+  subtitle?: string;
+  tbvRows?: { label: string; currentKey: string; maturityKey: string }[];
+  tableHeaders?: string[];
+  sectionTitle?: string;
+};
+
+function readNumeric(obj: Record<string, unknown>, key: string): number {
+  const val = obj[key];
+  if (typeof val === 'number') return val;
+  const parsed = Number(val);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string, template?: YpygPdfTemplate) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const calcDate = result.calculationDate
     ? new Date(result.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -248,8 +263,8 @@ export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string) {
 
   addPageHeader(
     doc,
-    'YPYG — You Pay You Get',
-    `Policy Number: ${policyNumber || 'N/A'}. All values in Rs.`,
+    template?.title || 'YPYG — You Pay You Get',
+    template?.subtitle || `Policy Number: ${policyNumber || 'N/A'}. All values in Rs.`,
   );
 
   const summaryY = addSummaryGrid(doc, [
@@ -270,23 +285,29 @@ export function downloadYpygPdf(result: YpygPdfResult, policyNumber: string) {
 
   tbvY += 4;
   const tbvHeaders = ['', 'As on Current Date', 'At Maturity'];
-  const tbvRows = [
-    ['Survival Benefit', `Rs. ${INR(result.currentSurvivalBenefit ?? 0)}`, `Rs. ${INR(result.maturitySurvivalBenefit ?? 0)}`],
-    ['Maturity Benefit', `Rs. ${INR(result.currentMaturityBenefit ?? 0)}`, `Rs. ${INR(result.maturityMaturityBenefit ?? 0)}`],
-    ['Death Benefit', `Rs. ${INR(result.currentDeathBenefit ?? 0)}`, `Rs. ${INR(result.maturityDeathBenefit ?? 0)}`],
-    ['Calculation Date', calcDate, ''],
-  ];
+  const tbvRows = template?.tbvRows
+    ? template.tbvRows.map(r => [
+        r.label,
+        `Rs. ${INR(readNumeric(result as unknown as Record<string, unknown>, r.currentKey))}`,
+        `Rs. ${INR(readNumeric(result as unknown as Record<string, unknown>, r.maturityKey))}`,
+      ])
+    : [
+        ['Survival Benefit', `Rs. ${INR(result.currentSurvivalBenefit ?? 0)}`, `Rs. ${INR(result.maturitySurvivalBenefit ?? 0)}`],
+        ['Maturity Benefit', `Rs. ${INR(result.currentMaturityBenefit ?? 0)}`, `Rs. ${INR(result.maturityMaturityBenefit ?? 0)}`],
+        ['Death Benefit', `Rs. ${INR(result.currentDeathBenefit ?? 0)}`, `Rs. ${INR(result.maturityDeathBenefit ?? 0)}`],
+        ['Calculation Date', calcDate, ''],
+      ];
   tbvY = addTable(doc, tbvHeaders, tbvRows, tbvY);
 
   // ── Yearly Benefit Table ──
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(COL_BLUE);
-  doc.text('Yearly Benefit Table', MARGIN, tbvY + 2);
+  doc.text(template?.sectionTitle || 'Yearly Benefit Table', MARGIN, tbvY + 2);
 
   addTable(
     doc,
-    ['Yr', 'AP (Rs.)', 'Total Paid (Rs.)', 'GI (Rs.)', 'LI (Rs.)', 'Total Inc (Rs.)', 'SV (Rs.)', 'Death Benefit (Rs.)', 'Maturity (Rs.)'],
+    template?.tableHeaders ?? ['Yr', 'AP (Rs.)', 'Total Paid (Rs.)', 'GI (Rs.)', 'LI (Rs.)', 'Total Inc (Rs.)', 'SV (Rs.)', 'Death Benefit (Rs.)', 'Maturity (Rs.)'],
     (result.yearlyTable as BenefitIllustrationRow[]).map(r => [
       String(r.policyYear),
       INR(r.annualPremium),
@@ -425,7 +446,7 @@ export interface YpygUlipPdfData {
   yearlyTable: YpygUlipPdfRow[];
 }
 
-export function downloadYpygUlipPdf(data: YpygUlipPdfData) {
+export function downloadYpygUlipPdf(data: YpygUlipPdfData, template?: YpygPdfTemplate) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const calcDate = data.calculationDate
     ? new Date(data.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -433,8 +454,8 @@ export function downloadYpygUlipPdf(data: YpygUlipPdfData) {
 
   addPageHeader(
     doc,
-    'YPYG — You Pay You Get (ULIP)',
-    `Policy Number: ${data.policyNumber || 'N/A'}. Two scenarios: 4% and 8% assumed return. All values in Rs.`,
+    template?.title || 'YPYG — You Pay You Get (ULIP)',
+    template?.subtitle || `Policy Number: ${data.policyNumber || 'N/A'}. Two scenarios: 4% and 8% assumed return. All values in Rs.`,
   );
 
   const summaryY = addSummaryGrid(doc, [
@@ -460,24 +481,30 @@ export function downloadYpygUlipPdf(data: YpygUlipPdfData) {
 
   tbvY += 4;
   const tbvHeaders = ['', 'As on Current Date', 'At Maturity'];
-  const tbvRows = [
-    ['Fund Value (@4%)', `Rs. ${INR(data.currentFundValue4 ?? 0)}`, `Rs. ${INR(data.maturityFundValue4 ?? 0)}`],
-    ['Fund Value (@8%)', `Rs. ${INR(data.currentFundValue8 ?? 0)}`, `Rs. ${INR(data.maturityFundValue8 ?? 0)}`],
-    ['Death Benefit (@4%)', `Rs. ${INR(data.currentDeathBenefit4 ?? 0)}`, `Rs. ${INR(data.maturityDeathBenefit4 ?? 0)}`],
-    ['Death Benefit (@8%)', `Rs. ${INR(data.currentDeathBenefit8 ?? 0)}`, `Rs. ${INR(data.maturityDeathBenefit8 ?? 0)}`],
-    ['Calculation Date', calcDate, ''],
-  ];
+  const tbvRows = template?.tbvRows
+    ? template.tbvRows.map(r => [
+        r.label,
+        `Rs. ${INR(readNumeric(data as unknown as Record<string, unknown>, r.currentKey))}`,
+        `Rs. ${INR(readNumeric(data as unknown as Record<string, unknown>, r.maturityKey))}`,
+      ])
+    : [
+        ['Fund Value (@4%)', `Rs. ${INR(data.currentFundValue4 ?? 0)}`, `Rs. ${INR(data.maturityFundValue4 ?? 0)}`],
+        ['Fund Value (@8%)', `Rs. ${INR(data.currentFundValue8 ?? 0)}`, `Rs. ${INR(data.maturityFundValue8 ?? 0)}`],
+        ['Death Benefit (@4%)', `Rs. ${INR(data.currentDeathBenefit4 ?? 0)}`, `Rs. ${INR(data.maturityDeathBenefit4 ?? 0)}`],
+        ['Death Benefit (@8%)', `Rs. ${INR(data.currentDeathBenefit8 ?? 0)}`, `Rs. ${INR(data.maturityDeathBenefit8 ?? 0)}`],
+        ['Calculation Date', calcDate, ''],
+      ];
   tbvY = addTable(doc, tbvHeaders, tbvRows, tbvY);
 
   // ── Fund Projection Table ──
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(COL_BLUE);
-  doc.text('ULIP Fund Projection Table', MARGIN, tbvY + 2);
+  doc.text(template?.sectionTitle || 'ULIP Fund Projection Table', MARGIN, tbvY + 2);
 
   addTable(
     doc,
-    ['Yr', 'Age', 'AP (Rs.)', 'Invested', 'MC', 'PC', 'FV @4%', 'DB @4%', 'SV @4%', 'FV @8%', 'DB @8%', 'SV @8%'],
+    template?.tableHeaders ?? ['Yr', 'Age', 'AP (Rs.)', 'Invested', 'MC', 'PC', 'FV @4%', 'DB @4%', 'SV @4%', 'FV @8%', 'DB @8%', 'SV @8%'],
     data.yearlyTable.map(r => [
       String(r.year),
       String(r.age),

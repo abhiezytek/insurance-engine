@@ -4,12 +4,31 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InsuranceEngine.Api.Services;
 
+public record FormulaExecutionContext(
+    string ProductCode,
+    string? ProductVersion,
+    string? FactorVersion,
+    string? FormulaVersion,
+    string Option);
+
+public interface IBenefitFormulaStrategy
+{
+    Task<BenefitIllustrationResponse> CalculateAsync(BenefitIllustrationRequest request, FormulaExecutionContext ctx);
+}
+
 public class BenefitCalculationService : IBenefitCalculationService
 {
-    private const decimal NonStandardAgeProofLoadingRate = 1.5m;
+    internal const decimal NonStandardAgeProofLoadingRate = 1.5m;
     private readonly InsuranceDbContext _db;
+    private readonly IBenefitFormulaStrategy _strategy;
 
-    public BenefitCalculationService(InsuranceDbContext db) => _db = db;
+    public BenefitCalculationService(InsuranceDbContext db) : this(db, new DefaultBenefitFormulaStrategy(db)) { }
+
+    public BenefitCalculationService(InsuranceDbContext db, IBenefitFormulaStrategy strategy)
+    {
+        _db = db;
+        _strategy = strategy;
+    }
 
     /// <summary>
     /// Modal factor lookup: fraction of annualised premium due per installment.
@@ -38,147 +57,14 @@ public class BenefitCalculationService : IBenefitCalculationService
 
     public async Task<BenefitIllustrationResponse> CalculateAsync(BenefitIllustrationRequest request)
     {
-        // Resolve annualised premium (iPRM)
-        var annualisedPremium = request.AnnualisedPremium ?? request.AnnualPremium;
-        var frequency = request.PremiumFrequency ?? "Yearly";
-        var (modalFactor, paymentsPerYear) = GetModalFactor(frequency);
+        var ctx = new FormulaExecutionContext(
+            request.ProductCode,
+            request.ProductVersion,
+            request.FactorVersion ?? "table-default",
+            request.FormulaVersion ?? request.ProductVersion ?? "v-default",
+            NormalizeOption(request.Option));
 
-        // Installment premium with loading when standard age proof is missing
-        var sumAssuredForLoading = Round(10m * annualisedPremium);
-        var installmentPremium = Round(annualisedPremium * modalFactor
-            + modalFactor * (request.StandardAgeProof ? 0m : NonStandardAgeProofLoadingRate * sumAssuredForLoading / 1000m), 0);
-
-        // Annual premium payable across the year (installment × number of payments)
-        var annualPremiumPayable = Round(installmentPremium * paymentsPerYear);
-
-        var ppt = request.Ppt;
-        var pt = request.PolicyTerm;
-        var option = NormalizeOption(request.Option);
-        var lifeAssuredAge = request.EntryAge;
-
-        // Life Assured age is always the driver for age-based lookups.
-
-        // GMB factor lookup (age-specific, option-specific)
-        var gmbFactor = await LookupGmbFactorAsync(ppt, pt, lifeAssuredAge, option);
-        var maturityBenefit = Round(annualisedPremium * gmbFactor);
-
-        // SA on death = 10 × annualised premium (derived, override ignored per product rules)
-        var sad = Round(10m * annualisedPremium);
-
-        // Load factor tables up front
-        var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
-        var ssvFactors = await _db.SsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt && x.Option == option).ToListAsync();
-        var loyaltyFactors = await _db.LoyaltyFactors.Where(x => x.Ppt == ppt).ToListAsync();
-        var deferredFactors = option == "Deferred"
-            ? await _db.DeferredIncomeFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync()
-            : new List<Models.DeferredIncomeFactor>();
-
-        // Twin years
-        var twinYears = GetTwinYears(ppt, pt);
-
-        // 8. Generate yearly rows
-        var rows = new List<BenefitIllustrationRow>();
-        decimal cumulativeGuaranteed = 0m;
-        decimal cumulativeLoyalty = 0m;
-
-        for (int py = 1; py <= pt; py++)
-        {
-            var declaredPaid = request.PremiumsPaid ?? ppt;
-            var isReducedPaidUp = declaredPaid < ppt;
-            var paidInstallments = isReducedPaidUp ? declaredPaid : Math.Min(py, ppt);
-            var paidUpRatio = isReducedPaidUp ? (decimal)declaredPaid / ppt : 1m;
-
-            var annualPremiumRow = py <= ppt ? annualPremiumPayable : 0m;
-            var totalPremiumsPaid = Round(annualisedPremium * paidInstallments);
-
-            // GI base (full, before reduction)
-            decimal giBase = ComputeGiBase(py, ppt, annualisedPremium, option, deferredFactors, twinYears);
-
-            // LI base (full, before reduction)
-            decimal liBase = HasLoyaltyIncome(option)
-                ? ComputeLiBase(py, annualisedPremium, loyaltyFactors)
-                : 0m;
-
-            // Apply paid-up reduction
-            decimal gi = Round(giBase * paidUpRatio);
-            decimal li = Round(liBase * paidUpRatio);
-
-            decimal totalIncome = Round(gi + li);
-            cumulativeGuaranteed = Round(cumulativeGuaranteed + gi);
-            cumulativeLoyalty = Round(cumulativeLoyalty + li);
-
-            // GSV
-            var gsvRatio = LookupGsvFactor(py, gsvFactors); // CSV stores ratios directly (e.g., 0.35 = 35%)
-            var gsv = Math.Max(0m, Round(totalPremiumsPaid * gsvRatio - cumulativeGuaranteed - cumulativeLoyalty));
-
-            // Paid-up maturity benefit
-            var paidUpMaturity = Round(paidUpRatio * maturityBenefit);
-
-            // SSV
-            var (ssvF1, ssvF2) = LookupSsvFactors(py, ssvFactors); // CSV values already decimal (no /100)
-            // benefit-at-inception component
-            var incomeComponentBase = HasLoyaltyIncome(option)
-                ? giBase + liBase
-                : giBase;
-            var benefitAtInceptionComponent = Round(paidUpRatio * incomeComponentBase);
-            var ssv = Math.Max(0m, Round(ssvF1 * paidUpMaturity + ssvF2 * benefitAtInceptionComponent));
-
-            // SV
-            var sv = Math.Max(0m, Math.Max(gsv, ssv));
-            var svSource = sv == ssv ? "SSV" : "GSV";
-
-            // Death benefit = Max(SAD, SV, 105% × Total Premiums Paid)
-            var deathBenefit = Round(Math.Max(sad, Math.Max(sv, 1.05m * annualisedPremium * paidInstallments)));
-
-            // Maturity benefit
-            var maturityBenefitRow = py == pt ? paidUpMaturity : 0m;
-
-            rows.Add(new BenefitIllustrationRow
-            {
-                PolicyYear = py,
-                AnnualPremium = Round(annualPremiumRow),
-                TotalPremiumsPaid = Round(totalPremiumsPaid),
-                GuaranteedIncome = gi,
-                LoyaltyIncome = li,
-                TotalIncome = totalIncome,
-                CumulativeSurvivalBenefits = Round(cumulativeGuaranteed + cumulativeLoyalty),
-                Gsv = gsv,
-                Ssv = ssv,
-                SurrenderValue = sv,
-                GsvFactor = gsvRatio,
-                SsvFactor1 = ssvF1,
-                SsvFactor2 = ssvF2,
-                PaidUpMaturityBenefit = paidUpMaturity,
-                PaidUpIncomeComponent = benefitAtInceptionComponent,
-                SurrenderValueSource = svSource,
-                DeathBenefit = deathBenefit,
-                MaturityBenefit = Round(maturityBenefitRow),
-                IsPaidUp = isReducedPaidUp
-            });
-        }
-
-        // 9. Max loan amount
-        var lastSv = rows.Count > 0 ? rows[^1].SurrenderValue : 0m;
-        var maxLoan = Round(0.70m * lastSv);
-
-        return new BenefitIllustrationResponse
-        {
-            AnnualisedPremium = Round(annualisedPremium),
-            AnnualPremium = Round(annualPremiumPayable),
-            InstallmentPremium = installmentPremium,
-            ModalFactor = modalFactor,
-            Ppt = ppt,
-            PolicyTerm = pt,
-            EntryAge = lifeAssuredAge,
-            Option = option,
-            Channel = request.Channel,
-            PremiumFrequency = frequency,
-            SumAssuredOnDeath = sad,
-            SumAssuredOnMaturity = maturityBenefit,
-            GuaranteedMaturityBenefit = maturityBenefit,
-            MaxLoanAmount = maxLoan,
-            YearlyTable = rows
-        };
+        return await _strategy.CalculateAsync(request, ctx);
     }
 
     private async Task<decimal> LookupGmbFactorAsync(int ppt, int pt, int lifeAssuredAge, string option)
@@ -206,7 +92,7 @@ public class BenefitCalculationService : IBenefitCalculationService
     /// PPT 15 / PT 25: years 13, 14, 18, 19, 23, 24
     /// All other combinations: 2 years before PPT end and 3 years after PPT end.
     /// </summary>
-    private static HashSet<int> GetTwinYears(int ppt, int pt)
+    internal static HashSet<int> GetTwinYears(int ppt, int pt)
     {
         // Exact product-circular mapping
         HashSet<int>? exact = (ppt, pt) switch
@@ -230,7 +116,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         return years;
     }
 
-    private static decimal ComputeGiBase(int py, int ppt, decimal ap, string option,
+    internal static decimal ComputeGiBase(int py, int ppt, decimal ap, string option,
         List<Models.DeferredIncomeFactor> deferredFactors, HashSet<int> twinYears)
     {
         return option switch
@@ -242,7 +128,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         };
     }
 
-    private static decimal LookupDeferredRate(int py, List<Models.DeferredIncomeFactor> factors)
+    internal static decimal LookupDeferredRate(int py, List<Models.DeferredIncomeFactor> factors)
     {
         var exact = factors.FirstOrDefault(x => x.PolicyYear == py);
         if (exact != null) return exact.RatePercent;
@@ -252,7 +138,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         return nearest?.RatePercent ?? 0m;
     }
 
-    private static decimal ComputeLiBase(int py, decimal ap, List<Models.LoyaltyFactor> loyaltyFactors)
+    internal static decimal ComputeLiBase(int py, decimal ap, List<Models.LoyaltyFactor> loyaltyFactors)
     {
         if (py < 2) return 0m;
         var factor = loyaltyFactors.FirstOrDefault(x =>
@@ -261,7 +147,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         return ap * factor.RatePercent / 100m;
     }
 
-    private static decimal LookupGsvFactor(int py, List<Models.GsvFactor> factors)
+    internal static decimal LookupGsvFactor(int py, List<Models.GsvFactor> factors)
     {
         if (factors.Count == 0)
             throw new InvalidOperationException("GSV factor table is empty. Ensure Century Income factors are seeded.");
@@ -273,7 +159,7 @@ public class BenefitCalculationService : IBenefitCalculationService
         return nearest?.FactorPercent ?? throw new InvalidOperationException($"No GSV factor found for policy year {py}.");
     }
 
-    private static (decimal f1, decimal f2) LookupSsvFactors(int py, List<Models.SsvFactor> factors)
+    internal static (decimal f1, decimal f2) LookupSsvFactors(int py, List<Models.SsvFactor> factors)
     {
         if (factors.Count == 0)
             throw new InvalidOperationException("SSV factor table is empty. Ensure Century Income SSV factors are seeded.");
@@ -286,11 +172,183 @@ public class BenefitCalculationService : IBenefitCalculationService
         throw new InvalidOperationException($"No SSV factor found for policy year {py}.");
     }
 
-    private static bool HasLoyaltyIncome(string option) => option == "Immediate";
+    internal static bool HasLoyaltyIncome(string option) => option == "Immediate";
 
-    private static decimal Round(decimal value, int digits = 2) =>
+    internal static decimal Round(decimal value, int digits = 2) =>
         Math.Round(value, digits, MidpointRounding.AwayFromZero);
 
-    private static string NormalizeOption(string option) =>
+    internal static string NormalizeOption(string option) =>
         CenturyIncomeFactorLoader.NormalizeOption(option);
+}
+
+/// <summary>
+/// Default strategy that preserves existing Century Income calculations while allowing
+/// product/version-aware hooks via the FormulaExecutionContext.
+/// </summary>
+public class DefaultBenefitFormulaStrategy : IBenefitFormulaStrategy
+{
+    private readonly InsuranceDbContext _db;
+
+    public DefaultBenefitFormulaStrategy(InsuranceDbContext db) => _db = db;
+
+    public async Task<BenefitIllustrationResponse> CalculateAsync(BenefitIllustrationRequest request, FormulaExecutionContext ctx)
+    {
+        // Resolve annualised premium (iPRM)
+        var annualisedPremium = request.AnnualisedPremium ?? request.AnnualPremium;
+        var frequency = request.PremiumFrequency ?? "Yearly";
+        var (modalFactor, paymentsPerYear) = BenefitCalculationService.GetModalFactor(frequency);
+
+        // Installment premium with loading when standard age proof is missing
+        var sumAssuredForLoading = BenefitCalculationService.Round(10m * annualisedPremium);
+        var installmentPremium = BenefitCalculationService.Round(annualisedPremium * modalFactor
+            + modalFactor * (request.StandardAgeProof ? 0m : BenefitCalculationService.NonStandardAgeProofLoadingRate * sumAssuredForLoading / 1000m), 0);
+
+        // Annual premium payable across the year (installment × number of payments)
+        var annualPremiumPayable = BenefitCalculationService.Round(installmentPremium * paymentsPerYear);
+
+        var ppt = request.Ppt;
+        var pt = request.PolicyTerm;
+        var option = ctx.Option;
+        var lifeAssuredAge = request.EntryAge;
+
+        // GMB factor lookup (age-specific, option-specific)
+        var gmbFactor = await LookupGmbFactorAsync(ppt, pt, lifeAssuredAge, option);
+        var maturityBenefit = BenefitCalculationService.Round(annualisedPremium * gmbFactor);
+
+        // SA on death = 10 × annualised premium (derived, override ignored per product rules)
+        var sad = BenefitCalculationService.Round(10m * annualisedPremium);
+
+        // Load factor tables up front
+        var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
+        var ssvFactors = await _db.SsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt && x.Option == option).ToListAsync();
+        var loyaltyFactors = await _db.LoyaltyFactors.Where(x => x.Ppt == ppt).ToListAsync();
+        var deferredFactors = option == "Deferred"
+            ? await _db.DeferredIncomeFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync()
+            : new List<Models.DeferredIncomeFactor>();
+
+        // Twin years
+        var twinYears = BenefitCalculationService.GetTwinYears(ppt, pt);
+
+        // Generate yearly rows
+        var rows = new List<BenefitIllustrationRow>();
+        decimal cumulativeGuaranteed = 0m;
+        decimal cumulativeLoyalty = 0m;
+
+        for (int py = 1; py <= pt; py++)
+        {
+            var declaredPaid = request.PremiumsPaid ?? ppt;
+            var isReducedPaidUp = declaredPaid < ppt;
+            var paidInstallments = isReducedPaidUp ? declaredPaid : Math.Min(py, ppt);
+            var paidUpRatio = isReducedPaidUp ? (decimal)declaredPaid / ppt : 1m;
+
+            var annualPremiumRow = py <= ppt ? annualPremiumPayable : 0m;
+            var totalPremiumsPaid = BenefitCalculationService.Round(annualisedPremium * paidInstallments);
+
+            // GI base (full, before reduction)
+            decimal giBase = BenefitCalculationService.ComputeGiBase(py, ppt, annualisedPremium, option, deferredFactors, twinYears);
+
+            // LI base (full, before reduction)
+            decimal liBase = BenefitCalculationService.HasLoyaltyIncome(option)
+                ? BenefitCalculationService.ComputeLiBase(py, annualisedPremium, loyaltyFactors)
+                : 0m;
+
+            // Apply paid-up reduction
+            decimal gi = BenefitCalculationService.Round(giBase * paidUpRatio);
+            decimal li = BenefitCalculationService.Round(liBase * paidUpRatio);
+
+            decimal totalIncome = BenefitCalculationService.Round(gi + li);
+            cumulativeGuaranteed = BenefitCalculationService.Round(cumulativeGuaranteed + gi);
+            cumulativeLoyalty = BenefitCalculationService.Round(cumulativeLoyalty + li);
+
+            // GSV
+            var gsvRatio = BenefitCalculationService.LookupGsvFactor(py, gsvFactors);
+            var gsv = Math.Max(0m, BenefitCalculationService.Round(totalPremiumsPaid * gsvRatio - cumulativeGuaranteed - cumulativeLoyalty));
+
+            // Paid-up maturity benefit
+            var paidUpMaturity = BenefitCalculationService.Round(paidUpRatio * maturityBenefit);
+
+            // SSV
+            var (ssvF1, ssvF2) = BenefitCalculationService.LookupSsvFactors(py, ssvFactors);
+            var incomeComponentBase = BenefitCalculationService.HasLoyaltyIncome(option)
+                ? giBase + liBase
+                : giBase;
+            var benefitAtInceptionComponent = BenefitCalculationService.Round(paidUpRatio * incomeComponentBase);
+            var ssv = Math.Max(0m, BenefitCalculationService.Round(ssvF1 * paidUpMaturity + ssvF2 * benefitAtInceptionComponent));
+
+            // SV
+            var sv = Math.Max(0m, Math.Max(gsv, ssv));
+            var svSource = sv == ssv ? "SSV" : "GSV";
+
+            // Death benefit = Max(SAD, SV, 105% × Total Premiums Paid)
+            var deathBenefit = BenefitCalculationService.Round(Math.Max(sad, Math.Max(sv, 1.05m * annualisedPremium * paidInstallments)));
+
+            // Maturity benefit
+            var maturityBenefitRow = py == pt ? paidUpMaturity : 0m;
+
+            rows.Add(new BenefitIllustrationRow
+            {
+                PolicyYear = py,
+                AnnualPremium = BenefitCalculationService.Round(annualPremiumRow),
+                TotalPremiumsPaid = BenefitCalculationService.Round(totalPremiumsPaid),
+                GuaranteedIncome = gi,
+                LoyaltyIncome = li,
+                TotalIncome = totalIncome,
+                CumulativeSurvivalBenefits = BenefitCalculationService.Round(cumulativeGuaranteed + cumulativeLoyalty),
+                Gsv = gsv,
+                Ssv = ssv,
+                SurrenderValue = sv,
+                GsvFactor = gsvRatio,
+                SsvFactor1 = ssvF1,
+                SsvFactor2 = ssvF2,
+                PaidUpMaturityBenefit = paidUpMaturity,
+                PaidUpIncomeComponent = benefitAtInceptionComponent,
+                SurrenderValueSource = svSource,
+                DeathBenefit = deathBenefit,
+                MaturityBenefit = BenefitCalculationService.Round(maturityBenefitRow),
+                IsPaidUp = isReducedPaidUp
+            });
+        }
+
+        var lastSv = rows.Count > 0 ? rows[^1].SurrenderValue : 0m;
+        var maxLoan = BenefitCalculationService.Round(0.70m * lastSv);
+
+        return new BenefitIllustrationResponse
+        {
+            ProductCode = ctx.ProductCode,
+            ProductVersion = ctx.ProductVersion,
+            FactorVersion = ctx.FactorVersion,
+            FormulaVersion = ctx.FormulaVersion,
+            AnnualisedPremium = BenefitCalculationService.Round(annualisedPremium),
+            AnnualPremium = BenefitCalculationService.Round(annualPremiumPayable),
+            InstallmentPremium = installmentPremium,
+            ModalFactor = modalFactor,
+            Ppt = ppt,
+            PolicyTerm = pt,
+            EntryAge = lifeAssuredAge,
+            Option = option,
+            Channel = request.Channel,
+            PremiumFrequency = frequency,
+            SumAssuredOnDeath = sad,
+            SumAssuredOnMaturity = maturityBenefit,
+            GuaranteedMaturityBenefit = maturityBenefit,
+            MaxLoanAmount = maxLoan,
+            YearlyTable = rows
+        };
+    }
+
+    private async Task<decimal> LookupGmbFactorAsync(int ppt, int pt, int lifeAssuredAge, string option)
+    {
+        // Exact match
+        var exact = await _db.GmbFactors.FirstOrDefaultAsync(x =>
+            x.Ppt == ppt && x.Pt == pt &&
+            x.EntryAgeMin <= lifeAssuredAge && x.EntryAgeMax >= lifeAssuredAge &&
+            x.Option == option);
+        if (exact != null) return exact.Factor;
+
+        var fallback = await _db.GmbFactors.FirstOrDefaultAsync(x =>
+            x.Ppt == ppt && x.Pt == pt && x.Option == option);
+        if (fallback != null) return fallback.Factor;
+
+        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
+    }
 }

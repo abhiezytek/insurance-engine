@@ -1,8 +1,7 @@
-import axios from 'axios';
+import { API_BASE_URL, apiClient } from './utils/apiClient';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com',
-});
+export { API_BASE_URL, apiClient };
+export const api = apiClient;
 
 export interface Product {
   id: number;
@@ -18,6 +17,13 @@ export interface ProductVersion {
   version: string;
   isActive: boolean;
   effectiveDate: string;
+}
+export interface OutputTemplate {
+  id: number;
+  productVersionId: number;
+  templateName: string;
+  outputFormat: string;
+  templateJson: string;
 }
 
 export interface ProductParameter {
@@ -43,6 +49,14 @@ export interface CalculationResult {
 }
 
 export const getProducts = () => api.get<Product[]>('/api/admin/products');
+export const createProduct = (data: { insurerId: number; name: string; code: string; productType: string }) =>
+  api.post<Product>('/api/admin/products', data);
+export const createProductWithVersion = (
+  data: { insurerId: number; name: string; code: string; productType: string },
+  version: string
+) => api.post<Product>(`/api/admin/products-with-version?version=${encodeURIComponent(version)}`, data);
+export const createVersion = (data: { productId: number; version: string; isActive: boolean; effectiveDate: string }) =>
+  api.post<ProductVersion>('/api/admin/versions', data);
 export const getParameters = (productVersionId: number) =>
   api.get<ProductParameter[]>(`/api/admin/parameters?productVersionId=${productVersionId}`);
 export const getFormulas = (productVersionId: number) =>
@@ -56,10 +70,17 @@ export const testFormula = (id: number, expression: string, parameters: Record<s
   api.post(`/api/admin/formulas/${id}/test`, { expression, parameters });
 export const runCalculation = (productCode: string, version: string | null, parameters: Record<string, number>) =>
   api.post<CalculationResult>('/api/calculation/traditional', { productCode, version, parameters });
-export const uploadFile = (file: File, uploadType: string, productVersionId: number) => {
+export const uploadFile = (
+  file: File,
+  uploadType: string,
+  productVersionId: number,
+  opts?: { factorTable?: string; versionTag?: string }
+) => {
   const formData = new FormData();
   formData.append('file', file);
-  return api.post(`/api/upload?uploadType=${uploadType}&productVersionId=${productVersionId}`, formData, {
+  const factor = opts?.factorTable ? `&factorTable=${opts.factorTable}` : '';
+  const versionTag = opts?.versionTag ? `&versionTag=${encodeURIComponent(opts.versionTag)}` : '';
+  return api.post(`/api/upload?uploadType=${uploadType}&productVersionId=${productVersionId}${factor}${versionTag}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
@@ -71,8 +92,18 @@ export interface UploadBatch {
   totalRows: number;
   processedRows: number;
   errorRows: number;
-  uploadedAt: string;
+  status: string;
+  productVersionId?: number | null;
+  versionTag?: string | null;
+  createdAt?: string;
+  completedAt?: string | null;
 }
+export const getOutputTemplates = (productVersionId: number) =>
+  api.get<OutputTemplate[]>(`/api/admin/output-templates?productVersionId=${productVersionId}`);
+export const createOutputTemplate = (data: Omit<OutputTemplate, 'id'>) =>
+  api.post<OutputTemplate>('/api/admin/output-templates', data);
+export const updateOutputTemplate = (id: number, data: Omit<OutputTemplate, 'id'>) =>
+  api.put<OutputTemplate>(`/api/admin/output-templates/${id}`, data);
 
 export interface BenefitIllustrationRequest {
   annualisedPremium?: number;
@@ -120,6 +151,10 @@ export interface BenefitIllustrationRow {
 }
 
 export interface BenefitIllustrationResult {
+  productCode: string;
+  productVersion?: string | null;
+  factorVersion?: string | null;
+  formulaVersion?: string | null;
   annualisedPremium: number;
   annualPremium: number;
   installmentPremium: number;

@@ -8,6 +8,7 @@ import {
   type UlipProduct,
   type PartARow,
   type PartBRow,
+  API_BASE_URL,
 } from '../api';
 
 // ---------------------------------------------------------------------------
@@ -169,7 +170,7 @@ export default function UlipIllustration() {
   // ---- PDF download ----
   const handleDownload = () => {
     if (!result) return;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
+    const url = `${API_BASE_URL}/api/ulip/pdf/${encodeURIComponent(result.policyNumber)}`;
     window.open(url, '_blank');
   };
 

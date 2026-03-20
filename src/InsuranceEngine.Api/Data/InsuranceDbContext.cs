@@ -16,6 +16,7 @@ public class InsuranceDbContext : DbContext
     public DbSet<Condition> Conditions => Set<Condition>();
     public DbSet<ExcelUploadBatch> ExcelUploadBatches => Set<ExcelUploadBatch>();
     public DbSet<ExcelUploadRowError> ExcelUploadRowErrors => Set<ExcelUploadRowError>();
+    public DbSet<OutputTemplate> OutputTemplates => Set<OutputTemplate>();
     public DbSet<GmbFactor> GmbFactors => Set<GmbFactor>();
     public DbSet<GsvFactor> GsvFactors => Set<GsvFactor>();
     public DbSet<SsvFactor> SsvFactors => Set<SsvFactor>();
@@ -108,6 +109,14 @@ public class InsuranceDbContext : DbContext
         modelBuilder.Entity<ExcelUploadBatch>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.VersionTag).HasMaxLength(100);
+        });
+        modelBuilder.Entity<OutputTemplate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TemplateName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.OutputFormat).HasMaxLength(50).IsRequired();
+            e.HasOne<ProductVersion>().WithMany().HasForeignKey(x => x.ProductVersionId);
         });
 
         modelBuilder.Entity<ExcelUploadRowError>(e =>

@@ -13,16 +13,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Settings, RefreshCw, AlertCircle, Edit3, Save, X, Info, Plus } from 'lucide-react';
-import axios from 'axios';
-
-// Use the same hosted fallback as other modules (YPYG/Audit) to avoid localhost failures
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://ezytek1706-003-site3.rtempurl.com';
-const api = axios.create({ baseURL: API_URL });
-api.interceptors.request.use(cfg => {
-  const token = localStorage.getItem('auth_token');
-  if (token && cfg.headers) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
+import { api } from '../api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +31,7 @@ interface ModuleAccess { moduleId: number; moduleName: string; subModules: SubMo
 interface SubModuleAccess { subModuleId: number; subModuleName: string; permissions: Record<string, boolean>; }
 interface IntegrationConfig { id: number; name: string; baseUrl: string; authType: string; timeout: number; mockMode: boolean; isActive: boolean; }
 interface AuditLog { logId: number; eventType: string; caseId?: string; doneBy: string; doneAt: string; }
+interface ProductListItem { code: string; name: string; }
 
 // ---------------------------------------------------------------------------
 // Helper: generic editable table
@@ -323,10 +315,14 @@ function LoyaltyTable({ rows, onUpdate }: { rows: LoyaltyFactor[]; onUpdate: (id
 // ---------------------------------------------------------------------------
 // Graceful API helper — returns fallback on any error (e.g. 404)
 // ---------------------------------------------------------------------------
-async function safeFetch<T>(url: string, fallback: T): Promise<T> {
+async function safeFetch<T>(url: string, fallback: T, onError?: (msg: string) => void): Promise<T> {
   try { return (await api.get<T>(url)).data; }
   catch (e: any) {
-    console.error('Admin safeFetch failed', url, e?.response?.status, e?.response?.data);
+    const status = e?.response?.status;
+    const msg = e?.response?.data?.error || e?.message || 'Unknown error';
+    const composed = `${url} → ${status ? `HTTP ${status}: ` : ''}${msg}`;
+    console.error('Admin safeFetch failed', composed);
+    onError?.(composed);
     return fallback;
   }
 }
@@ -771,29 +767,40 @@ export default function AdminMaster() {
   const [auditLogs,       setAuditLogs]       = useState<AuditLog[]>([]);
   const [auditPage,       setAuditPage]       = useState(1);
   const [auditHasMore,    setAuditHasMore]    = useState(true);
+  const [productScope,    setProductScope]    = useState<string>('');
+  const [versionScope,    setVersionScope]    = useState<string>('');
+  const [products,        setProducts]        = useState<{ code: string; name: string }[]>([]);
 
   // --- loaders for new tabs (graceful on 404) ---
-  const loadUsers        = useCallback(async () => { setAdminUsers(await safeFetch<AdminUser[]>('/api/admin/users', [])); }, []);
-  const loadRoles        = useCallback(async () => { setAdminRoles(await safeFetch<AdminRole[]>('/api/admin/roles', [])); }, []);
-  const loadModules      = useCallback(async () => { setModules(await safeFetch<ModuleAccess[]>('/api/admin/modules', [])); }, []);
-  const loadIntegrations = useCallback(async () => { setIntegrations(await safeFetch<IntegrationConfig[]>('/api/admin/integrations', [])); }, []);
+  const scoped = useCallback((path: string) => {
+    const params = new URLSearchParams();
+    if (productScope) params.append('productCode', productScope);
+    if (versionScope) params.append('version', versionScope);
+    const qs = params.toString();
+    return qs ? `${path}?${qs}` : path;
+  }, [productScope, versionScope]);
+
+  const loadUsers        = useCallback(async () => { setAdminUsers(await safeFetch<AdminUser[]>('/api/admin/users', [], setError)); }, [setError]);
+  const loadRoles        = useCallback(async () => { setAdminRoles(await safeFetch<AdminRole[]>('/api/admin/roles', [], setError)); }, [setError]);
+  const loadModules      = useCallback(async () => { setModules(await safeFetch<ModuleAccess[]>('/api/admin/modules', [], setError)); }, [setError]);
+  const loadIntegrations = useCallback(async () => { setIntegrations(await safeFetch<IntegrationConfig[]>('/api/admin/integrations', [], setError)); }, [setError]);
   const loadAuditLogs    = useCallback(async (page = 1, append = false) => {
-    const data = await safeFetch<AuditLog[]>(`/api/audit/logs?page=${page}&pageSize=20`, []);
+    const data = await safeFetch<AuditLog[]>(`/api/audit/logs?page=${page}&pageSize=20`, [], setError);
     if (append) { setAuditLogs(prev => [...prev, ...data]); } else { setAuditLogs(data); }
     setAuditHasMore(data.length >= 20);
     setAuditPage(page);
   }, []);
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const [gmb, gsv, ssv, ulip, mort, loyal] = await Promise.all([
-        api.get<GmbFactor[]>('/api/admin/factors/gmb'),
-        api.get<GsvFactor[]>('/api/admin/factors/gsv'),
-        api.get<SsvFactor[]>('/api/admin/factors/ssv'),
-        api.get<UlipCharge[]>('/api/admin/factors/ulip-charges'),
-        api.get<MortalityRate[]>('/api/admin/factors/mortality'),
-        api.get<LoyaltyFactor[]>('/api/admin/factors/loyalty'),
+        api.get<GmbFactor[]>(scoped('/api/admin/factors/gmb')),
+        api.get<GsvFactor[]>(scoped('/api/admin/factors/gsv')),
+        api.get<SsvFactor[]>(scoped('/api/admin/factors/ssv')),
+        api.get<UlipCharge[]>(scoped('/api/admin/factors/ulip-charges')),
+        api.get<MortalityRate[]>(scoped('/api/admin/factors/mortality')),
+        api.get<LoyaltyFactor[]>(scoped('/api/admin/factors/loyalty')),
       ]);
       setGmbRows(gmb.data);
       setGsvRows(gsv.data);
@@ -804,37 +811,49 @@ export default function AdminMaster() {
     } catch (e: any) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.error || e?.message || 'Unknown error';
+      console.error('AdminMaster factor fetch failed', {
+        url: e?.config?.url,
+        status,
+        data: e?.response?.data,
+        headers: e?.response?.headers,
+      });
       setError(`Could not load factor tables. ${status ? `HTTP ${status}: ` : ''}${msg}`);
     } finally { setLoading(false); }
     // Load new tabs in parallel, gracefully
     loadUsers(); loadRoles(); loadModules(); loadIntegrations(); loadAuditLogs();
-  };
+  }, [scoped, loadUsers, loadRoles, loadModules, loadIntegrations, loadAuditLogs]);
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  useEffect(() => {
+    safeFetch<ProductListItem[]>('/api/admin/products', [], setError).then(list => {
+      setProducts(list.map(p => ({ code: p.code, name: p.name })));
+    }).catch(() => setProducts([]));
+  }, []);
 
   // --- update helpers ---
   const patchGmb = async (id: number, factor: number) => {
-    await api.put(`/api/admin/factors/gmb/${id}`, { factor });
+    await api.put(scoped(`/api/admin/factors/gmb/${id}`), { factor });
     setGmbRows(prev => prev.map(r => r.id === id ? { ...r, factor } : r));
   };
   const patchGsv = async (id: number, factorPercent: number) => {
-    await api.put(`/api/admin/factors/gsv/${id}`, { factorPercent });
+    await api.put(scoped(`/api/admin/factors/gsv/${id}`), { factorPercent });
     setGsvRows(prev => prev.map(r => r.id === id ? { ...r, factorPercent } : r));
   };
   const patchSsv = async (id: number, f1: number, f2: number) => {
-    await api.put(`/api/admin/factors/ssv/${id}`, { ssvFactor1Percent: f1, ssvFactor2Percent: f2 });
+    await api.put(scoped(`/api/admin/factors/ssv/${id}`), { ssvFactor1Percent: f1, ssvFactor2Percent: f2 });
     setSsvRows(prev => prev.map(r => r.id === id ? { ...r, factor1: f1, factor2: f2 } : r));
   };
   const patchUlip = async (id: number, chargeValue: number) => {
-    await api.put(`/api/admin/factors/ulip-charges/${id}`, { chargeValue });
+    await api.put(scoped(`/api/admin/factors/ulip-charges/${id}`), { chargeValue });
     setUlipRows(prev => prev.map(r => r.id === id ? { ...r, chargeValue } : r));
   };
   const patchMortality = async (id: number, rate: number) => {
-    await api.put(`/api/admin/factors/mortality/${id}`, { rate });
+    await api.put(scoped(`/api/admin/factors/mortality/${id}`), { rate });
     setMortalityRows(prev => prev.map(r => r.id === id ? { ...r, rate } : r));
   };
   const patchLoyalty = async (id: number, ratePercent: number) => {
-    await api.put(`/api/admin/factors/loyalty/${id}`, { ratePercent });
+    await api.put(scoped(`/api/admin/factors/loyalty/${id}`), { ratePercent });
     setLoyaltyRows(prev => prev.map(r => r.id === id ? { ...r, ratePercent } : r));
   };
 
@@ -869,6 +888,38 @@ export default function AdminMaster() {
           <span>{error}</span>
         </div>
       )}
+
+      {/* Product/Version scope placeholder */}
+      <div className="flex flex-wrap gap-3 items-end bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">Product Code (optional)</label>
+          <select
+            value={productScope}
+            onChange={e => setProductScope(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm min-w-[200px]"
+          >
+            <option value="">All products</option>
+            {products.map(p => (
+              <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">Version (optional)</label>
+          <input
+            value={versionScope}
+            onChange={e => setVersionScope(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+            placeholder="e.g. v1"
+          />
+        </div>
+        <div className="text-xs text-slate-500">
+          Scope filters factor-table APIs by product/version (when supported). Blank = all.
+        </div>
+        <button className="ml-auto text-xs px-3 py-2 border rounded-lg text-slate-500 bg-slate-50" disabled>
+          CSV/Excel upload (coming soon)
+        </button>
+      </div>
 
       {/* Tab bar */}
       <div className="flex flex-wrap gap-2">

@@ -1,27 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
-import axios from 'axios';
 import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
-
-const PRODUCT_CONFIG: Record<
-  string,
-  { code: string; displayName: string; options: string[]; channels?: string[] }
-> = {
-  Traditional: {
-    code: 'CENTURY_INCOME',
-    displayName: 'Endowment (Traditional)',
-    options: ['Immediate', 'Deferred', 'Twin'],
-    channels: ['Online', 'StaffDirect', 'Other'],
-  },
-  ULIP: {
-    code: 'EWEALTH-ROYALE',
-    displayName: 'ULIP (Unit Linked)',
-    options: ['Platinum', 'Platinum Plus'],
-    channels: ['Online', 'StaffDirect', 'Other'],
-  },
-};
+import { api } from '../api';
+import { DEFAULT_YPYG_PRODUCTS, loadYpygProductMap, type YpygProductMap } from '../config/products';
+import { YPYG_RESULT_META } from '../config/resultMeta';
+import type { ProductParameter } from '../api';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -73,6 +56,9 @@ interface YpygResult {
   policyNumber: string;
   productCode: string;
   productCategory: string;
+  productVersion?: string;
+  factorVersion?: string;
+  formulaVersion?: string;
   uin: string;
   customerName: string;
   gender?: string;
@@ -120,6 +106,7 @@ interface YpygResult {
   currentDeathBenefit8?: number;
   maturityDeathBenefit4?: number;
   maturityDeathBenefit8?: number;
+  validationRules?: string[];
 }
 
 // ─── Sub-page: Policy Number mode ───────────────────────────────────────────
@@ -140,10 +127,10 @@ function PolicyNumberMode() {
     setPolicy(null);
     setResult(null);
     try {
-      const res = await axios.get(`${API_URL}/api/ypyg/policy/${encodeURIComponent(policyNumber.trim())}`);
+      const res = await api.get<PolicyData>(`/api/ypyg/policy/${encodeURIComponent(policyNumber.trim())}`);
       setPolicy(res.data);
     } catch (e: any) {
-      setLookupError(e?.response?.data?.error || 'Policy not found.');
+      setLookupError(e?.response?.data?.error || e?.message || 'Policy not found.');
     } finally {
       setLookupLoading(false);
     }
@@ -155,7 +142,7 @@ function PolicyNumberMode() {
     setCalcError(null);
     setResult(null);
     try {
-      const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
+      const res = await api.post<YpygResult>('/api/ypyg/calculate', {
         policyNumber: policy.policyNumber,
         productCode: policy.productCode,
         productCategory: policy.productCategory,
@@ -179,7 +166,7 @@ function PolicyNumberMode() {
       });
       setResult(res.data);
     } catch (e: any) {
-      setCalcError(e?.response?.data?.error || 'Calculation failed.');
+      setCalcError(e?.response?.data?.error || e?.message || 'Calculation failed.');
     } finally {
       setCalcLoading(false);
     }
@@ -282,6 +269,7 @@ function PolicyNumberMode() {
 const DEFAULT_INPUTS = {
   policyNumber: '',
   productCategory: 'Traditional' as string,
+  productVersion: '',
   annualPremium: 50000,
   policyTerm: 20,
   premiumPayingTerm: 10,
@@ -302,14 +290,34 @@ const DEFAULT_INPUTS = {
 
 function InputValueMode() {
   const [form, setForm] = useState(DEFAULT_INPUTS);
+  const [productMap, setProductMap] = useState<YpygProductMap>(DEFAULT_YPYG_PRODUCTS);
+  const [parameters, setParameters] = useState<ProductParameter[]>([]);
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
+  const productConfig = useMemo(
+    () => productMap[form.productCategory] ?? DEFAULT_YPYG_PRODUCTS.Traditional,
+    [form.productCategory, productMap],
+  );
+
+  useEffect(() => {
+    loadYpygProductMap().then(setProductMap).catch(() => setProductMap(DEFAULT_YPYG_PRODUCTS));
+  }, []);
+
+  useEffect(() => {
+    setForm(f => ({ ...f, productVersion: '' }));
+    setParamValues({});
+  }, [form.productCategory]);
+
+  useEffect(() => {
+    api.get<ProductParameter[]>('/api/admin/parameters', {
+      params: { productCode: productConfig.code, version: form.productVersion || undefined },
+    }).then(res => setParameters(res.data)).catch(() => setParameters([]));
+  }, [productConfig.code, form.productVersion]);
   const [result, setResult] = useState<YpygResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const set = (k: keyof typeof DEFAULT_INPUTS, v: string | number) =>
     setForm(f => ({ ...f, [k]: v }));
-
-  const productConfig = PRODUCT_CONFIG[form.productCategory] ?? PRODUCT_CONFIG.Traditional;
   const isUlip = form.productCategory === 'ULIP';
 
   const handleCalculate = async () => {
@@ -317,13 +325,18 @@ function InputValueMode() {
     setError(null);
     setResult(null);
     try {
-      const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
-        ...form,
+      const { riskCommencementDate, productVersion, ...rest } = form;
+      const payload = {
+        ...rest,
+        ...(riskCommencementDate ? { riskCommencementDate } : {}),
         productCode: productConfig.code,
-      });
+        ...(Object.keys(paramValues).length ? { additionalParameters: paramValues } : {}),
+        ...(productVersion ? { productVersion } : {}),
+      };
+      const res = await api.post<YpygResult>('/api/ypyg/calculate', payload);
       setResult(res.data);
     } catch (e: any) {
-      setError(e?.response?.data?.error || 'Calculation failed.');
+      setError(e?.response?.data?.error || e?.message || 'Calculation failed.');
     } finally {
       setLoading(false);
     }
@@ -342,13 +355,43 @@ function InputValueMode() {
               onChange={e => set('productCategory', e.target.value)}
               className={INPUT_CLS}
             >
-              {Object.entries(PRODUCT_CONFIG).map(([key, cfg]) => (
+              {Object.entries(productMap).map(([key, cfg]) => (
                 <option key={key} value={key}>
                   {cfg.displayName}
                 </option>
               ))}
             </select>
           </Field>
+          {productConfig.versions && productConfig.versions.length > 0 && (
+            <Field label="Product Version">
+              <select
+                value={form.productVersion}
+                onChange={e => set('productVersion', e.target.value)}
+                className={INPUT_CLS}
+              >
+                <option value="">Latest</option>
+                {productConfig.versions.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {parameters.length > 0 && (
+            <div className="space-y-3 border border-slate-100 rounded-lg p-3 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Config-driven inputs</p>
+              {parameters.map(p => (
+                <Field key={p.id} label={`${p.name}${p.isRequired ? ' *' : ''}`}>
+                  <input
+                    type={p.dataType === 'number' ? 'number' : p.dataType === 'date' ? 'date' : 'text'}
+                    value={paramValues[p.name] ?? ''}
+                    onChange={e => setParamValues(v => ({ ...v, [p.name]: e.target.value }))}
+                    className={INPUT_CLS}
+                    placeholder={p.description}
+                  />
+                </Field>
+              ))}
+            </div>
+          )}
           <Field label="Policy Number (optional)">
             <input type="text" value={form.policyNumber}
               onChange={e => set('policyNumber', e.target.value)}
@@ -506,6 +549,13 @@ function InputValueMode() {
 
 function ResultSection({ result }: { result: YpygResult }) {
   const isUlip = result.productCategory === 'ULIP';
+  const resultMeta = YPYG_RESULT_META[isUlip ? 'ULIP' : 'Traditional'];
+  const readVal = (key: string) => {
+    const raw = (result as unknown as Record<string, unknown>)[key];
+    if (typeof raw === 'number') return raw;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
   const calcDate = result.calculationDate
     ? new Date(result.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -527,58 +577,17 @@ function ResultSection({ result }: { result: YpygResult }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {isUlip ? (
-                <>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Fund Value (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue4 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityFundValue4 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Fund Value (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue8 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityFundValue8 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit4 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit8 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit4 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit4 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit8 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit8 ?? 0)}</td>
-                  </tr>
-                </>
-              ) : (
-                <>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Survival Benefit</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentSurvivalBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturitySurvivalBenefit)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityMaturityBenefit)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit)}</td>
-                  </tr>
-                </>
-              )}
+              {resultMeta.tbvRows.map(row => (
+                <tr key={row.label} className="hover:bg-slate-50">
+                  <td className="px-6 py-3 font-semibold text-slate-700">{row.label}</td>
+                  <td className="px-6 py-3 text-right font-bold text-[#004282]">
+                    ₹ {INR(readVal(row.currentKey))}
+                  </td>
+                  <td className="px-6 py-3 text-right font-bold text-green-700">
+                    ₹ {INR(readVal(row.maturityKey))}
+                  </td>
+                </tr>
+              ))}
               <tr className="bg-slate-50/50">
                 <td className="px-6 py-3 font-semibold text-slate-700">Calculation Date</td>
                 <td className="px-6 py-3 text-right font-semibold text-slate-600" colSpan={2}>{calcDate}</td>
@@ -605,16 +614,33 @@ function ResultSection({ result }: { result: YpygResult }) {
           </>
         )}
       </div>
+      {result.validationRules && result.validationRules.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-100 p-4 text-xs text-slate-600">
+          <p className="font-semibold text-slate-700 mb-2">Validation Rules (preview)</p>
+          <div className="flex flex-wrap gap-2">
+            {result.validationRules.map(r => (
+              <span key={r} className="px-2 py-1 bg-slate-100 rounded-full">{r}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Yearly table */}
       <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <h3 className="text-base font-bold text-[#004282]">
-            {isUlip ? 'ULIP Fund Projection Table' : 'Yearly Benefit Table'}
+            {resultMeta.tableTitle}
             <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
           </h3>
           <button
             onClick={() => {
+              const template = {
+                title: resultMeta.tableTitle,
+                subtitle: `Policy Number: ${result.policyNumber || 'N/A'}`,
+                tbvRows: resultMeta.tbvRows.map(r => ({ ...r })),
+                tableHeaders: [...resultMeta.yearlyHeaders],
+                sectionTitle: resultMeta.tableTitle,
+              };
               if (isUlip && result.ulipYearlyTable) {
                 downloadYpygUlipPdf({
                   policyNumber: result.policyNumber,
@@ -638,9 +664,9 @@ function ResultSection({ result }: { result: YpygResult }) {
                   maturityDeathBenefit8: result.maturityDeathBenefit8,
                   calculationDate: result.calculationDate,
                   yearlyTable: result.ulipYearlyTable,
-                });
+                }, template);
               } else {
-                downloadYpygPdf(result as YpygPdfResult, result.policyNumber);
+                downloadYpygPdf(result as YpygPdfResult, result.policyNumber, template);
               }
             }}
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
@@ -655,7 +681,7 @@ function ResultSection({ result }: { result: YpygResult }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
-                  {['Yr', 'Age', 'Annual Prem.', 'Invested', 'MC', 'PC', 'FV @4%', 'DB @4%', 'SV @4%', 'FV @8%', 'DB @8%', 'SV @8%'].map(h => (
+                  {resultMeta.yearlyHeaders.map(h => (
                     <th key={h} className="px-3 py-3 text-right first:text-center">{h}</th>
                   ))}
                 </tr>
@@ -683,7 +709,7 @@ function ResultSection({ result }: { result: YpygResult }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
-                  {['Yr', 'Annual Prem.', 'Total Paid', 'Guar. Income', 'Loyalty Inc.', 'Total Inc.', 'SV', 'Death Benefit', 'Maturity'].map(h => (
+                  {resultMeta.yearlyHeaders.map(h => (
                     <th key={h} className="px-4 py-3 text-right first:text-center">{h}</th>
                   ))}
                 </tr>

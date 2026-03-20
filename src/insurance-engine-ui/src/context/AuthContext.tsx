@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
+import { API_BASE_URL } from '../utils/apiClient';
 
 export interface AuthUser {
   username: string;
@@ -43,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadStoredAuth);
 
   const login = useCallback(async (username: string, password: string) => {
-    const res = await axios.post(`${API_URL}/api/auth/login`, { username, password });
+    const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { username, password });
     const data = res.data as { token: string; username: string; role: string; expiresAt: string };
     const authUser: AuthUser = {
       token: data.token,

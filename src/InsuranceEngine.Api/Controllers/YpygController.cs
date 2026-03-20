@@ -3,6 +3,7 @@ using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace InsuranceEngine.Api.Controllers;
 
@@ -127,6 +128,10 @@ public class YpygController : ControllerBase
     {
         var biReq = new BenefitIllustrationRequest
         {
+            ProductCode = req.ProductCode,
+            ProductVersion = req.ProductVersion,
+            FactorVersion = req.FactorVersion,
+            FormulaVersion = req.FormulaVersion,
             AnnualPremium = req.AnnualPremium,
             Ppt = req.PremiumPayingTerm,
             PolicyTerm = req.PolicyTerm,
@@ -153,6 +158,9 @@ public class YpygController : ControllerBase
             PolicyNumber = req.PolicyNumber,
             ProductCode = req.ProductCode,
             ProductCategory = "Traditional",
+            ProductVersion = result.ProductVersion,
+            FactorVersion = result.FactorVersion,
+            FormulaVersion = result.FormulaVersion,
             Gender = req.Gender,
             Uin = req.Uin,
             CustomerName = req.CustomerName,
@@ -187,6 +195,7 @@ public class YpygController : ControllerBase
             MaturityMaturityBenefit = result.GuaranteedMaturityBenefit,
             CurrentDeathBenefit = currentRow?.DeathBenefit ?? 0m,
             MaturityDeathBenefit = lastRow?.DeathBenefit ?? 0m,
+            ValidationRules = BuildValidationRules(req)
         };
 
         await LogCalculation("YPYG-Endowment", req, response);
@@ -253,6 +262,9 @@ public class YpygController : ControllerBase
             PolicyNumber = req.PolicyNumber,
             ProductCode = req.ProductCode,
             ProductCategory = "ULIP",
+            ProductVersion = req.ProductVersion,
+            FactorVersion = req.FactorVersion,
+            FormulaVersion = req.FormulaVersion,
             Gender = req.Gender,
             Uin = req.Uin,
             CustomerName = req.CustomerName,
@@ -287,6 +299,7 @@ public class YpygController : ControllerBase
             CurrentDeathBenefit8 = currentYearRow?.DeathBenefit8 ?? 0m,
             MaturityDeathBenefit4 = lastPartA?.DeathBenefit4 ?? 0m,
             MaturityDeathBenefit8 = lastPartA?.DeathBenefit8 ?? 0m,
+            ValidationRules = BuildValidationRules(req)
         };
 
         await LogCalculation("YPYG-ULIP", req, response);
@@ -309,19 +322,53 @@ public class YpygController : ControllerBase
     {
         try
         {
+            var versionContext = new
+            {
+                version = req.ProductVersion ?? "default",
+                factorVersion = req.FactorVersion ?? "table-default",
+                formulaVersion = req.FormulaVersion ?? "v-default"
+            };
             _db.CalculationLogs.Add(new Models.CalculationLog
             {
                 Module = module,
                 ProductType = req.ProductCode,
                 PolicyNumber = req.PolicyNumber,
-                InputJson = $"{{\"annualPremium\":{req.AnnualPremium},\"policyTerm\":{req.PolicyTerm},\"ppt\":{req.PremiumPayingTerm}}}",
-                ResultJson = $"{{\"maturityValue\":{response.MaturityValue},\"surrenderValue\":{response.SurrenderValue}}}",
+                InputJson = JsonSerializer.Serialize(new
+                {
+                    annualPremium = req.AnnualPremium,
+                    policyTerm = req.PolicyTerm,
+                    ppt = req.PremiumPayingTerm,
+                    versionContext.version,
+                    versionContext.factorVersion,
+                    versionContext.formulaVersion
+                }),
+                ResultJson = JsonSerializer.Serialize(new
+                {
+                    maturityValue = response.MaturityValue,
+                    surrenderValue = response.SurrenderValue,
+                    versionContext.version,
+                    versionContext.factorVersion,
+                    versionContext.formulaVersion
+                }),
                 RequestedBy = User.Identity?.Name ?? "Anonymous",
                 Status = "Completed"
             });
             await _db.SaveChangesAsync();
         }
-        catch { /* non-critical */ }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CalculationLog] failed: {ex.Message}");
+        }
+    }
+
+    private static List<string> BuildValidationRules(YpygCalculationRequest req)
+    {
+        return new List<string>
+        {
+            $"Product:{req.ProductCode}",
+            $"Version:{req.ProductVersion ?? "default"}",
+            $"Option:{req.Option}"
+        };
     }
 }
 
@@ -359,6 +406,9 @@ public class PolicyLookupResponse
         public string PolicyNumber { get; set; } = string.Empty;
         public string ProductCode { get; set; } = "CENTURY_INCOME";
         public string ProductCategory { get; set; } = "Traditional";
+        public string? ProductVersion { get; set; }
+        public string? FactorVersion { get; set; }
+        public string? FormulaVersion { get; set; }
         public string Uin { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string Gender { get; set; } = "Male";
@@ -379,6 +429,7 @@ public class PolicyLookupResponse
         public decimal SurrenderFactor { get; set; } = 0.8m;
         /// <summary>Risk Commencement Date — used to determine elapsed policy years in YPYG mode.</summary>
         public DateTime? RiskCommencementDate { get; set; }
+        public Dictionary<string, string>? AdditionalParameters { get; set; }
     }
 
 public class YpygCalculationResponse
@@ -386,6 +437,9 @@ public class YpygCalculationResponse
     public string PolicyNumber { get; set; } = string.Empty;
     public string ProductCode { get; set; } = string.Empty;
     public string ProductCategory { get; set; } = "Traditional";
+    public string? ProductVersion { get; set; }
+    public string? FactorVersion { get; set; }
+    public string? FormulaVersion { get; set; }
     public string Gender { get; set; } = string.Empty;
     public string Uin { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
@@ -427,6 +481,9 @@ public class YpygCalculationResponse
     public decimal? CurrentDeathBenefit8 { get; set; }
     public decimal? MaturityDeathBenefit4 { get; set; }
     public decimal? MaturityDeathBenefit8 { get; set; }
+
+    /// <summary>Validation rules applied for the product/version/option.</summary>
+    public List<string> ValidationRules { get; set; } = new();
 }
 
 public class YpygYearlyRow

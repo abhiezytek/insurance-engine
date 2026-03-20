@@ -25,7 +25,7 @@ function batchesToEvents(batches: UploadBatch[]): AuditEvent[] {
     module: 'Bulk Upload',
     summary: `${b.uploadType} upload — ${b.fileName}`,
     detail: `Total: ${b.totalRows} rows · Processed: ${b.processedRows} · Errors: ${b.errorRows}`,
-    timestamp: b.uploadedAt,
+    timestamp: b.completedAt || b.createdAt || '',
   }));
 }
 
@@ -259,8 +259,8 @@ export default function AuditLog() {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-xs text-slate-400">
-                      {b.uploadedAt
-                        ? new Date(b.uploadedAt).toLocaleString('en-IN', {
+                      {(b.completedAt || b.createdAt)
+                        ? new Date(b.completedAt || b.createdAt!).toLocaleString('en-IN', {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric',
