@@ -5,13 +5,10 @@ import {
   Filter, ChevronDown,
 } from 'lucide-react';
 import { api } from '../api';
+import { AUDIT_ROUTE, auditTypeLabel, auditSubtitle } from '../config/audit';
 
 // ─── Constants & helpers ─────────────────────────────────────────────────────
 
-const AUDIT_TYPES = {
-  payoutVerification: 'PayoutVerification',
-  additionBonus: 'AdditionBonus',
-} as const;
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const INPUT_CLS = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#007bff]';
 const CARD_CLS = 'bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)]';
@@ -19,14 +16,6 @@ const BTN_PRIMARY = 'bg-[#004282] text-white rounded-xl font-semibold text-sm ho
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-function auditTypeLabel(sub: AuditSubModule) {
-  return sub === 'payout-verification' ? AUDIT_TYPES.payoutVerification : AUDIT_TYPES.additionBonus;
-}
-
-function subTitle(sub: AuditSubModule) {
-  return sub === 'payout-verification' ? 'Payout Verification' : 'Addition / Bonus';
-}
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -146,7 +135,7 @@ function SinglePolicy({ sub }: { sub: AuditSubModule }) {
     setResult(null);
     setDecisionMsg(null);
     try {
-      const res = await api.post<AuditCase>('/api/audit/search', {
+      const res = await api.post<AuditCase>(AUDIT_ROUTE.search, {
         policyNumber: policyNumber.trim(),
         auditType: auditTypeLabel(sub),
       });
@@ -164,7 +153,7 @@ function SinglePolicy({ sub }: { sub: AuditSubModule }) {
     setDeciding(true);
     setDecisionMsg(null);
     try {
-      await api.post(`/api/audit/${decision}`, {
+      await api.post(decision === 'approve' ? AUDIT_ROUTE.approve : AUDIT_ROUTE.reject, {
         caseId: result.caseId,
         remarks: remarks.trim(),
       });
@@ -298,7 +287,7 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
 
   const handleDownloadTemplate = async () => {
     try {
-      const res = await api.get('/api/audit/template', {
+      const res = await api.get(AUDIT_ROUTE.template, {
         params: { auditType },
         responseType: 'blob',
       });
@@ -324,7 +313,7 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await api.post(`/api/audit/upload?auditType=${auditType}`, fd, {
+      const res = await api.post(`${AUDIT_ROUTE.upload}?auditType=${auditType}`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: e => {
           if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -357,7 +346,7 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
     setDeciding(true);
     setDecisionMsg(null);
     try {
-      await api.post('/api/audit/bulk-decision', {
+      await api.post(AUDIT_ROUTE.bulkDecision, {
         caseIds: Array.from(selected),
         decision: confirmAction === 'approve' ? 'Approved' : 'Rejected',
         remarks: bulkRemarks.trim(),
@@ -543,7 +532,7 @@ export function IndividualAuditTable({ auditType }: { auditType: string }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await api.get<AuditCase[]>('/api/audit/cases', { params: { auditType, inputMode: 'Single' } });
+      const r = await api.get<AuditCase[]>(AUDIT_ROUTE.cases, { params: { auditType, inputMode: 'Single' } });
       setCases(r.data);
     } catch {
       setError('Failed to load audit cases.');
@@ -632,7 +621,7 @@ export function BatchAuditTable({ auditType }: { auditType: string }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await api.get<BatchRecord[]>('/api/audit/batches', { params: { auditType } });
+      const r = await api.get<BatchRecord[]>(AUDIT_ROUTE.batches, { params: { auditType } });
       setBatches(r.data);
     } catch {
       setError('Failed to load batch records.');
@@ -649,7 +638,7 @@ export function BatchAuditTable({ auditType }: { auditType: string }) {
     setCasesLoading(true);
     setBatchCases([]);
     try {
-      const r = await api.get<AuditCase[]>(`/api/audit/batches/${batchId}/cases`);
+      const r = await api.get<AuditCase[]>(`${AUDIT_ROUTE.batches}/${batchId}/cases`);
       setBatchCases(r.data);
     } catch {
       setBatchCases([]);
@@ -755,7 +744,7 @@ export function AuditLogsTable() {
     setLoading(true);
     setError(null);
     try {
-      const r = await api.get<AuditLogEntry[]>('/api/audit/logs');
+      const r = await api.get<AuditLogEntry[]>(AUDIT_ROUTE.logs);
       setLogs(r.data);
     } catch {
       setError('Failed to load audit logs.');
@@ -823,7 +812,7 @@ export default function AuditModule({ sub, subOption = 'single' }: { sub: AuditS
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-[#004282]">
-          {subTitle(sub)}
+          {auditSubtitle(sub)}
           <span className="block mt-1 w-12 h-1 rounded-full bg-[#007bff]" />
         </h2>
         <p className="mt-2 text-slate-500 text-sm">

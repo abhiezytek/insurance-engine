@@ -1,26 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
 import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
 import { api } from '../api';
-
-const PRODUCT_CONFIG: Record<
-  string,
-  { code: string; displayName: string; options: string[]; channels?: string[] }
-> = {
-  Traditional: {
-    code: 'CENTURY_INCOME',
-    displayName: 'Endowment (Traditional)',
-    options: ['Immediate', 'Deferred', 'Twin'],
-    channels: ['Online', 'StaffDirect', 'Other'],
-  },
-  ULIP: {
-    code: 'EWEALTH-ROYALE',
-    displayName: 'ULIP (Unit Linked)',
-    options: ['Platinum', 'Platinum Plus'],
-    channels: ['Online', 'StaffDirect', 'Other'],
-  },
-};
+import { DEFAULT_YPYG_PRODUCTS, loadYpygProductMap, type YpygProductMap } from '../config/products';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+const TBV_META = {
+  traditional: [
+    { label: 'Survival Benefit', currentKey: 'currentSurvivalBenefit', maturityKey: 'maturitySurvivalBenefit' },
+    { label: 'Maturity Benefit', currentKey: 'currentMaturityBenefit', maturityKey: 'maturityMaturityBenefit' },
+    { label: 'Death Benefit', currentKey: 'currentDeathBenefit', maturityKey: 'maturityDeathBenefit' },
+  ] as const,
+  ulip: [
+    { label: 'Fund Value (@4%)', currentKey: 'currentFundValue4', maturityKey: 'maturityFundValue4' },
+    { label: 'Fund Value (@8%)', currentKey: 'currentFundValue8', maturityKey: 'maturityFundValue8' },
+    { label: 'Maturity Benefit (@4%)', currentKey: 'currentFundValue4', maturityKey: 'maturityBenefit4' },
+    { label: 'Maturity Benefit (@8%)', currentKey: 'currentFundValue8', maturityKey: 'maturityBenefit8' },
+    { label: 'Death Benefit (@4%)', currentKey: 'currentDeathBenefit4', maturityKey: 'maturityDeathBenefit4' },
+    { label: 'Death Benefit (@8%)', currentKey: 'currentDeathBenefit8', maturityKey: 'maturityDeathBenefit8' },
+  ] as const,
+};
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -280,6 +279,7 @@ function PolicyNumberMode() {
 const DEFAULT_INPUTS = {
   policyNumber: '',
   productCategory: 'Traditional' as string,
+  productVersion: '',
   annualPremium: 50000,
   policyTerm: 20,
   premiumPayingTerm: 10,
@@ -300,14 +300,25 @@ const DEFAULT_INPUTS = {
 
 function InputValueMode() {
   const [form, setForm] = useState(DEFAULT_INPUTS);
+  const [productMap, setProductMap] = useState<YpygProductMap>(DEFAULT_YPYG_PRODUCTS);
+  const productConfig = useMemo(
+    () => productMap[form.productCategory] ?? DEFAULT_YPYG_PRODUCTS.Traditional,
+    [form.productCategory, productMap],
+  );
+
+  useEffect(() => {
+    loadYpygProductMap().then(setProductMap).catch(() => setProductMap(DEFAULT_YPYG_PRODUCTS));
+  }, []);
+
+  useEffect(() => {
+    setForm(f => ({ ...f, productVersion: '' }));
+  }, [form.productCategory]);
   const [result, setResult] = useState<YpygResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const set = (k: keyof typeof DEFAULT_INPUTS, v: string | number) =>
     setForm(f => ({ ...f, [k]: v }));
-
-  const productConfig = PRODUCT_CONFIG[form.productCategory] ?? PRODUCT_CONFIG.Traditional;
   const isUlip = form.productCategory === 'ULIP';
 
   const handleCalculate = async () => {
@@ -315,11 +326,12 @@ function InputValueMode() {
     setError(null);
     setResult(null);
     try {
-      const { riskCommencementDate, ...rest } = form;
+      const { riskCommencementDate, productVersion, ...rest } = form;
       const payload = {
         ...rest,
         ...(riskCommencementDate ? { riskCommencementDate } : {}),
         productCode: productConfig.code,
+        ...(productVersion ? { productVersion } : {}),
       };
       const res = await api.post<YpygResult>('/api/ypyg/calculate', payload);
       setResult(res.data);
@@ -343,13 +355,27 @@ function InputValueMode() {
               onChange={e => set('productCategory', e.target.value)}
               className={INPUT_CLS}
             >
-              {Object.entries(PRODUCT_CONFIG).map(([key, cfg]) => (
+              {Object.entries(productMap).map(([key, cfg]) => (
                 <option key={key} value={key}>
                   {cfg.displayName}
                 </option>
               ))}
             </select>
           </Field>
+          {productConfig.versions && productConfig.versions.length > 0 && (
+            <Field label="Product Version">
+              <select
+                value={form.productVersion}
+                onChange={e => set('productVersion', e.target.value)}
+                className={INPUT_CLS}
+              >
+                <option value="">Latest</option>
+                {productConfig.versions.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Policy Number (optional)">
             <input type="text" value={form.policyNumber}
               onChange={e => set('policyNumber', e.target.value)}
@@ -528,58 +554,17 @@ function ResultSection({ result }: { result: YpygResult }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {isUlip ? (
-                <>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Fund Value (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue4 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityFundValue4 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Fund Value (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue8 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityFundValue8 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue4 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit4 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue8 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit8 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit4 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit4 ?? 0)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit8 ?? 0)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit8 ?? 0)}</td>
-                  </tr>
-                </>
-              ) : (
-                <>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Survival Benefit</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentSurvivalBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturitySurvivalBenefit)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityMaturityBenefit)}</td>
-                  </tr>
-                  <tr className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-semibold text-slate-700">Death Benefit</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.currentDeathBenefit)}</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#d32f2f]">₹ {INR(result.maturityDeathBenefit)}</td>
-                  </tr>
-                </>
-              )}
+              {(isUlip ? TBV_META.ulip : TBV_META.traditional).map(row => (
+                <tr key={row.label} className="hover:bg-slate-50">
+                  <td className="px-6 py-3 font-semibold text-slate-700">{row.label}</td>
+                  <td className="px-6 py-3 text-right font-bold text-[#004282]">
+                    ₹ {INR((result as any)[row.currentKey] ?? 0)}
+                  </td>
+                  <td className="px-6 py-3 text-right font-bold text-green-700">
+                    ₹ {INR((result as any)[row.maturityKey] ?? 0)}
+                  </td>
+                </tr>
+              ))}
               <tr className="bg-slate-50/50">
                 <td className="px-6 py-3 font-semibold text-slate-700">Calculation Date</td>
                 <td className="px-6 py-3 text-right font-semibold text-slate-600" colSpan={2}>{calcDate}</td>

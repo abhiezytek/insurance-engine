@@ -766,12 +766,22 @@ export default function AdminMaster() {
   const [auditLogs,       setAuditLogs]       = useState<AuditLog[]>([]);
   const [auditPage,       setAuditPage]       = useState(1);
   const [auditHasMore,    setAuditHasMore]    = useState(true);
+  const [productScope,    setProductScope]    = useState<string>('');
+  const [versionScope,    setVersionScope]    = useState<string>('');
 
   // --- loaders for new tabs (graceful on 404) ---
-  const loadUsers        = useCallback(async () => { setAdminUsers(await safeFetch<AdminUser[]>('/api/admin/users', [], setError)); }, []);
-  const loadRoles        = useCallback(async () => { setAdminRoles(await safeFetch<AdminRole[]>('/api/admin/roles', [], setError)); }, []);
-  const loadModules      = useCallback(async () => { setModules(await safeFetch<ModuleAccess[]>('/api/admin/modules', [], setError)); }, []);
-  const loadIntegrations = useCallback(async () => { setIntegrations(await safeFetch<IntegrationConfig[]>('/api/admin/integrations', [], setError)); }, []);
+  const scoped = useCallback((path: string) => {
+    const params = new URLSearchParams();
+    if (productScope) params.append('productCode', productScope);
+    if (versionScope) params.append('version', versionScope);
+    const qs = params.toString();
+    return qs ? `${path}?${qs}` : path;
+  }, [productScope, versionScope]);
+
+  const loadUsers        = useCallback(async () => { setAdminUsers(await safeFetch<AdminUser[]>('/api/admin/users', [], setError)); }, [setError]);
+  const loadRoles        = useCallback(async () => { setAdminRoles(await safeFetch<AdminRole[]>('/api/admin/roles', [], setError)); }, [setError]);
+  const loadModules      = useCallback(async () => { setModules(await safeFetch<ModuleAccess[]>('/api/admin/modules', [], setError)); }, [setError]);
+  const loadIntegrations = useCallback(async () => { setIntegrations(await safeFetch<IntegrationConfig[]>('/api/admin/integrations', [], setError)); }, [setError]);
   const loadAuditLogs    = useCallback(async (page = 1, append = false) => {
     const data = await safeFetch<AuditLog[]>(`/api/audit/logs?page=${page}&pageSize=20`, [], setError);
     if (append) { setAuditLogs(prev => [...prev, ...data]); } else { setAuditLogs(data); }
@@ -783,12 +793,12 @@ export default function AdminMaster() {
     setLoading(true); setError(null);
     try {
       const [gmb, gsv, ssv, ulip, mort, loyal] = await Promise.all([
-        api.get<GmbFactor[]>('/api/admin/factors/gmb'),
-        api.get<GsvFactor[]>('/api/admin/factors/gsv'),
-        api.get<SsvFactor[]>('/api/admin/factors/ssv'),
-        api.get<UlipCharge[]>('/api/admin/factors/ulip-charges'),
-        api.get<MortalityRate[]>('/api/admin/factors/mortality'),
-        api.get<LoyaltyFactor[]>('/api/admin/factors/loyalty'),
+        api.get<GmbFactor[]>(scoped('/api/admin/factors/gmb')),
+        api.get<GsvFactor[]>(scoped('/api/admin/factors/gsv')),
+        api.get<SsvFactor[]>(scoped('/api/admin/factors/ssv')),
+        api.get<UlipCharge[]>(scoped('/api/admin/factors/ulip-charges')),
+        api.get<MortalityRate[]>(scoped('/api/admin/factors/mortality')),
+        api.get<LoyaltyFactor[]>(scoped('/api/admin/factors/loyalty')),
       ]);
       setGmbRows(gmb.data);
       setGsvRows(gsv.data);
@@ -864,6 +874,31 @@ export default function AdminMaster() {
           <span>{error}</span>
         </div>
       )}
+
+      {/* Product/Version scope placeholder */}
+      <div className="flex flex-wrap gap-3 items-end bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">Product Code (optional)</label>
+          <input
+            value={productScope}
+            onChange={e => setProductScope(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+            placeholder="e.g. CENTURY_INCOME"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 mb-1">Version (optional)</label>
+          <input
+            value={versionScope}
+            onChange={e => setVersionScope(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+            placeholder="e.g. v1"
+          />
+        </div>
+        <div className="text-xs text-slate-500">
+          Scope is optional and reserved for future product/version-aware factor tables. Current APIs will ignore blank values.
+        </div>
+      </div>
 
       {/* Tab bar */}
       <div className="flex flex-wrap gap-2">
