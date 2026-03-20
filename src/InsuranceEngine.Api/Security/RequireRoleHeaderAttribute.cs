@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging;
 
 namespace InsuranceEngine.Api.Security;
 
@@ -27,9 +28,15 @@ public sealed class RequireRoleHeaderAttribute : ActionFilterAttribute
         var headerRole = context.HttpContext.Request.Headers["X-Role"].FirstOrDefault();
         if (headerRole == null || !_roles.Contains(headerRole.ToLowerInvariant()))
         {
+            var logger = context.HttpContext.RequestServices.GetService(typeof(ILogger<RequireRoleHeaderAttribute>)) as ILogger;
+            logger?.LogWarning("RequireRoleHeader forbid: path={Path} required={Required} provided={Provided}",
+                context.HttpContext.Request.Path, string.Join(",", _roles), headerRole ?? "<missing>");
             context.Result = new ForbidResult();
             return;
         }
+
+        var allowLogger = context.HttpContext.RequestServices.GetService(typeof(ILogger<RequireRoleHeaderAttribute>)) as ILogger;
+        allowLogger?.LogInformation("RequireRoleHeader allow: path={Path} role={Role}", context.HttpContext.Request.Path, headerRole);
 
         base.OnActionExecuting(context);
     }

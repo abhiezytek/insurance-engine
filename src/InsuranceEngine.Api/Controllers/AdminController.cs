@@ -5,6 +5,7 @@ using InsuranceEngine.Api.Services;
 using InsuranceEngine.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace InsuranceEngine.Api.Controllers;
 
@@ -17,11 +18,19 @@ public class AdminController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
     private readonly FormulaEngine _formulaEngine;
+    private readonly ILogger<AdminController> _logger;
 
-    public AdminController(InsuranceDbContext db, FormulaEngine formulaEngine)
+    public AdminController(InsuranceDbContext db, FormulaEngine formulaEngine, ILogger<AdminController> logger)
     {
         _db = db;
         _formulaEngine = formulaEngine;
+        _logger = logger;
+    }
+
+    private void LogFactorRequest(string path, int status, string? role, int? count = null)
+    {
+        _logger.LogInformation("Admin factors request {Path} status={Status} role={Role} count={Count}",
+            path, status, role ?? "<none>", count);
     }
 
     // --- Products ---
@@ -281,8 +290,13 @@ public class AdminController : ControllerBase
     // -----------------------------------------------------------------------
 
     [HttpGet("factors/gmb")]
-    public async Task<IActionResult> GetGmbFactors() =>
-        Ok(await _db.GmbFactors.OrderBy(x => x.Ppt).ThenBy(x => x.Pt).ThenBy(x => x.EntryAgeMin).ToListAsync());
+    public async Task<IActionResult> GetGmbFactors()
+    {
+        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var rows = await _db.GmbFactors.OrderBy(x => x.Ppt).ThenBy(x => x.Pt).ThenBy(x => x.EntryAgeMin).ToListAsync();
+        LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
+        return Ok(rows);
+    }
 
     [HttpPut("factors/gmb/{id:int}")]
     public async Task<IActionResult> UpdateGmbFactor(int id, [FromBody] GmbUpdateDto dto)
@@ -295,8 +309,13 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("factors/gsv")]
-    public async Task<IActionResult> GetGsvFactors() =>
-        Ok(await _db.GsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync());
+    public async Task<IActionResult> GetGsvFactors()
+    {
+        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var rows = await _db.GsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
+        LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
+        return Ok(rows);
+    }
 
     [HttpPut("factors/gsv/{id:int}")]
     public async Task<IActionResult> UpdateGsvFactor(int id, [FromBody] GsvUpdateDto dto)
@@ -309,8 +328,13 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("factors/ssv")]
-    public async Task<IActionResult> GetSsvFactors() =>
-        Ok(await _db.SsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync());
+    public async Task<IActionResult> GetSsvFactors()
+    {
+        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var rows = await _db.SsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
+        LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
+        return Ok(rows);
+    }
 
     [HttpPut("factors/ssv/{id:int}")]
     public async Task<IActionResult> UpdateSsvFactor(int id, [FromBody] SsvUpdateDto dto)
@@ -324,8 +348,13 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("factors/ulip-charges")]
-    public async Task<IActionResult> GetUlipCharges() =>
-        Ok(await _db.UlipCharges.OrderBy(x => x.ProductId).ThenBy(x => x.ChargeType).ToListAsync());
+    public async Task<IActionResult> GetUlipCharges()
+    {
+        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var rows = await _db.UlipCharges.OrderBy(x => x.ProductId).ThenBy(x => x.ChargeType).ToListAsync();
+        LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
+        return Ok(rows);
+    }
 
     [HttpPut("factors/ulip-charges/{id:int}")]
     public async Task<IActionResult> UpdateUlipCharge(int id, [FromBody] UlipChargeUpdateDto dto)
@@ -338,8 +367,13 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("factors/mortality")]
-    public async Task<IActionResult> GetMortalityRates() =>
-        Ok(await _db.MortalityRates.OrderBy(x => x.Gender).ThenBy(x => x.Age).ToListAsync());
+    public async Task<IActionResult> GetMortalityRates()
+    {
+        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var rows = await _db.MortalityRates.OrderBy(x => x.Gender).ThenBy(x => x.Age).ToListAsync();
+        LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
+        return Ok(rows);
+    }
 
     [HttpPut("factors/mortality/{id:int}")]
     public async Task<IActionResult> UpdateMortalityRate(int id, [FromBody] MortalityUpdateDto dto)
@@ -352,8 +386,13 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("factors/loyalty")]
-    public async Task<IActionResult> GetLoyaltyFactors() =>
-        Ok(await _db.LoyaltyFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYearFrom).ToListAsync());
+    public async Task<IActionResult> GetLoyaltyFactors()
+    {
+        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var rows = await _db.LoyaltyFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYearFrom).ToListAsync();
+        LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
+        return Ok(rows);
+    }
 
     [HttpPut("factors/loyalty/{id:int}")]
     public async Task<IActionResult> UpdateLoyaltyFactor(int id, [FromBody] LoyaltyUpdateDto dto)

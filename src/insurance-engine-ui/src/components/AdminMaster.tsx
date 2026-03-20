@@ -811,6 +811,12 @@ export default function AdminMaster() {
     } catch (e: any) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.error || e?.message || 'Unknown error';
+      console.error('AdminMaster factor fetch failed', {
+        url: e?.config?.url,
+        status,
+        data: e?.response?.data,
+        headers: e?.response?.headers,
+      });
       setError(`Could not load factor tables. ${status ? `HTTP ${status}: ` : ''}${msg}`);
     } finally { setLoading(false); }
     // Load new tabs in parallel, gracefully

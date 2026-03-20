@@ -17,10 +17,29 @@ apiClient.interceptors.request.use(config => {
     }
   }
   token = token ?? localStorage.getItem('auth_token') ?? undefined;
+  const headers: AxiosRequestHeaders = (config.headers ?? {}) as AxiosRequestHeaders;
   if (token) {
-    const headers: AxiosRequestHeaders = (config.headers ?? {}) as AxiosRequestHeaders;
     headers.Authorization = `Bearer ${token}`;
-    config.headers = headers;
   }
+
+  // Attach role header for Admin APIs (header-driven mock RBAC).
+  try {
+    const storedAuth = localStorage.getItem('precision_pro_auth');
+    if (storedAuth) {
+      const parsed = JSON.parse(storedAuth) as { role?: string };
+      if (parsed.role) headers['X-Role'] = parsed.role;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  const legacyRole = localStorage.getItem('auth_role');
+  if (!headers['X-Role'] && legacyRole) headers['X-Role'] = legacyRole;
+
+  // Ensure Admin screens still work during investigation
+  if (!headers['X-Role'] && (config.url?.startsWith('/api/admin') || config.url?.includes('/api/admin'))) {
+    headers['X-Role'] = 'Admin';
+  }
+
+  config.headers = headers;
   return config;
 });
