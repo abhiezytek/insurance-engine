@@ -1,13 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Package, Trash2 } from 'lucide-react';
-import { getProducts, getFormulas, getParameters, deleteFormula } from '../api';
-import type { Product, ProductFormula, ProductParameter } from '../api';
+import { Package, Trash2, Plus, Save } from 'lucide-react';
+import {
+  getProducts,
+  getFormulas,
+  getParameters,
+  deleteFormula,
+  createProductWithVersion,
+  createVersion,
+  getOutputTemplates,
+  createOutputTemplate,
+  updateOutputTemplate,
+} from '../api';
+import type { Product, ProductFormula, ProductParameter, OutputTemplate } from '../api';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
   const [formulas, setFormulas] = useState<ProductFormula[]>([]);
   const [parameters, setParameters] = useState<ProductParameter[]>([]);
+  const [templates, setTemplates] = useState<OutputTemplate[]>([]);
+  const [newProduct, setNewProduct] = useState({ insurerId: 1, name: '', code: '', productType: 'Traditional', version: 'v1' });
+  const [newVersion, setNewVersion] = useState<{ productId: number | null; version: string; effectiveDate: string }>({
+    productId: null,
+    version: 'v2',
+    effectiveDate: new Date().toISOString().slice(0, 10),
+  });
+  const [templateDraft, setTemplateDraft] = useState<{ templateName: string; templateJson: string }>({
+    templateName: 'Default Output',
+    templateJson: '{ "title": "Benefit Illustration" }',
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,11 +39,63 @@ export default function Products() {
     if (!selectedVersionId) { setFormulas([]); setParameters([]); return; }
     getFormulas(selectedVersionId).then(r => setFormulas(r.data)).catch(() => {});
     getParameters(selectedVersionId).then(r => setParameters(r.data)).catch(() => {});
+    getOutputTemplates(selectedVersionId).then(r => setTemplates(r.data)).catch(() => setTemplates([]));
   }, [selectedVersionId]);
+
+  useEffect(() => {
+    if (templates.length > 0) {
+      setTemplateDraft({
+        templateName: templates[0].templateName,
+        templateJson: templates[0].templateJson,
+      });
+    } else {
+      setTemplateDraft({ templateName: 'Default Output', templateJson: '{ "title": "Benefit Illustration" }' });
+    }
+  }, [templates]);
 
   const handleDeleteFormula = async (id: number) => {
     await deleteFormula(id);
     setFormulas(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleCreateProduct = async () => {
+    if (!newProduct.name || !newProduct.code) return;
+    await createProductWithVersion(
+      { insurerId: newProduct.insurerId, name: newProduct.name, code: newProduct.code, productType: newProduct.productType },
+      newProduct.version,
+    );
+    const refreshed = await getProducts();
+    setProducts(refreshed.data);
+    setNewProduct({ insurerId: 1, name: '', code: '', productType: 'Traditional', version: 'v1' });
+  };
+
+  const handleCreateVersion = async () => {
+    if (!newVersion.productId) return;
+    await createVersion({
+      productId: newVersion.productId,
+      version: newVersion.version,
+      isActive: true,
+      effectiveDate: newVersion.effectiveDate,
+    });
+    const refreshed = await getProducts();
+    setProducts(refreshed.data);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!selectedVersionId) return;
+    const payload = {
+      productVersionId: selectedVersionId,
+      templateName: templateDraft.templateName,
+      outputFormat: 'PDF',
+      templateJson: templateDraft.templateJson,
+    };
+    if (templates.length === 0) {
+      await createOutputTemplate(payload);
+    } else {
+      await updateOutputTemplate(templates[0].id, payload);
+    }
+    const refreshed = await getOutputTemplates(selectedVersionId);
+    setTemplates(refreshed.data);
   };
 
   if (loading) {
@@ -41,6 +114,39 @@ export default function Products() {
           <span className="block mt-1 w-12 h-1 rounded-full bg-[#007bff]" />
         </h2>
         <p className="mt-2 text-slate-500 text-sm">Browse products, versions, parameters, and formula expressions.</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#004282]">
+            <Plus size={14} /> Create Product + Version
+          </div>
+          <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]" placeholder="Name" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
+          <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]" placeholder="Code" value={newProduct.code} onChange={e => setNewProduct({ ...newProduct, code: e.target.value })} />
+          <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]" placeholder="Product Type" value={newProduct.productType} onChange={e => setNewProduct({ ...newProduct, productType: e.target.value })} />
+          <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]" placeholder="Initial Version (e.g. v1)" value={newProduct.version} onChange={e => setNewProduct({ ...newProduct, version: e.target.value })} />
+          <button onClick={handleCreateProduct} className="bg-[#004282] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+            <Save size={14} /> Save Product
+          </button>
+        </div>
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#004282]">
+            <Plus size={14} /> Add Version to Existing Product
+          </div>
+          <select
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]"
+            value={newVersion.productId ?? ''}
+            onChange={e => setNewVersion(v => ({ ...v, productId: e.target.value ? Number(e.target.value) : null }))}
+          >
+            <option value="">Select product</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]" placeholder="Version tag" value={newVersion.version} onChange={e => setNewVersion(v => ({ ...v, version: e.target.value }))} />
+          <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]" type="date" value={newVersion.effectiveDate} onChange={e => setNewVersion(v => ({ ...v, effectiveDate: e.target.value }))} />
+          <button onClick={handleCreateVersion} className="bg-[#004282] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+            <Save size={14} /> Add Version
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -159,6 +265,33 @@ export default function Products() {
                       </table>
                     </div>
                   )}
+                </div>
+
+                {/* Output templates */}
+                <div className="px-6 py-5">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Output Template (by version)</h4>
+                  <div className="space-y-2">
+                    <input
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff]"
+                      placeholder="Template name"
+                      value={templateDraft.templateName}
+                      onChange={e => setTemplateDraft({ ...templateDraft, templateName: e.target.value })}
+                    />
+                    <textarea
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-[#007bff] min-h-[120px] font-mono text-xs"
+                      value={templateDraft.templateJson}
+                      onChange={e => setTemplateDraft({ ...templateDraft, templateJson: e.target.value })}
+                    />
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>{templates.length === 0 ? 'No template saved yet' : `Saved templates: ${templates.length}`}</span>
+                      <button
+                        onClick={handleSaveTemplate}
+                        className="bg-[#004282] text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
+                      >
+                        Save Template
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

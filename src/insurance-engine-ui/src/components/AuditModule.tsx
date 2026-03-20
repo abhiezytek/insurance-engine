@@ -24,6 +24,11 @@ interface AuditCase {
   policyNumber: string;
   productName: string;
   uin: string;
+  productVersion?: string | null;
+  factorVersion?: string | null;
+  formulaVersion?: string | null;
+  calculationSource?: string | null;
+  calculatedAt?: string;
   policyAnniversary: string;
   coreSystemAmount: number;
   precisionProAmount: number;
@@ -208,6 +213,11 @@ function SinglePolicy({ sub }: { sub: AuditSubModule }) {
               { label: 'Product Name', value: result.productName },
               { label: 'UIN', value: result.uin },
               { label: 'Policy Anniversary', value: result.policyAnniversary },
+              { label: 'Product Version', value: result.productVersion ?? '—' },
+              { label: 'Factor Version', value: result.factorVersion ?? '—' },
+              { label: 'Formula Version', value: result.formulaVersion ?? '—' },
+              { label: 'Calc Source', value: result.calculationSource ?? 'PrecisionPro' },
+              { label: 'Calculated At', value: result.calculatedAt ? fmtDate(result.calculatedAt) : '—' },
               { label: 'Core System', value: `₹ ${INR(result.coreSystemAmount)}` },
               { label: 'Precision Pro', value: `₹ ${INR(result.precisionProAmount)}` },
               { label: 'Variance', value: `₹ ${INR(result.variance)}` },

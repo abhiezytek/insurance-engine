@@ -69,6 +69,11 @@ public class AuditService : IAuditService
             Variance = variance,
             Status = "Pending",
             PolicyAnniversary = policy.PolicyAnniversary,
+            ProductVersion = biResponse.ProductVersion ?? "v-default",
+            FactorVersion = biResponse.FactorVersion ?? "table-default",
+            FormulaVersion = biResponse.FormulaVersion ?? "v-default",
+            CalculationSource = "PrecisionPro",
+            CalculatedAt = DateTime.UtcNow,
             CreatedBy = userId,
             CreatedAt = DateTime.UtcNow
         };
@@ -80,7 +85,7 @@ public class AuditService : IAuditService
         {
             AuditCaseId = auditCase.Id,
             EventType = "CaseCreated",
-            NewValue = $"Policy={policyNumber}, AuditType={auditType}, Variance={variance}",
+            NewValue = $"Policy={MaskPolicy(policyNumber)}, AuditType={auditType}, Variance={variance}",
             DoneBy = userId,
             DoneAt = DateTime.UtcNow
         });
@@ -279,7 +284,19 @@ public class AuditService : IAuditService
         Variance = c.Variance,
         Status = c.Status,
         Remarks = c.Remarks,
+        ProductVersion = c.ProductVersion,
+        FactorVersion = c.FactorVersion,
+        FormulaVersion = c.FormulaVersion,
+        CalculationSource = c.CalculationSource,
+        CalculatedAt = c.CalculatedAt,
         CreatedBy = c.CreatedBy,
         CreatedAt = c.CreatedAt
     };
+
+    private static string MaskPolicy(string policyNumber)
+    {
+        if (string.IsNullOrWhiteSpace(policyNumber) || policyNumber.Length <= 4) return "****";
+        var last4 = policyNumber[^4..];
+        return $"****{last4}";
+    }
 }

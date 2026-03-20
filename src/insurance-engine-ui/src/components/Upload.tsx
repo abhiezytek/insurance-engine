@@ -34,8 +34,10 @@ function downloadCsv(filename: string, content: string) {
 // ---------- Component ----------
 export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
-  const [uploadType, setUploadType] = useState<'Formulas' | 'Parameters'>('Formulas');
+  const [uploadType, setUploadType] = useState<'Formulas' | 'Parameters' | 'Factors'>('Formulas');
   const [productVersionId, setProductVersionId] = useState('1');
+  const [factorTable, setFactorTable] = useState('gmb');
+  const [versionTag, setVersionTag] = useState('v1');
   const [result, setResult] = useState<{ totalRows: number; processedRows: number; errorRows: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,10 @@ export default function Upload() {
     if (!file) return;
     setLoading(true); setError(null); setResult(null);
     try {
-      const resp = await uploadFile(file, uploadType, parseInt(productVersionId));
+      const resp = await uploadFile(file, uploadType, parseInt(productVersionId), {
+        factorTable: uploadType === 'Factors' ? factorTable : undefined,
+        versionTag: versionTag || undefined,
+      });
       setResult(resp.data);
       // Refresh batch list
       getBatches().then(r => setBatches(r.data)).catch(err => console.warn('Failed to refresh batches:', err));
@@ -168,12 +173,13 @@ export default function Upload() {
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Upload Type</label>
                 <select
                   value={uploadType}
-                  onChange={e => setUploadType(e.target.value as 'Formulas' | 'Parameters')}
+                  onChange={e => setUploadType(e.target.value as 'Formulas' | 'Parameters' | 'Factors')}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]"
                 >
                   <option>Formulas</option>
                   <option>Parameters</option>
+                  <option>Factors</option>
                 </select>
               </div>
               <div>
@@ -186,6 +192,35 @@ export default function Upload() {
                              focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]"
                 />
               </div>
+              {uploadType === 'Factors' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Factor Table</label>
+                    <select
+                      value={factorTable}
+                      onChange={e => setFactorTable(e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]"
+                    >
+                      <option value="gmb">GMB</option>
+                      <option value="gsv">GSV</option>
+                      <option value="ssv">SSV</option>
+                      <option value="ulip-charges">ULIP Charges</option>
+                      <option value="mortality">Mortality Rates</option>
+                      <option value="loyalty">Loyalty Factors</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Version Tag</label>
+                    <input
+                      type="text"
+                      value={versionTag}
+                      onChange={e => setVersionTag(e.target.value)}
+                      placeholder="v1 / 2024-04"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <button

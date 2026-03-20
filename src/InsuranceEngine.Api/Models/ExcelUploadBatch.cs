@@ -5,6 +5,8 @@ public class ExcelUploadBatch
     public int Id { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string UploadType { get; set; } = string.Empty; // Products, Parameters, Formulas, Rules
+    public int? ProductVersionId { get; set; }
+    public string? VersionTag { get; set; }
     public string Status { get; set; } = "Processing"; // Processing, Completed, Failed
     public int TotalRows { get; set; }
     public int ProcessedRows { get; set; }

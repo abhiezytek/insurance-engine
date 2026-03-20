@@ -19,23 +19,40 @@ public class UploadController : ControllerBase
 
     /// <summary>Upload an Excel (.xlsx) or CSV (.csv) file for bulk creation of parameters or formulas.</summary>
     /// <param name="file">The file to upload (.xlsx or .csv).</param>
-    /// <param name="uploadType">Type of data: Parameters or Formulas.</param>
+    /// <param name="uploadType">Type of data: Parameters, Formulas, Rules, or Factors.</param>
     /// <param name="productVersionId">Target product version ID.</param>
+    /// <param name="factorTable">When uploadType=Factors, the target table (gmb, gsv, ssv, ulip-charges, mortality, loyalty).</param>
+    /// <param name="versionTag">Optional version tag for audit/versioning.</param>
     [HttpPost]
     [SwaggerFileUpload]
     [RequestSizeLimit(10 * 1024 * 1024)] // 10MB
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string uploadType, [FromQuery] int productVersionId)
+    public async Task<IActionResult> Upload(
+        IFormFile file,
+        [FromQuery] string uploadType,
+        [FromQuery] int productVersionId,
+        [FromQuery] string? factorTable = null,
+        [FromQuery] string? versionTag = null)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file provided.");
 
-        var allowedTypes = new[] { "Products", "Parameters", "Formulas", "Rules" };
+        var allowedTypes = new[] { "Products", "Parameters", "Formulas", "Rules", "Factors" };
         if (!allowedTypes.Contains(uploadType))
             return BadRequest($"uploadType must be one of: {string.Join(", ", allowedTypes)}");
 
-        var batch = new ExcelUploadBatch { FileName = file.FileName, UploadType = uploadType, Status = "Processing" };
+        if (uploadType == "Factors" && string.IsNullOrWhiteSpace(factorTable))
+            return BadRequest("factorTable is required when uploadType=Factors. Allowed: gmb, gsv, ssv, ulip-charges, mortality, loyalty.");
+
+        var batch = new ExcelUploadBatch
+        {
+            FileName = file.FileName,
+            UploadType = uploadType,
+            Status = "Processing",
+            ProductVersionId = productVersionId,
+            VersionTag = string.IsNullOrWhiteSpace(versionTag) ? null : versionTag
+        };
         _db.ExcelUploadBatches.Add(batch);
         await _db.SaveChangesAsync();
 
@@ -58,7 +75,7 @@ public class UploadController : ControllerBase
                 for (int i = 1; i < lines.Count; i++)
                 {
                     var row = lines[i].Split(',');
-                    var (success, error) = await ProcessRow(uploadType, header, row, productVersionId, i + 1);
+                    var (success, error) = await ProcessRow(uploadType, factorTable, header, row, productVersionId, i + 1);
                     if (success) processedRows++; else { errorRows++; errors.Add(new ExcelUploadRowError { ExcelUploadBatchId = batch.Id, RowNumber = i + 1, ErrorMessage = error ?? "Unknown error" }); }
                 }
             }
@@ -72,7 +89,7 @@ public class UploadController : ControllerBase
                 for (int row = 2; row <= (worksheet.Dimension?.Rows ?? 1); row++)
                 {
                     var rowData = Enumerable.Range(1, header.Length).Select(c => worksheet.Cells[row, c].Text.Trim()).ToArray();
-                    var (success, error) = await ProcessRow(uploadType, header, rowData, productVersionId, row);
+                    var (success, error) = await ProcessRow(uploadType, factorTable, header, rowData, productVersionId, row);
                     if (success) processedRows++; else { errorRows++; errors.Add(new ExcelUploadRowError { ExcelUploadBatchId = batch.Id, RowNumber = row, ErrorMessage = error ?? "Unknown error" }); }
                 }
             }
@@ -95,7 +112,7 @@ public class UploadController : ControllerBase
         }
     }
 
-    private async Task<(bool success, string? error)> ProcessRow(string uploadType, string[] header, string[] row, int productVersionId, int rowNum)
+    private async Task<(bool success, string? error)> ProcessRow(string uploadType, string? factorTable, string[] header, string[] row, int productVersionId, int rowNum)
     {
         try
         {
@@ -128,6 +145,13 @@ public class UploadController : ControllerBase
                     await _db.SaveChangesAsync();
                     return (true, null);
                 }
+                case "Factors":
+                {
+                    if (string.IsNullOrWhiteSpace(factorTable))
+                        return (false, "factorTable missing");
+                    var table = factorTable.ToLowerInvariant();
+                    return await ValidateFactorRow(table, dict);
+                }
                 default:
                     return (false, $"Unsupported upload type: {uploadType}");
             }
@@ -136,6 +160,37 @@ public class UploadController : ControllerBase
         {
             return (false, ex.Message);
         }
+    }
+
+    private Task<(bool success, string? error)> ValidateFactorRow(string table, Dictionary<string, string> dict)
+    {
+        try
+        {
+            return table switch
+            {
+                "gmb" => Task.FromResult<(bool success, string? error)>(ValidateColumns(dict, new[] { "Ppt", "Pt", "EntryAgeMin", "EntryAgeMax", "Option", "Factor" })),
+                "gsv" => Task.FromResult<(bool success, string? error)>(ValidateColumns(dict, new[] { "Ppt", "PolicyYear", "FactorPercent" })),
+                "ssv" => Task.FromResult<(bool success, string? error)>(ValidateColumns(dict, new[] { "Ppt", "Option", "PolicyYear", "SsvFactor1Percent", "SsvFactor2Percent" })),
+                "ulip-charges" => Task.FromResult<(bool success, string? error)>(ValidateColumns(dict, new[] { "ProductId", "ChargeType", "ChargeValue" })),
+                "mortality" => Task.FromResult<(bool success, string? error)>(ValidateColumns(dict, new[] { "Gender", "Age", "Rate" })),
+                "loyalty" => Task.FromResult<(bool success, string? error)>(ValidateColumns(dict, new[] { "Ppt", "PolicyYearFrom", "PolicyYearTo", "RatePercent" })),
+                _ => Task.FromResult<(bool success, string? error)>((false, $"Unsupported factorTable: {table}"))
+            };
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult<(bool success, string? error)>((false, ex.Message));
+        }
+    }
+
+    private static (bool success, string? error) ValidateColumns(Dictionary<string, string> dict, IEnumerable<string> required)
+    {
+        foreach (var col in required)
+        {
+            if (!dict.TryGetValue(col, out var v) || string.IsNullOrWhiteSpace(v))
+                return (false, $"Missing '{col}'");
+        }
+        return (true, null);
     }
 
     /// <summary>List all upload batches with their row errors.</summary>

@@ -59,3 +59,11 @@ public class CreateConditionRequest
     public string Value { get; set; } = string.Empty;
     public string? Value2 { get; set; }
 }
+
+public class OutputTemplateDto
+{
+    public int ProductVersionId { get; set; }
+    public string TemplateName { get; set; } = string.Empty;
+    public string OutputFormat { get; set; } = "PDF";
+    public string TemplateJson { get; set; } = "{}";
+}

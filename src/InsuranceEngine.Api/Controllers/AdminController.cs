@@ -2,6 +2,7 @@ using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Services;
+using InsuranceEngine.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace InsuranceEngine.Api.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Produces("application/json")]
+[RequireRoleHeader("Admin")]
 public class AdminController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
@@ -74,6 +76,23 @@ public class AdminController : ControllerBase
         _db.ProductVersions.Add(version);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetVersions), new { id = version.Id }, version);
+    }
+
+    /// <summary>Create a product with its initial version in one call.</summary>
+    [HttpPost("products-with-version")]
+    [ProducesResponseType(typeof(Product), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateProductWithVersion([FromBody] CreateProductRequest req, [FromQuery] string version = "v1")
+    {
+        var product = new Product { InsurerId = req.InsurerId, Name = req.Name, Code = req.Code, ProductType = req.ProductType };
+        _db.Products.Add(product);
+        await _db.SaveChangesAsync();
+
+        var pv = new ProductVersion { ProductId = product.Id, Version = version, IsActive = true, EffectiveDate = DateTime.UtcNow.Date };
+        _db.ProductVersions.Add(pv);
+        await _db.SaveChangesAsync();
+
+        product.Versions = new List<ProductVersion> { pv };
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
     // --- Parameters ---
@@ -538,6 +557,47 @@ public class AdminController : ControllerBase
         config.IsMock = !config.IsMock;
         await _db.SaveChangesAsync();
         return Ok(config);
+    }
+
+    // -------------------------------------------------------------------------
+    // Output templates (product-version scoped)
+    // -------------------------------------------------------------------------
+
+    [HttpGet("output-templates")]
+    public async Task<IActionResult> GetOutputTemplates([FromQuery] int? productVersionId)
+    {
+        var query = _db.OutputTemplates.AsQueryable();
+        if (productVersionId.HasValue)
+            query = query.Where(t => t.ProductVersionId == productVersionId.Value);
+        return Ok(await query.OrderBy(t => t.TemplateName).ToListAsync());
+    }
+
+    [HttpPost("output-templates")]
+    public async Task<IActionResult> CreateOutputTemplate([FromBody] OutputTemplateDto dto)
+    {
+        var template = new OutputTemplate
+        {
+            ProductVersionId = dto.ProductVersionId,
+            TemplateName = dto.TemplateName,
+            OutputFormat = dto.OutputFormat,
+            TemplateJson = dto.TemplateJson
+        };
+        _db.OutputTemplates.Add(template);
+        await _db.SaveChangesAsync();
+        return StatusCode(StatusCodes.Status201Created, template);
+    }
+
+    [HttpPut("output-templates/{id:int}")]
+    public async Task<IActionResult> UpdateOutputTemplate(int id, [FromBody] OutputTemplateDto dto)
+    {
+        var template = await _db.OutputTemplates.FindAsync(id);
+        if (template is null) return NotFound();
+        template.TemplateName = dto.TemplateName;
+        template.OutputFormat = dto.OutputFormat;
+        template.TemplateJson = dto.TemplateJson;
+        template.ProductVersionId = dto.ProductVersionId;
+        await _db.SaveChangesAsync();
+        return Ok(template);
     }
 
     private static string BCryptHash(string password)
