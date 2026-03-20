@@ -1,6 +1,7 @@
 title: Insurance Engine Docs
 description: Documentation for the Insurance Engine project
 theme: minima
+encoding: UTF-8
 
 # Exclude non-markdown/doc files from Jekyll processing
 exclude:

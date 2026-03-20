@@ -1,4 +1,4 @@
-Form No.- 2:- ìForm IRDAI - Life-Unit Linkedî
+Form No.- 2:- ‚ÄúForm IRDAI - Life-Unit Linked‚Äù
 (For Unit Linked insurance products (both individual and group))
 
 
@@ -23,25 +23,25 @@ Form No.- 2:- ìForm IRDAI - Life-Unit Linkedî
 6. Terms and Conditions
 
 6.1 Whether the product is offered to: 
-†
+¬†
 a)  [Males]     / [Females]       /  [Transgender]     / [All] 
 
 b)  [Smokers]        / [Non Smokers]         / [All]  
  	
 c)  [Individuals]  /[Groups]                                
 
-d)  [Standard Lives]     /[All types of Lives ñ including impaired lives]    
+d)  [Standard Lives]     /[All types of Lives ‚Äì including impaired lives]    
 
 e)  [Specific geographic locations in India]         /[All geographic locations in India] 
-†
+¬†
 f)   [Urban population]        /  [Rural population]       / [All]   
      
 g)  Market for: [Limited period]     : [if so give here the number of months]: /[ Unlimited period] 
 
-6.2. †
+6.2. ¬†
 a) Minimum Sum Assured/ Annuity p.a.: 
 
-For Single Pay ñ Rs 3,12,500, 1.25 times of Single Premium
+For Single Pay ‚Äì Rs 3,12,500, 1.25 times of Single Premium
 For Other Pay- Rs 500,000, 10 times of the Annualized Premium
 
 The minimum death benefit at any time during the term of the policy shall not be less than 105% of the total premiums paid.
@@ -50,33 +50,33 @@ Where, Annualized Premium means premium amount payable in a year excluding the t
 
 b) Maximum Sum Assured/ Annuity p.a.: Rs.[ ]
 
-       For Single Pay ñAs per Board Approved Underwriting Policy (BAUP), 1.25 times of Single Premium
+       For Single Pay ‚ÄìAs per Board Approved Underwriting Policy (BAUP), 1.25 times of Single Premium
        
  For Other Pay - Rs 25,00,000,10 times of the Annualized Premium 
-       (ìas per Board Approved Underwriting Policy (BAUP)î
+       (‚Äúas per Board Approved Underwriting Policy (BAUP)‚Äù
 The minimum death benefit at any time during the term of the policy shall not be less than 105% of the total premiums paid.
  
 c) Minimum Premium: Rs [ ]
 
-      Minimum Single Premium ñ Rs 2,50,000
+      Minimum Single Premium ‚Äì Rs 2,50,000
       Minimum Annualized Premium for other than Single Premium: 
 Premium Payment ModeMinimum Annualised PremiumYearlyRs 50,000Half Yearly                   Rs.30,000Quarterly                   Rs 15,000Monthly                   Rs  5,000     
-ìAnnualized Premiumî means the premium amount payable in a year excluding the taxes, rider premiums and underwriting extra premium on riders, if any.
+‚ÄúAnnualized Premium‚Äù means the premium amount payable in a year excluding the taxes, rider premiums and underwriting extra premium on riders, if any.
 
 d) Maximum Premium : Rs. [ ]
 
 
-Maximum Single Premium ñ  As per Board Approved Underwriting Policy (BAUP)
+Maximum Single Premium ‚Äì  As per Board Approved Underwriting Policy (BAUP)
 Maximum Annualized Premium for other than Single Premium: Rs.2,50,000.
 
 e) Minimum Entry Age (in years): 
  
-Life Assured ñ 0 Years (30 Days) 
-	      Policyholder ñ 18 Years age last birthday. 
+Life Assured ‚Äì 0 Years (30 Days) 
+	      Policyholder ‚Äì 18 Years age last birthday. 
 		
 f) Maximum Entry Age (in years):  (Age is Age last birthday)
 
-Policy TermPlatinumPlatinum PlusLife AssuredLife Assured/Policyholder10 ñ 14 50 Years 50 Years15 ñ 4055 Years55 Years 
+Policy TermPlatinumPlatinum PlusLife AssuredLife Assured/Policyholder10 ‚Äì 14 50 Years 50 Years15 ‚Äì 4055 Years55 Years 
        
 g)   Minimum Policy Term : 
 
@@ -84,17 +84,17 @@ PPTPolicy Term for Platinum OptionPolicy Term for Platinum Plus OptionSingle 
 
 h)   Maximum Policy Term: 
 
-Policy Term Plan OptionsPlatinumPlatinum PlusLife Assured is Minor at Date of Commencement of Policy*Life Assured is Major(age >=18 years) at Date of Commencement of PolicySingle Pay40 YearsNot ApplicableNot ApplicableLimited Pay (5 Pay ,7 Pay ,10 Pay)40 Years40 Years40 YearsRegular Pay40 Years30 Years ñ Entry Age40 Years
+Policy Term Plan OptionsPlatinumPlatinum PlusLife Assured is Minor at Date of Commencement of Policy*Life Assured is Major(age >=18 years) at Date of Commencement of PolicySingle Pay40 YearsNot ApplicableNot ApplicableLimited Pay (5 Pay ,7 Pay ,10 Pay)40 Years40 Years40 YearsRegular Pay40 Years30 Years ‚Äì Entry Age40 Years
 
 i) Minimum Premium Payment Term: 
 
-ParticularsPlan OptionsPlatinumPlatinum PlusLife Assured is Minor at Date of Commencement of PolicyLife Assured is Major(age >=18 years) at Date of Commencement of PolicySingle PaySingleNot ApplicableNot ApplicableLimited Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 PayRegular Pay10 to 40 Years10 to (30 ñ Entry Age) Years10 ñ 40 YearsAge is age at last birthday.
+ParticularsPlan OptionsPlatinumPlatinum PlusLife Assured is Minor at Date of Commencement of PolicyLife Assured is Major(age >=18 years) at Date of Commencement of PolicySingle PaySingleNot ApplicableNot ApplicableLimited Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 PayRegular Pay10 to 40 Years10 to (30 ‚Äì Entry Age) Years10 ‚Äì 40 YearsAge is age at last birthday.
 5 Pay, 7 Pay and 10 Pay in Limited Pay option would mean 5 Years, 7 Years and 10 Years premium payment respectively.
 
 	
 j)    Maximum Premium Paying Term:
 
-ParticularsPlan OptionsPlatinumPlatinum PlusLife Assured is Minor at Date of Commencement of PolicyLife Assured is Major(age >=18 years) at Date of Commencement of PolicySingle PaySingleNot ApplicableNot ApplicableLimited Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 PayRegular Pay10 to 40 Years10 to (30 ñ Entry Age) Years10 ñ 40 Years
+ParticularsPlan OptionsPlatinumPlatinum PlusLife Assured is Minor at Date of Commencement of PolicyLife Assured is Major(age >=18 years) at Date of Commencement of PolicySingle PaySingleNot ApplicableNot ApplicableLimited Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 Pay5 Pay ,7 Pay ,10 PayRegular Pay10 to 40 Years10 to (30 ‚Äì Entry Age) Years10 ‚Äì 40 Years
 Age is age at last birthday.
 5 Pay, 7 Pay and 10 Pay in Limited Pay option would mean 5 Years, 7 Years and 10 Years premium payment respectively.
 
@@ -103,7 +103,7 @@ k)   Minimum Maturity Age [in years]:  18 Years last birthday
 l)    Maximum Maturity Age [in years]: 75 Years last birthday
 
 
-6.3 Specify whether terms and conditions include:†
+6.3 Specify whether terms and conditions include:¬†
 
 a)    [Restriction on travel outside India] / [No restrictions on travel]
 
@@ -152,12 +152,12 @@ c. occurs within 180 days of the occurrence of such accident irrespective of the
 
 For the purposes of this benefit, the loss of both arms, or of both legs, or of one arm and one leg, or of both eyes, shall be considered total and permanent disability, without prejudice to other causes of total and permanent disability
 
-ìLoss of an arm or a legî shall mean physical severance of the arm at or above the wrist or physical severance of the leg at or above the ankle which:
+‚ÄúLoss of an arm or a leg‚Äù shall mean physical severance of the arm at or above the wrist or physical severance of the leg at or above the ankle which:
        a. is caused by bodily injury resulting from an accident, and 
        b. occurs due to the said bodily injury, directly and independently of any other causes, and
 c. occurs within 180 days of the occurrence of such accident irrespective of the expiry of cover term provided date of accident is within the cover term
 
-ìLoss of an eyeî shall mean total and irrevocable loss of sight of an eye which:
+‚ÄúLoss of an eye‚Äù shall mean total and irrevocable loss of sight of an eye which:
        a. is caused by bodily injury resulting from an accident, and
        b. occurs due to the said bodily injury, directly and independently of any other causes, and
 c. occurs within 180 days of the occurrence of such accident irrespective of the expiry of cover term provided date of accident is within the cover term 
@@ -166,7 +166,7 @@ c. occurs within 180 days of the occurrence of such accident irrespective of the
        
 Injury means accidental physical bodily harm excluding illness or disease solely and directly caused by external, violent, visible and evident means which is verified and certified by a Medical Practitioner.
        
-ìMedical Practitionerî means a person who holds a valid registration from the medical council of any State of India or Medical Council of India or any other such body or Council for Indian Medicine or for homeopathy set up by the Government of India or by a State Government and is thereby entitled to practice medicine within its jurisdiction and is acting within the scope and jurisdiction of his license, provided such Medical Practitioner is not the Life Insured covered under this Policy or the Policyholder or is not a spouse, lineal relative of the Life Insured and/or the Policyholder or a Medical Practitioner employed by the Policyholder/Life Insured.
+‚ÄúMedical Practitioner‚Äù means a person who holds a valid registration from the medical council of any State of India or Medical Council of India or any other such body or Council for Indian Medicine or for homeopathy set up by the Government of India or by a State Government and is thereby entitled to practice medicine within its jurisdiction and is acting within the scope and jurisdiction of his license, provided such Medical Practitioner is not the Life Insured covered under this Policy or the Policyholder or is not a spouse, lineal relative of the Life Insured and/or the Policyholder or a Medical Practitioner employed by the Policyholder/Life Insured.
 
 
 The product offers the following benefits subject to the conditions described in the sections below:
@@ -255,14 +255,14 @@ NA
 A. An amount equal to the present value of future premium (if any) discounted at the rate of 5.5% per annum calculated on date of occurrence of ATPD will be credited by the Company to the Fund Value as on.
 
 B. An amount equal to the present value of future premium (if any) discounted at the rate of 5.5% per annum calculated on date of occurrence of ATPD will be credited by the Company to the Fund Value as on.
-MaturityOn survival of the life assured till the end of the policy termOn survival of the Life Assured till the end of the policy term, the Fund Value calculated at the prevailing NAV, will be paid to the policyholder along with return of charges as mentioned below under the section ìReturn of ChargesîOn survival of the Life Assured till the end of the policy term, the Fund Value calculated at the prevailing NAV, will be paid to the policyholder along with return of charges as mentioned below under the section ìReturn of Chargesî
+MaturityOn survival of the life assured till the end of the policy termOn survival of the Life Assured till the end of the policy term, the Fund Value calculated at the prevailing NAV, will be paid to the policyholder along with return of charges as mentioned below under the section ‚ÄúReturn of Charges‚ÄùOn survival of the Life Assured till the end of the policy term, the Fund Value calculated at the prevailing NAV, will be paid to the policyholder along with return of charges as mentioned below under the section ‚ÄúReturn of Charges‚Äù
 SurrenderOn surrender of the policyDuring Lock-in period:
 On surrender of the policy, the Fund Value less applicable Discontinuance charge will be credited to discontinued policy fund. At the end of the lock-in period the proceeds of the discontinuance fund shall be paid to the policyholder.
 After the lock-in period:
 The proceeds of the fund shall be paid to the policyholder.During Lock-in period:
 On surrender of the policy, the Fund Value less applicable Discontinuance charge will be credited to discontinued policy fund. At the end of the lock-in period the proceeds of the discontinuance fund shall be paid to the policyholder.
 After the lock-in period:
-The proceeds of the fund shall be paid to the policyholder.Discontinuance of due premiumsOn discontinuance of due premiumsPlease refer to Section 8.3 for the details of benefit payout under îDiscontinuance of due premiumsî.Please refer to Section 8.3 for the details of benefit payout under îDiscontinuance of due premiumsî.
+The proceeds of the fund shall be paid to the policyholder.Discontinuance of due premiumsOn discontinuance of due premiumsPlease refer to Section 8.3 for the details of benefit payout under ‚ÄùDiscontinuance of due premiums‚Äù.Please refer to Section 8.3 for the details of benefit payout under ‚ÄùDiscontinuance of due premiums‚Äù.
 
 Risk Commencement Date for Minor Life: 
 For minor lives with entry age less than 5 Years, risk commencement date will start one day before the completion of two Years from date of commencement of the policy or at the first monthly policy anniversary after attainment of age 5 Years whichever is earlier.
@@ -332,7 +332,7 @@ This strategy enables the policyholder to manage the investments actively. Under
 2. Age-based Investment Strategy  
 At policy inception, based on the risk preference (aggressive or conservative) of the policyholder the investments are distributed between two funds, Blue Chip Equity Fund and Gilt Fund, based on the age. As the life insured moves from one age band to another, the funds are re-distributed based on the attained age. The age wise portfolio distribution for both the risk preferences are shown in the table.
 
-Attained age of Life Assured (Years)AggressiveConservativeBlue Chip Equity FundGilt FundBlue Chip Equity FundGilt FundUp to 3080%20%60%40%31 ñ 4070%30%50%50%41 ñ 5060%40%40%60%51 ñ 5550%50%30%70%56 ñ 6040%60%20%80%61 ñ 6530%70%10%90%66 ñ 7520%80%0%100%
+Attained age of Life Assured (Years)AggressiveConservativeBlue Chip Equity FundGilt FundBlue Chip Equity FundGilt FundUp to 3080%20%60%40%31 ‚Äì 4070%30%50%50%41 ‚Äì 5060%40%40%60%51 ‚Äì 5550%50%30%70%56 ‚Äì 6040%60%20%80%61 ‚Äì 6530%70%10%90%66 ‚Äì 7520%80%0%100%
 Annual rebalancing: On annual basis, units shall be rebalanced as necessary to achieve the above proportions of the Fund Value in the Blue-Chip Equity Fund and Gilt Fund. The rebalancing of units shall be done on the last day of each Policy Year.
 
 Security as policy approaches maturity: As the Policy nears its maturity date, it needs to be ensured that short-term market volatility does not affect the accumulated savings. In order to achieve this, the investments from Blue Chip Equity Fund will be systematically transferred to Gilt Fund in five installments in the last five policy anniversary before maturity of the Policy. 
@@ -353,7 +353,7 @@ The policy shall terminate automatically on occurrence of the earlier of any one
 
 Foreclosure
 
-If the policy has run for at least 5 years provided 5 full yearsí premiums have been paid and the balance in the Unit Fund is not sufficient to recover the relevant charges, the policy shall be compulsorily terminated and the balance amount in the Unit Fund, if any, shall be refunded to the Policyholder. This shall be applicable irrespective of whether the policy is inforce or paid-up during the revival period.
+If the policy has run for at least 5 years provided 5 full years‚Äô premiums have been paid and the balance in the Unit Fund is not sufficient to recover the relevant charges, the policy shall be compulsorily terminated and the balance amount in the Unit Fund, if any, shall be refunded to the Policyholder. This shall be applicable irrespective of whether the policy is inforce or paid-up during the revival period.
 
 
 8. Product Features.
@@ -362,7 +362,7 @@ If the policy has run for at least 5 years provided 5 full yearsí premiums have 
 
 The investment objective of this product is to provide flexibility and market return to the policy holder/beneficiary. 
 
-Under this policy, the policyholder has the option to invest in either Self Managed by choosing in any of the eight funds viz. Blue Chip Equity Fund, Growth Plus Fund, Balanced Plus Fund, Mid Cap Fund, Income Fund, Gilt Fund, Dynamic Fund and Money Market Fund †or Age Based strategyî
+Under this policy, the policyholder has the option to invest in either Self Managed by choosing in any of the eight funds viz. Blue Chip Equity Fund, Growth Plus Fund, Balanced Plus Fund, Mid Cap Fund, Income Fund, Gilt Fund, Dynamic Fund and Money Market Fund ¬†or Age Based strategy‚Äù
 
 When the proposal is accepted, the premium will be allocated amongst the above mentioned eight funds, as chosen by the policyholder.
 
@@ -375,37 +375,37 @@ There is no guaranteed return offered under this product.
 
 The allocations in the respective funds are as follows:
 
-Blue Chip Equity Fund (SFIN: ULIF 019 11/12/13 SUD-LI-EQ2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible Debenturesi. The†fund seeks to achieve long term capital appreciation by investing predominantly in equity, Preference shares and Convertible Debentures.70%100%HighDebt Instruments0%0%Money Market Instrument, 0%30%Mutual Fund & Fixed Deposit0%30%Growth Plus Fund (SFIN: ULIF 023 11/12/13 SUD-LI-GR2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo aim for medium to long term capital appreciation by maintaining a diversified portfolio of equity and Preference shares and Convertible Debentures and fair exposure to high credit quality portfolio of debt and money market instruments.40%100%Medium to HighDebt Instruments0%60%Money Market Instruments0%30%Mutual Fund & Fixed Deposit0%30%Balanced Plus Fund ñ (SFIN: ULIF 024 11/12/13 SUD-LI-BL2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo optimize returns over medium to long term, by aiming balance between risk and return, through investments in high quality equity and debt instruments.0%60%Low to MediumDebt Instruments40%100%Money Market Instruments0%30%Mutual Fund & Fixed Deposit0%30%Mid Cap Fund (SFIN: ULIF 026 14/10/19 SUD-LI-MID 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo generate reasonable capital appreciation over time through building and managing diversified equity portfolio pre-dominantly of midcap stocks with an option to have some exposure in large cap stocks70%100%Very HighDebt Instruments0%0%Money Market Instruments0%30%Bank Deposit, Mutual Fund & Net Current Assets0%30%
+Blue Chip Equity Fund (SFIN: ULIF 019 11/12/13 SUD-LI-EQ2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible Debenturesi. The¬†fund seeks to achieve long term capital appreciation by investing predominantly in equity, Preference shares and Convertible Debentures.70%100%HighDebt Instruments0%0%Money Market Instrument, 0%30%Mutual Fund & Fixed Deposit0%30%Growth Plus Fund (SFIN: ULIF 023 11/12/13 SUD-LI-GR2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo aim for medium to long term capital appreciation by maintaining a diversified portfolio of equity and Preference shares and Convertible Debentures and fair exposure to high credit quality portfolio of debt and money market instruments.40%100%Medium to HighDebt Instruments0%60%Money Market Instruments0%30%Mutual Fund & Fixed Deposit0%30%Balanced Plus Fund ‚Äì (SFIN: ULIF 024 11/12/13 SUD-LI-BL2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo optimize returns over medium to long term, by aiming balance between risk and return, through investments in high quality equity and debt instruments.0%60%Low to MediumDebt Instruments40%100%Money Market Instruments0%30%Mutual Fund & Fixed Deposit0%30%Mid Cap Fund (SFIN: ULIF 026 14/10/19 SUD-LI-MID 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo generate reasonable capital appreciation over time through building and managing diversified equity portfolio pre-dominantly of midcap stocks with an option to have some exposure in large cap stocks70%100%Very HighDebt Instruments0%0%Money Market Instruments0%30%Bank Deposit, Mutual Fund & Net Current Assets0%30%
 Income Fund (SFIN: ULIF 020 11/12/13 SUD-LI-BN2 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible DebenturesTo aim for stable returns over medium to long term by judicious mix of investments in Government securities and high-quality corporate debt of varying maturities and also in money market instruments.0%0%Low to MediumDebt Instruments70%100%Money Market Instruments, 0%30%Mutual Fund & Fixed Deposit0%30%Gilt Fund (SFIN : ULIF 027 14/10/19 SUD-LI-GLT 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible Debentures To generate reasonable return without any credit risk through investment in securities issued by Central and State Governments and any other securities serviced/guaranteed by Government of India/State Governments. A portion of the fund may be invested in money market instruments and others like bank deposits, mutual funds and net current assets to meet short term liquidity requirements of the Plan.0%0%Low to MediumGovernment Securities 60%100%Money market instruments and Bank Deposits0%40%Mutual Fund & Fixed Deposit0%40%Dynamic Fund (SFIN: ULIF 028 11/06/21 SUD-LI-DYN 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible Debentures To manage the fund with active asset allocation between Equity, Debt or Money Market to optimize returns depending on evolving market outlook as decided by the fund manager. The customer is making a choice to rely on the FMs asset allocation calls10%95%    HighGovernment Securities 10%95%Money market instruments and Bank Deposits0%80%Mutual Fund & Fixed Deposit0%15%Money Market Fund (SFIN: ULIF 029 11/06/21 SUD-LI-MMF 142)Asset CategoryInvestment ObjectivesMinMaxRisk ProfileEquity, Preference Shares and Convertible Debentures To manage the funds with safety of capital and to generate money market related returns with minimum credit and interest rate risks.
 0%0%Low Government Securities 0%0%Money market instruments and Bank Deposits85%100%Mutual Fund & Fixed Deposit0%15%
 Discontinued Policies Fund (SFIN: ULIF 021 10/04/13 SUD-PA-DP2 142)
 
-† Asset CategoryInvestment ObjectivesMinMaxEquity, Preference Shares and Convertible DebenturesTo ensure safety and liquidity of funds and to generate the returns over and above the minimum guaranteed interest rate declared by the IRDAI from time to time. Currently, the minimum guaranteed interest rate prescribed by the IRDAI under Discontinued Policies Fund is 4% p.a.0%0%Money Market Instruments0%40%Government Securities60%100%
+¬† Asset CategoryInvestment ObjectivesMinMaxEquity, Preference Shares and Convertible DebenturesTo ensure safety and liquidity of funds and to generate the returns over and above the minimum guaranteed interest rate declared by the IRDAI from time to time. Currently, the minimum guaranteed interest rate prescribed by the IRDAI under Discontinued Policies Fund is 4% p.a.0%0%Money Market Instruments0%40%Government Securities60%100%
 SUD Life reserves the right to add, modify or close any of the above-mentioned funds subject to prior approval of IRDAI.
 
 Investment Policy complies with the IRDAI (Investment) Regulation, 2016 Circulars and guidelines issued.
 Where the below mentioned fund(s) namely 
 1. Blue Chip Equity Fund (SFIN : ULIF 019 11/12/13 SUD-LI-EQ2 142) 
 2. Growth Plus Fund (SFIN : ULIF 023 11/12/13 SUD-LI-GR2 142)
-3. Balanced Plus Fund ñ (SFIN : ULIF 024 11/12/13 SUD-LI-BL2 142)
+3. Balanced Plus Fund ‚Äì (SFIN : ULIF 024 11/12/13 SUD-LI-BL2 142)
 4. Mid Cap Fund (SFIN : ULIF 026 14/10/19 SUD-LI-MID 142)
 5. Income Fund (SFIN : ULIF 020 11/12/13 SUD-LI-BN2 142)
 6. Gilt Fund (SFIN : ULIF 027 14/10/19 SUD-LI-GLT 142)
 7. Dynamic Fund (SFIN : ULIF 028 11/06/21 SUD-LI-DYN 142)
 8. Money Market Fund (SFIN : ULIF 029 11/06/21 SUD-LI-MMF 142)
 
-attached to the SUD Life e-Wealth Royale (UIN:142L0XXV01) approved by the Board of the insurer, which do not comply with Regulation 8 of Schedule I of the IRDAI (Investment) Regulations, 2016 read with the Master Circular ñ Investment issued thereunder, the policyholder will be given a free switch toto any of the existing funds available with similar fund objective and risk profile. Currently SUD Life is offering only first 6 existing funds as mentioned above under our two available ULIP products. 
-The two new funds Dynamic and Money Market has different fund objective and risk profile than our existing 6 funds available. Also, where there is no similar fund with similar risk profile, the Policyholders will be given an option to choose from the ìAlternate Fundsî, - which are close to risk profile of the proposed new SFIN with same or lower FMC.
+attached to the SUD Life e-Wealth Royale (UIN:142L0XXV01) approved by the Board of the insurer, which do not comply with Regulation 8 of Schedule I of the IRDAI (Investment) Regulations, 2016 read with the Master Circular ‚Äì Investment issued thereunder, the policyholder will be given a free switch toto any of the existing funds available with similar fund objective and risk profile. Currently SUD Life is offering only first 6 existing funds as mentioned above under our two available ULIP products. 
+The two new funds Dynamic and Money Market has different fund objective and risk profile than our existing 6 funds available. Also, where there is no similar fund with similar risk profile, the Policyholders will be given an option to choose from the ‚ÄúAlternate Funds‚Äù, - which are close to risk profile of the proposed new SFIN with same or lower FMC.
 This will be subject to policyholder or prospective policyholder consent and agreement. This switching is free of charges.
 We confirm that the above fund(s) is filed with the prior approval of the Board of the Insurer, and we further confirm that the above requirements has been made a part of product literature as would be agreed on by the prospective policyholders.
 
 Fund Closure 
-The Company may, close any of the Funds available under this policy (the ìClosed Fundsî) subject to the approval of IRDAI. The Policyholder shall be given three months prior written notice, sent at the last address recorded by the Company. During this notice period, the Policyholder can switch the funds from the Closed Funds to any other available Fund/s without any Charges. When the Policy holder has not affected such Switch at the closure date, the Company will switch the said funds by default to Gilt fund, which will be the default fund under the product and the fund will be invested in Gilt Fund till such time the policyholder exercises his option to choose any new fund to be invested.
+The Company may, close any of the Funds available under this policy (the ‚ÄúClosed Funds‚Äù) subject to the approval of IRDAI. The Policyholder shall be given three months prior written notice, sent at the last address recorded by the Company. During this notice period, the Policyholder can switch the funds from the Closed Funds to any other available Fund/s without any Charges. When the Policy holder has not affected such Switch at the closure date, the Company will switch the said funds by default to Gilt fund, which will be the default fund under the product and the fund will be invested in Gilt Fund till such time the policyholder exercises his option to choose any new fund to be invested.
 
 
 Standard Force Majeure Provisions
 
-1. As per Regulation 33 of the IRDAI (Unit Linked Insurance Product) Regulations, 2019, the company needs to declare a ëSingleí Net Asset Value (NAV) for each segregated fund on a day-to-day basis.
+1. As per Regulation 33 of the IRDAI (Unit Linked Insurance Product) Regulations, 2019, the company needs to declare a ‚ÄòSingle‚Äô Net Asset Value (NAV) for each segregated fund on a day-to-day basis.
 2. As a part of F&U applications for linked products, the company shall specify that, in the event of certain force majeure conditions, the declaration of NAV on a day-to-day basis may be deferred and could include other actions as a part of investment strategy (e.g. taking exposure of any Segregated Fund (SFIN) upto 100% in Money Market Instruments [as defined under Regulations 2(j) of IRDAI (Investment) Regulations, 2016])
 3. The company shall include the following as a part of force majeure clause in the policy document to be signed by the Policyholder:
 a) The company shall value the Funds (SFIN) on each day for which the financial markets are open. However, the Insurer may value the SFIN less frequently in extreme circumstances external to the Insurer i.e. in force majeure events, where the value of the assets is too uncertain. In such circumstances, the company may defer the valuation of assets for up to 30 days until the company is certain that the valuation of SFIN can be resumed.
@@ -462,7 +462,7 @@ In case of Single premium policies
 * Such discontinuance charges shall not exceed the charges stipulated in Regulation 27 (e) under IRDAI (Unit Linked Insurance Products) Regulations, 2019.
 * The policy shall continue to be invested in the discontinued policy fund and the proceeds from the discontinuance fund shall be refunded only upon completion of the lock-in period. Only fund management charge can be deducted from this fund during this period. Further, no risk cover shall be available on such policy during the discontinuance period.
 
- ìProceeds of the discontinued policiesî means the fund value as on the date the policy was discontinued, after addition of interest computed at the interest rate stipulated in Regulation 13 under IRDAI (Unit Linked Insurance Products) Regulations, 2019.
+ ‚ÄúProceeds of the discontinued policies‚Äù means the fund value as on the date the policy was discontinued, after addition of interest computed at the interest rate stipulated in Regulation 13 under IRDAI (Unit Linked Insurance Products) Regulations, 2019.
 
 8.3.2.2 Discontinuance of Policy under the Base Plan after the Lock-in period
 For other than Single Premium Policies:
@@ -482,7 +482,7 @@ In case of Single Premium Policies:
 The policyholder has an option to surrender the policy any time. Upon receipt of request for surrender, proceeds of the policy fund shall be paid to policyholder and the contract gets terminated.
 
 
-ìProceeds of the discontinued policiesî means the fund value as on the date the policy was discontinued, after addition of interest computed at the interest rate stipulated in Regulation 13 IRDAI ULIP Product Regulations,2019.
+‚ÄúProceeds of the discontinued policies‚Äù means the fund value as on the date the policy was discontinued, after addition of interest computed at the interest rate stipulated in Regulation 13 IRDAI ULIP Product Regulations,2019.
 
 Paid-Up Policy
 
@@ -542,7 +542,7 @@ iii) No other charges shall be levied.
 
 * Policyholder has an option to increase the PPT provided all the due premiums, other than due premiums within the grace period, till the date of such request have been paid.
 * Increase in Premium Payment Term must always be in multiples of one year.
-* Increase in PPT is allowed subject to the PPTís allowed under the product.
+* Increase in PPT is allowed subject to the PPT‚Äôs allowed under the product.
 * Decrease in PPT is not allowed.
 
 8.4.3 Change in Policy term 
@@ -559,8 +559,8 @@ iii) No other charges shall be levied.
 * For 2 years settlement option: Y1: 1/2 FV; Y2: 100% FV
 * For 3 years settlement option: Y1: 1/3 FV; Y2: 1/2 FV; Y3: 100% FV
 * For 4 years settlement option: Y1: 1/4 FV; Y2: 1/3 FV; Y3: 1/2 FV; Y4: 100% FV
-* For 5 years settlement option: Y1: 1/5 FV; Y2: 1/4 FV; Y3: 1/3 FV; Y4: 1/2 FV†; and Y5†: 100% FV
-  ´†FV†ª means: balance fund value available at the time of payment (beginning of each payment year).
+* For 5 years settlement option: Y1: 1/5 FV; Y2: 1/4 FV; Y3: 1/3 FV; Y4: 1/2 FV¬†; and Y5¬†: 100% FV
+  ¬´¬†FV¬†¬ª means: balance fund value available at the time of payment (beginning of each payment year).
 > Payments will be received by the beneficiaries in the form of yearly, half-yearly, quarterly or monthly instalments, as opted by the beneficiaries. 
 > During the settlement period, fund management charges, and switching charges if any, will be deducted.
 > Partial withdrawals shall not be allowed during the settlement period.
@@ -598,7 +598,7 @@ Distance Marketing mode includes every activity of solicitation (including lead 
 
 8.5 Charges and frequency of charges
 
-We have ensured compliance of ìevenness of chargesî and ìReduction in yieldî as per Regulation 26 and 29 of IRDAI (Unit Linked Insurance Products) Regulations, 2019 for all model points. Annexure_RIY is submitted depicting the ìevenness of chargesî and ìReduction in yieldî for sample model points.
+We have ensured compliance of ‚Äúevenness of charges‚Äù and ‚ÄúReduction in yield‚Äù as per Regulation 26 and 29 of IRDAI (Unit Linked Insurance Products) Regulations, 2019 for all model points. Annexure_RIY is submitted depicting the ‚Äúevenness of charges‚Äù and ‚ÄúReduction in yield‚Äù for sample model points.
 
 * Premium Allocation Charges : Nil
  
@@ -616,7 +616,7 @@ The Surrender/Discontinuance charges are given below:
 
 Where the policy is discontinued during the policy yearFor Regular and Limited Pay OptionsFor Single Premium Payment up to Rs.3,00,000/-)For Single Premium Payment Options above Rs. 3,00,000/-1Lower of 6% * (AP or FV) subject to a maximum of Rs. 6000Lower of 2% * (SP or FV) subject to a maximum of Rs. 3000Lower of 1% * (SP or FV) subject to a maximum of Rs. 60002Lower of 4% * (AP or FV) subject to a maximum of Rs. 5000Lower of 1.5% * (SP or FV) subject to a maximum of Rs. 2000Lower of 0.7% * (SP or FV) subject to a maximum of Rs. 50003Lower of 3% * (AP or FV) subject to a maximum of Rs. 4000Lower of 1% * (SP or FV) subject to a maximum of Rs. 1500Lower of 0.5% * (SP or FV) subject to a maximum of Rs. 40004Lower of 2% * (AP or FV) subject to a maximum of Rs. 2000Lower of 0.5% * (SP or FV) subject to a maximum of Rs. 1000Lower of 0.35% * (SP or FV) subject to a maximum of Rs. 20005 and onwardsNilNilNil
              AP - Annualized Premium
-    SP ñ Single Premium
+    SP ‚Äì Single Premium
        FV - Fund Value on the date of discontinuance
 
 When a policy is discontinued, only discontinuance charge and the Fund Management Charge, which shall not exceed 0.50% per annum on Discontinuance Fund Value, will be charged. No other charges will be levied.
@@ -642,11 +642,11 @@ o Mortality charges are worked out in accordance with the definition of sum at r
 
 o The Sum at Risk (SAR) on a given date for calculation of mortality charges is calculated as follows:
 > SAR = 
-Maximum {[Basic Sum Assured ñ The Fund Value as on that date ñ Aggregate of Partial Withdrawals made in the last 24 months], [105% of total premiums paid ñ The Fund Value as on that date],0}
+Maximum {[Basic Sum Assured ‚Äì The Fund Value as on that date ‚Äì Aggregate of Partial Withdrawals made in the last 24 months], [105% of total premiums paid ‚Äì The Fund Value as on that date],0}
 
 o Monthly Mortality Charges = Sum at Risk * (Annual Mortality charge / 12000), 
 
-Where, the Annual Mortality charges depends on age last birthday of Life Assured as on date of calculation. Set back of 3 years in age will be given on female lives for age at last birthday 21years and above, for Female life from age 18 ñ 20 rates of male live age 18 shall be applicable. Female life below 18 years of age shall be charged same as male life. Third gender shall be charged same as male life.
+Where, the Annual Mortality charges depends on age last birthday of Life Assured as on date of calculation. Set back of 3 years in age will be given on female lives for age at last birthday 21years and above, for Female life from age 18 ‚Äì 20 rates of male live age 18 shall be applicable. Female life below 18 years of age shall be charged same as male life. Third gender shall be charged same as male life.
 
 o In the event the Sum at Risk is negative or zero on the date of calculating mortality charges, no mortality charge will be deducted on that date. 
 
@@ -683,7 +683,7 @@ In the event that units are held in more than one Fund, the cancellation of unit
 * Revision of Charges
 Annual Mortality charges per 1000 SAR, Policy Administration Charges, Annual Additional Risk Benefit charges per 1000 SAR and Discontinuance charges are guaranteed throughout the policy term.
 
-The other charges under the plan may be revised after obtaining prior approval from the IRDAI and after giving three monthsí notice to the policyholders. The GST will be revised as and when notified by the Government. If the policyholder does not agree with the modified charges, he / she shall be allowed to withdraw the units in the plan at the then prevailing unit value. The policy proceeds will then be paid to the policyholder as per the norms of discontinued policies.
+The other charges under the plan may be revised after obtaining prior approval from the IRDAI and after giving three months‚Äô notice to the policyholders. The GST will be revised as and when notified by the Government. If the policyholder does not agree with the modified charges, he / she shall be allowed to withdraw the units in the plan at the then prevailing unit value. The policy proceeds will then be paid to the policyholder as per the norms of discontinued policies.
 
 The Company reserves the right to change the Fund Management charge subject to the Maximum FMC as prescribed by the IRDAI regulations. As per the current IRDAI regulations, the maximum FMC on any fund excluding Discontinued Policies Fund shall be 1.35% p. a. and the maximum FMC on Discontinued Policies Fund shall be 0.5% p.a.
 
@@ -717,7 +717,7 @@ Not applicable
 
 The NAV of the segregated fund shall be computed as given below:
 
-                (Market value of investment held by the fund + value of current assets ñ 
+                (Market value of investment held by the fund + value of current assets ‚Äì 
                  value of current liabilities and provisions, if any) 
 NAV   =     -------------------------------------------------------------------------------------------------
                      Number of units existing on Valuation Date (before creation / redemption of units)
@@ -746,7 +746,7 @@ o For Renewal Premium:
 
 * Redemption of Units
 
-o In respect of valid claim request (e.g. surrender, partial withdrawal, discontinuance, on maturity, death claims, etc) along with sufficient documents is received up to 3.00 p.m. by the insurer, the same dayís closing NAV shall be applicable.
+o In respect of valid claim request (e.g. surrender, partial withdrawal, discontinuance, on maturity, death claims, etc) along with sufficient documents is received up to 3.00 p.m. by the insurer, the same day‚Äôs closing NAV shall be applicable.
 
 o In respect of valid claim request (e.g. surrender, discontinuance, on maturity, death claims, etc) along with the sufficient document is received after 3.00 p.m. by the insurer, the closing NAV of the next business day shall be applicable.
 
@@ -763,7 +763,7 @@ o The Fund Management charge will be priced in the unit price of each Fund on a 
 
 8.9 Modes of premiums permitted and the charges applied for different modes of premium payment and quantum of sum assured, if any.
 
-a. Modes of Premium payment: Single Pay/ Yearly/ Half ñ Yearly/ Quarterly /Monthly/Other 
+a. Modes of Premium payment: Single Pay/ Yearly/ Half ‚Äì Yearly/ Quarterly /Monthly/Other 
 
 		
 b. Loadings/discount applicable for different modes of premium payment
@@ -791,11 +791,11 @@ Extra Premium Allocation for Policy  purchased by staff of SUD Life & their fami
 For the policies purchased by the staff of SUD Life and their family (parents, spouse, children and siblings), extra allocation as detailed below is applicable only if the business is procured directly (including policies purchased through our online portal) and not through any intermediary.
 
  ParticularsFor Single Pay (% of Premium)For Limited/ Regular Pay (% of Premium)First Policy Year1%2%2nd Policy Years Onwards0%0%
-Commissions are not payable to business procured through ìDirect Marketingî and Online channel. The amount saved from the reduced commission for staff and their family has been passed on to the policy by way of extra allocation. 
+Commissions are not payable to business procured through ‚ÄúDirect Marketing‚Äù and Online channel. The amount saved from the reduced commission for staff and their family has been passed on to the policy by way of extra allocation. 
 
 b. Policies sold by our direct sales team.
 
-Our direct sales team comprising of employeesí will source the business through direct solicitation. The team also provides servicing to the policies sold through this channel.  Company incurs expenses towards salaries and incentives to the employees, travel and communication expense of the employees etc. 
+Our direct sales team comprising of employees‚Äô will source the business through direct solicitation. The team also provides servicing to the policies sold through this channel.  Company incurs expenses towards salaries and incentives to the employees, travel and communication expense of the employees etc. 
 
 
 
@@ -815,7 +815,7 @@ The target market includes individuals who want flexibility of investments and h
 
 It is proposed to sell this product through Individual Agency, Corporate Agency, Broker, Web Aggregator Insurance Marketing Firm, Online and Direct Marketing Channel.
 
-Any of the distribution channel may set up an Insurance Self Network Platform (ISNP) for sale of policies. Policies sold through such ISNP shall comply with the ìGuidelines on Insurance e-Commerceî issued by the Authority.
+Any of the distribution channel may set up an Insurance Self Network Platform (ISNP) for sale of policies. Policies sold through such ISNP shall comply with the ‚ÄúGuidelines on Insurance e-Commerce‚Äù issued by the Authority.
 
 The expected new business premiums from various channels are given below.
 
@@ -826,7 +826,7 @@ This product shall follow the Board approved underwriting policy of the Company,
 
 a) Males,females and transgender.
 
-Set back of 3 years in age will be given on female lives for age at last birthday 21years and above, for Female life from age 18 ñ 20 rates of male live age 18 shall be applicable. Female life below 18 years of age shall be charged same as male life. Third Gender shall be charged same as male life. 
+Set back of 3 years in age will be given on female lives for age at last birthday 21years and above, for Female life from age 18 ‚Äì 20 rates of male live age 18 shall be applicable. Female life below 18 years of age shall be charged same as male life. Third Gender shall be charged same as male life. 
 
 b) Smokers / non-smokers 
 
@@ -900,11 +900,11 @@ Cost of medical expenses incurred at the time of making revival facility, if any
 The due base premiums received will be invested based on the NAV as on the date of revival.
 
 Policy Alterations:
-Change in Premium Paying term ñ Refer Section 8.4.1
+Change in Premium Paying term ‚Äì Refer Section 8.4.1
 
-Change in Policy term ñ Refer Section 8.4.2
+Change in Policy term ‚Äì Refer Section 8.4.2
 
-Change in Premium Frequency ñ Change in premium frequency shall be allowed at policy anniversary subject to minimum premium allowed under the product.
+Change in Premium Frequency ‚Äì Change in premium frequency shall be allowed at policy anniversary subject to minimum premium allowed under the product.
 
 
 13. Reinsurance 
@@ -912,7 +912,7 @@ Change in Premium Frequency ñ Change in premium frequency shall be allowed at po
 We have surplus reinsurance arrangement with Munich Re on risk premium basis with retention of Rs 30 lakhs per life for Basic Death Benefit. 
 Reinsurance Commission:  Nil
 Premium Rates:   Please refer to Annexure A3 for the Reinsurance rates.
-Recapture provision:  Yes (kindly refer to Reinsurance treaty filed with the Authority ñ Page No. 15 of the General Conditions ñ Article No. 18.2 ñ Portfolio Transfer).
+Recapture provision:  Yes (kindly refer to Reinsurance treaty filed with the Authority ‚Äì Page No. 15 of the General Conditions ‚Äì Article No. 18.2 ‚Äì Portfolio Transfer).
 
 
 File and Use 
