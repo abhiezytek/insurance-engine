@@ -1,4 +1,4 @@
-Form No.-1: ìForm IRDAI - Life-Non Linkedî
+Form No.-1: ‚ÄúForm IRDAI - Life-Non Linked‚Äù
 (For Non- Linked insurance products (both individual and group))
 
 1. Name of Life Insurer and Registration No. allotted by IRDAI:	
@@ -23,23 +23,23 @@ Form No.-1: ìForm IRDAI - Life-Non Linkedî
 
 UINDate of Change142N100V026th August 2024142N100V03
 6. Terms and Conditions
-†6.1 Whether the product is offered to: 
-†
+¬†6.1 Whether the product is offered to: 
+¬†
 a)  [Males]     / [Females]       /  [Transgender]     / [All] 
 
 b)  [Smokers]        / [Non Smokers]         / [All]  
  	
 c)  [Individuals]  /[Groups]                                
 
-d)  [Standard Lives]     /[All types of Lives ñ including impaired lives]    
+d)  [Standard Lives]     /[All types of Lives ‚Äì including impaired lives]    
 
 e)  [Specific geographic locations in India]         /[All geographic locations in India] 
-†
+¬†
 f)   [Urban population]        /  [Rural population]       / [All]   
      
 g)    Market for : [Limited period]     : [if so give here the number of months]: /[ Unlimited period] 
 
-6.2. †
+6.2. ¬†
 a) Minimum Sum Assured/ Annuity p.a.: Rs. 5,00,000
      Sum Assured on Death = 10 times the Annual Premium
 
@@ -47,7 +47,7 @@ b) Maximum Sum Assured/ Annuity p.a.: Rs.[ ]
 As per Board Approved Underwriting Policy. 
 Sum Assured on Death = 10 times the Annual Premium
 
-ìAnnual Premiumî shall be the premium amount payable in a year as chosen by the policyholder, excluding the taxes, rider premiums and underwriting extra premiums, if any.
+‚ÄúAnnual Premium‚Äù shall be the premium amount payable in a year as chosen by the policyholder, excluding the taxes, rider premiums and underwriting extra premiums, if any.
 
 c) Minimum Premium: Annualized Premium of Rs 50,000
                
@@ -81,7 +81,7 @@ k)   Minimum Maturity Age [in years]: 33 Years
 
 l)     Maximum Maturity Age [in years]: 85 Years
        
-6.3 Specify whether terms and conditions include:†
+6.3 Specify whether terms and conditions include:¬†
 
 a)    [Restriction on travel outside India] / [No restrictions on travel]
 
@@ -111,10 +111,10 @@ v. In case the policy is in reduced paid-up status, the Income i.e. Guaranteed I
 
 Eg : Mr X pays Annual Premium of Rs 100,000. He has chosen PPT of 7 years.
 
-Scenario 1 ñ Mr. X will receive below income if he continues to pay premium on timely basis.
+Scenario 1 ‚Äì Mr. X will receive below income if he continues to pay premium on timely basis.
 
 PY12345678 to PTGuaranteed Income10,00010,00010,00010,00010,00010,00010,00010,000Loyalty Income-3,0006,0009,00012,00015,00018,000018,000Income  Payable10,00013,00016,00019,00022,00025,00028,00028,000
-Scenario 2 ñ Mr. X pays 3 Annual Premium. He does not pay premium from 4th year.
+Scenario 2 ‚Äì Mr. X pays 3 Annual Premium. He does not pay premium from 4th year.
 PY12345678 to PTGuaranteed Income10,00010,00010,00010,00010,00010,00010,00010,000Loyalty Income-3,0006,0006,0006,0006,0006,0006,000Total *10,00013,00016,00016,00016,00016,00016,00016,000Income Payable10,00013,00016,0006,857@6,8576,8576,8576,857		
 
 *This amount  will be paid in accordance with survival benefits under reduced paid-up policy 
@@ -126,23 +126,23 @@ b. In case the policy is in reduced paid-up status, Guaranteed Income will be pa
 c. It will be as percentage of the Annualized Premium at the end of the policy year. 
 d. GI for each year is detailed below:
 
-1. Premium Payment term ñ 7
+1. Premium Payment term ‚Äì 7
 
 Policy Year 
 Policy Term 1 to 789101112131415161718192015-30%33%36%39%42%45%48%51%-----20-30%33%36%39%42%45%48%51%54%57%60%63%66%
-2. Premium Payment term ñ 10
+2. Premium Payment term ‚Äì 10
 Policy Year 
 Policy Term 1 to 1011121314151617181920212223242520-30%33%36%39%42%45%48%51%54%57%-----25-30%33%36%39%42%45%48%51%54%57%60%63%66%69%72%
-3. Premium Payment term ñ 12
+3. Premium Payment term ‚Äì 12
 
 Policy Year 
 Policy Term1 to 121314151617181920212223242525-30%33%36%39%42%45%48%51%54%57%60%63%66%
 Eg : Mr X pays Annual Premium of Rs 100,000. He has chosen PPT of 7 years.
 
-Scenario 1 ñ Mr. X will receive below income if all due premiums have been paid 
+Scenario 1 ‚Äì Mr. X will receive below income if all due premiums have been paid 
 
 PY89101112131415Guaranteed Income30,00033,00036,00039,00042,00045,00048,00051,000
-Scenario 2 ñ Mr. X pays 3 Annual Premium. He does not pay premium from 4th year
+Scenario 2 ‚Äì Mr. X pays 3 Annual Premium. He does not pay premium from 4th year
 		
 PY89101112131415Guaranteed Income*30,00033,00036,00039,00042,00045,00048,00051,000Income Payable12,857 14,143 15,429 16,714 18,000 19,286 20,571 21,857 
 *This income will be paid in accordance with survival benefits under reduced paid-up policy
@@ -152,13 +152,13 @@ a. The policyholder will receive Guaranteed Income which is 105% of the Annualiz
 b. In case the policy is in reduced paid-up status, Guaranteed Income will be paid as detailed in reduced paid-up section.
 c. It will be paid at the end of the policy year as per the table below :
 
-PPT ñ PT1st twin income 2nd twin Income3rd twin Income4th twin Income7 ñ 155th and 6th Year10th and 11th Year--7 ñ 205th and 6th Year10th and 11th Year15th and 16th Year-10 ñ 208th and 9th Year13th and 14th Year18th and 19th Year-10 ñ 258th and 9th Year13th and 14th Year18th and 19th Year23rd and 24th Year12 ñ 2510th and 11th Year15th and 16th Year20th and 21st Year-
+PPT ‚Äì PT1st twin income 2nd twin Income3rd twin Income4th twin Income7 ‚Äì 155th and 6th Year10th and 11th Year--7 ‚Äì 205th and 6th Year10th and 11th Year15th and 16th Year-10 ‚Äì 208th and 9th Year13th and 14th Year18th and 19th Year-10 ‚Äì 258th and 9th Year13th and 14th Year18th and 19th Year23rd and 24th Year12 ‚Äì 2510th and 11th Year15th and 16th Year20th and 21st Year-
 Eg : Mr X pays Annual Premium of Rs 100,000. He has chosen PPT of 7 years and PT 15 
 
-Scenario 1 ñ Mr. X will receive below income if he continues to pay premium on timely basis
+Scenario 1 ‚Äì Mr. X will receive below income if he continues to pay premium on timely basis
 
 PY567891011Guaranteed Income105,000105,000---105,000105,000
-Scenario 2 ñ Mr. X pays 3 Annual Premium. He does not pay premium from 4th year
+Scenario 2 ‚Äì Mr. X pays 3 Annual Premium. He does not pay premium from 4th year
 PY567891011Guaranteed Income*105,000105,000---105,000105,000Income Payable45,00045,000---45,00045,000		
 
 
@@ -204,7 +204,7 @@ Eg: Mr X is aged 40 and chooses to pay annual premium of Rs 50,000 for 7 years a
 Here, Guaranteed Maturity Benefit = 50,000 * GMB factor  6.0880i.e.  3,04,400
 Survival BenefitPayable on survival of the Life Assured on the date when the benefit is accrued.Guaranteed income (GI) as % of the Annualized Premium will be payable as per the options chosen as detailed above.
 
-ìAnnualized Premiumî shall be the premium amount payable in a year excluding taxes, rider premiums, underwriting extra premiums and loadings for modal premiums.
+‚ÄúAnnualized Premium‚Äù shall be the premium amount payable in a year excluding taxes, rider premiums, underwriting extra premiums and loadings for modal premiums.
 SurrenderPayable immediately on surrender of the policy.The surrender benefit payable is Higher of the Guaranteed Surrender Value or the Special Surrender Value as described in Section 8.3.1 below.
 LapsedIf the policyholder has not paid the due premium for one full year within the grace period, the policy lapses. No benefit is payableReduced Paid-Up Policy
 Policies will acquire Reduced Paid-up status if premium has been paid for at least one full policy year and any subsequent due premiums have not been paid within grace period.Please refer to Section 8.3.3 below for details on benefits payable for Reduced Paid-up Policy.
@@ -233,7 +233,7 @@ Please refer to Section 7 above for details on benefits payable on death or surv
 
 The policy can be surrendered anytime during the Policy Term, provided the policy has acquired   Surrender Value. Polices will acquire Surrender Value after completion of first policy year if premium has been paid for at least one full policy year.
 
-Surrender Value payable would be higher of ìGuaranteed Surrender Value (GSV)î or ìSpecial Surrender Value (SSV)î
+Surrender Value payable would be higher of ‚ÄúGuaranteed Surrender Value (GSV)‚Äù or ‚ÄúSpecial Surrender Value (SSV)‚Äù
 
 a) Guaranteed Surrender Value:
 
@@ -323,19 +323,19 @@ c. Option to Accumulate the Income in Safe Box
 * In order to opt in or opt-out of this option, policyholder should submit a request to the company 30 days before the policy anniversary/Special date and this option will get in-force immediately. 
 * The accumulated income can be withdrawn partly/fully at any time during the policy term. The balance amount will keep accumulating and accrued income benefit (if any) shall be payable along with benefits at the time of termination of the policy on death or maturity or surrender. 
 * You can choose to accrue your applicable Income benefit in any proportion and balance shall be paid to you on the applicable dates.
-* Interest Accrual: The accrued income will be accumulated at interest rate equal to the Reverse Repo Rate published by RBI plus 0.25% and this rate will be reviewed annually. Any change in basis shall be with prior approval of the Authority. The interest would be accrued on daily basis and compounded on half-yearly basis. The ëReverse Repo Rateí for the financial year ending 31st March (every year) will be considered. As the interest rate will be reviewed at the beginning of each financial year, any change in this interest rate will be applicable from 1st April to 31st March every year. The current Reverse Repo Rate, as applicable at 31st March 2024, is 3.35% p.a. 
+* Interest Accrual: The accrued income will be accumulated at interest rate equal to the Reverse Repo Rate published by RBI plus 0.25% and this rate will be reviewed annually. Any change in basis shall be with prior approval of the Authority. The interest would be accrued on daily basis and compounded on half-yearly basis. The ‚ÄòReverse Repo Rate‚Äô for the financial year ending 31st March (every year) will be considered. As the interest rate will be reviewed at the beginning of each financial year, any change in this interest rate will be applicable from 1st April to 31st March every year. The current Reverse Repo Rate, as applicable at 31st March 2024, is 3.35% p.a. 
 
 
 d. Option to receive Income on Special Date
-* The income is payable on the date of policy anniversary by default. You will have an option to receive the survival benefit on any one date succeeding the due date of first income to coincide with any Special Date as per policyholderís choice instead of policy anniversary.
-* This Special Date can be any date that falls within 365 days after first income due date, such as spouseís birthday, parentsí anniversary, childís birthday etc.
+* The income is payable on the date of policy anniversary by default. You will have an option to receive the survival benefit on any one date succeeding the due date of first income to coincide with any Special Date as per policyholder‚Äôs choice instead of policy anniversary.
+* This Special Date can be any date that falls within 365 days after first income due date, such as spouse‚Äôs birthday, parents‚Äô anniversary, child‚Äôs birthday etc.
 * All survival benefit payouts shall be made on the chosen date. It can be deferred but not advanced.
-* In such a case, the survival benefits applicable for the policy year when it is due, would be increased for the period between the policy anniversary and the Special Date, by accumulating the benefit as per interest accrual section of ìaccumulate the income option in Safe Boxî. However, the last instalment due on end of the policy term shall be paid on the date of Maturity only, and not on Special Date.
+* In such a case, the survival benefits applicable for the policy year when it is due, would be increased for the period between the policy anniversary and the Special Date, by accumulating the benefit as per interest accrual section of ‚Äúaccumulate the income option in Safe Box‚Äù. However, the last instalment due on end of the policy term shall be paid on the date of Maturity only, and not on Special Date.
 * In order to opt in or opt-out of this option, policyholder should submit a request to the company 30 days before the policy anniversary and this will get in-force immediately. 
 * This option is available for Options - Immediate Income and Deferred Income 
  
 e. Premium Offset 
-* This option allows the policyholder to offset the due premium against the accrued income receivable by the policyholder as well as the income accumulated with the company along with the interest under the ìaccumulate the income option in Safe Boxî. 
+* This option allows the policyholder to offset the due premium against the accrued income receivable by the policyholder as well as the income accumulated with the company along with the interest under the ‚Äúaccumulate the income option in Safe Box‚Äù. 
 * If the benefit payout exceeds the premium payable under the policy, the company shall pay such excess to the policyholder.
 * However, if the benefit payable is not sufficient to offset the premium payable under the policy, then, the policyholder will be required to pay the balance premium to the company. 
 * The benefit will be deemed as paid and the premium to the extent offset with the income will be considered received when this option is exercised.
@@ -349,7 +349,7 @@ Not applicable
 A policyholder can avail loan from Star Union Dai-ichi during the policy term, provided the policy has acquired surrender value by assigning the policy document as a collateral security. 
 
 The loan can be availed up to 70% of Surrender Value. The interest rate is calculated as equal to 10 year G-sec benchmark interest rate as on last working day of the previous financial year +1.50%, rounded up to the next multiple of 25 basis points and shall be compounded half yearly. 
-The 10 year G Sec rate on 31st March 2024 was 7.05%. The rate of interest on loan for FY 24 ñ 25 is 8.75 % (i.e.  7.05 +1.50%+rounding to next multiple of 25 bps). 
+The 10 year G Sec rate on 31st March 2024 was 7.05%. The rate of interest on loan for FY 24 ‚Äì 25 is 8.75 % (i.e.  7.05 +1.50%+rounding to next multiple of 25 bps). 
 Any change in basis shall be with prior approval of the Authority. The Yield on 10 year G-sec is sourced through Bloomberg website: www.bloomberg.com
 
 The company would review the loan interest rate every 1st April and the revised loan interest rate will also be applicable from 1st April.
@@ -363,7 +363,7 @@ For other than in-force and fully paid up policies: The policyholder will be giv
 
 8.8 Modes of premiums permitted and the charges applied for different modes of premium payment and quantum of sum assured, if any.
 
-a. Modes of Premium payment: Single Pay/ Yearly/ Half ñ Yearly/ Quarterly /Monthly/Other 
+a. Modes of Premium payment: Single Pay/ Yearly/ Half ‚Äì Yearly/ Quarterly /Monthly/Other 
 b. Loadings/discount applicable for different modes of premium payment
 
 The Policyholder may elect to pay premiums by a mode different than yearly mode. Following factors are applied to annual premium when paying premiums other than yearly mode.
@@ -399,14 +399,14 @@ OptionImmediate IncomeDeferred IncomeTwin
 IncomeAdditional GMB8.5%7%8.5%
 b. Policies sold by our direct sales team.
 
-Our direct sales team comprising of employeesí will source the business through direct solicitation. The team also provides servicing to the policies sold through this channel.  Company incurs expenses towards salaries and incentives to the employees, travel and communication expense of the employees etc. Hence no extra benefit have provided here.
+Our direct sales team comprising of employees‚Äô will source the business through direct solicitation. The team also provides servicing to the policies sold through this channel.  Company incurs expenses towards salaries and incentives to the employees, travel and communication expense of the employees etc. Hence no extra benefit have provided here.
 
 iii. Online Channel: 
 For the policies purchased through our online portal (other than the staff policies), the Sum Assured on Maturity will be increased by below%.
 
 OptionImmediate IncomeDeferred IncomeTwin 
 IncomeAdditional GMB4.25%3.5%4.25%
-In case of online channel, the product shall be sold through our companyís website only.
+In case of online channel, the product shall be sold through our company‚Äôs website only.
 
 Company incurs expenses towards building the online portal, other administrative systems and providing service to the policies. Hence we could not pass on the entire commission as discount towards policies purchased through our online portal.
 
@@ -416,9 +416,9 @@ Note: For application of extra benefits  when more than one benefit is applicabl
 
 For e.g. In case Mr X aged 40 pays Annual Premium of Rs 2,00,000 for Immediate Income Option for 7 Year and Policy Term 20. Mr X purchases the policy from online platform.
 
-GMB Factor as per age, PPT, PT and Income Option is ñ  6.0880
-High Premium band ñ 3.5%
-Online Channel Benefit ñ 4.25%
+GMB Factor as per age, PPT, PT and Income Option is ‚Äì  6.0880
+High Premium band ‚Äì 3.5%
+Online Channel Benefit ‚Äì 4.25%
 
 Guaranteed Maturity benefit for Mr X will be = 2,00,000 * 6.0880 *1.035*1.0425 = 13,13,775
 
@@ -426,7 +426,7 @@ Guaranteed Maturity benefit for Mr X will be = 2,00,000 * 6.0880 *1.035*1.0425 =
 
 	As per Board Approved Commission Policy.
 
-Commissions are not payable to business procured through ìDirect Marketingî and ìOnlineî channel. 
+Commissions are not payable to business procured through ‚ÄúDirect Marketing‚Äù and ‚ÄúOnline‚Äù channel. 
      
 8.10 Any other features that may be relevant for the product 
      No Rider 
@@ -441,14 +441,14 @@ Distance Marketing mode includes every activity of solicitation (including lead 
 
 The expected new business premiums from various channels are given below.
 
-†Expected New Business Premiums (in Cr.)YearCorporate Agency ChannelAgency ChannelOnlineBrokerInsurance Marketing Firm ChannelWeb AggregatorDirect Marketing ChannelTotal New Business Premiums195.0001.0001.0001.0000.5000.5001.0001002118.7501.2501.2501.2500.6250.6251.2501253142.5001.5001.5001.5000.7500.7501.5001504166.2501.7501.7501.7500.8750.8751.7501755190.0002.0002.0002.0001.0001.0002.000200
+¬†Expected New Business Premiums (in Cr.)YearCorporate Agency ChannelAgency ChannelOnlineBrokerInsurance Marketing Firm ChannelWeb AggregatorDirect Marketing ChannelTotal New Business Premiums195.0001.0001.0001.0000.5000.5001.0001002118.7501.2501.2501.2500.6250.6251.2501253142.5001.5001.5001.5000.7500.7501.5001504166.2501.7501.7501.7500.8750.8751.7501755190.0002.0002.0002.0001.0001.0002.000200
 11. Treatment of Different Classes for the purpose of underwriting.  
 
 This product shall follow the Board approved underwriting policy of the Company, as applicable from time to time.
 
 a) Males,females and transgender.
  
-††††No difference. However, underwriting shall be as per the Board approved underwriting policy of the Company.
+¬†¬†¬†¬†No difference. However, underwriting shall be as per the Board approved underwriting policy of the Company.
 
 b) Smokers / non-smokers 
      No restriction proposed. However, underwriting shall be as per the Board approved underwriting policy of the Company.
@@ -496,7 +496,7 @@ e) General approach to be used for revivals or reinstatements, policy changes/al
 Revival shall be as per Board approved underwriting policy.
 
 Lapsed policy and Reduced Paid-Up policy can be revived within a period of 5 years from the due    date of the first unpaid premium, by payment of all arrears of premium with interest at the prevailing rate of interest. 
-The interest rate is calculated as equal to 10 year G-sec benchmark interest rate as on last working day of the previous financial year +1.50%, rounded up to the next multiple of 25 basis points and shall be compounded half yearly. The 10 year G Sec rate on 31st March 2024  was 7.05% .The rate of interest on revival for FY 24 ñ 25  is 8.75%(i.e. 7.05 %+1.50%+rounding to next 25 bps).
+The interest rate is calculated as equal to 10 year G-sec benchmark interest rate as on last working day of the previous financial year +1.50%, rounded up to the next multiple of 25 basis points and shall be compounded half yearly. The 10 year G Sec rate on 31st March 2024  was 7.05% .The rate of interest on revival for FY 24 ‚Äì 25  is 8.75%(i.e. 7.05 %+1.50%+rounding to next 25 bps).
 
 Any change in basis shall be with prior approval of the Authority. The Yield on 10 year G-sec is sourced through Bloomberg website: www.bloomberg.com
 
@@ -512,7 +512,7 @@ In case of revival of a paid-up policy, all the Survival Benefit payouts as appl
 We have surplus reinsurance arrangement with Munich Re on risk premium basis with retention of Rs 30 lakhs per life for Basic Death Benefit. 
 Reinsurance Commission:  Nil
 Premium Rates:   Please refer to Annexure 5 for the Reinsurance rates
-Recapture provision:  Yes (kindly refer to Reinsurance treaty filed with the Authority ñ Page No. 15 of the General Conditions ñ Article No. 18.2 ñ Portfolio Transfer).
+Recapture provision:  Yes (kindly refer to Reinsurance treaty filed with the Authority ‚Äì Page No. 15 of the General Conditions ‚Äì Article No. 18.2 ‚Äì Portfolio Transfer).
 
 
 File and Use 
