@@ -1,0 +1,8 @@
+title: Insurance Engine Docs
+description: Documentation for the Insurance Engine project
+theme: minima
+
+# Exclude non-markdown/doc files from Jekyll processing
+exclude:
+  - "*.csv"
+  - "*.json"
