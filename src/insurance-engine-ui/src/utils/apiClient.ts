@@ -16,9 +16,7 @@ apiClient.interceptors.request.use(config => {
       parsedAuth = undefined;
     }
   }
-  let token: string | undefined;
-  token = parsedAuth?.token;
-  token = token ?? localStorage.getItem('auth_token') ?? undefined;
+  const token = parsedAuth?.token ?? localStorage.getItem('auth_token') ?? undefined;
   const headers: AxiosRequestHeaders = (config.headers ?? {}) as AxiosRequestHeaders;
   if (token) {
     headers.Authorization = `Bearer ${token}`;
