@@ -768,6 +768,7 @@ export default function AdminMaster() {
   const [auditHasMore,    setAuditHasMore]    = useState(true);
   const [productScope,    setProductScope]    = useState<string>('');
   const [versionScope,    setVersionScope]    = useState<string>('');
+  const [products,        setProducts]        = useState<{ code: string; name: string }[]>([]);
 
   // --- loaders for new tabs (graceful on 404) ---
   const scoped = useCallback((path: string) => {
@@ -817,29 +818,35 @@ export default function AdminMaster() {
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    safeFetch<any[]>('/api/admin/products', [], setError).then(list => {
+      setProducts(list.map(p => ({ code: p.code, name: p.name })));
+    }).catch(() => setProducts([]));
+  }, []);
+
   // --- update helpers ---
   const patchGmb = async (id: number, factor: number) => {
-    await api.put(`/api/admin/factors/gmb/${id}`, { factor });
+    await api.put(scoped(`/api/admin/factors/gmb/${id}`), { factor });
     setGmbRows(prev => prev.map(r => r.id === id ? { ...r, factor } : r));
   };
   const patchGsv = async (id: number, factorPercent: number) => {
-    await api.put(`/api/admin/factors/gsv/${id}`, { factorPercent });
+    await api.put(scoped(`/api/admin/factors/gsv/${id}`), { factorPercent });
     setGsvRows(prev => prev.map(r => r.id === id ? { ...r, factorPercent } : r));
   };
   const patchSsv = async (id: number, f1: number, f2: number) => {
-    await api.put(`/api/admin/factors/ssv/${id}`, { ssvFactor1Percent: f1, ssvFactor2Percent: f2 });
+    await api.put(scoped(`/api/admin/factors/ssv/${id}`), { ssvFactor1Percent: f1, ssvFactor2Percent: f2 });
     setSsvRows(prev => prev.map(r => r.id === id ? { ...r, factor1: f1, factor2: f2 } : r));
   };
   const patchUlip = async (id: number, chargeValue: number) => {
-    await api.put(`/api/admin/factors/ulip-charges/${id}`, { chargeValue });
+    await api.put(scoped(`/api/admin/factors/ulip-charges/${id}`), { chargeValue });
     setUlipRows(prev => prev.map(r => r.id === id ? { ...r, chargeValue } : r));
   };
   const patchMortality = async (id: number, rate: number) => {
-    await api.put(`/api/admin/factors/mortality/${id}`, { rate });
+    await api.put(scoped(`/api/admin/factors/mortality/${id}`), { rate });
     setMortalityRows(prev => prev.map(r => r.id === id ? { ...r, rate } : r));
   };
   const patchLoyalty = async (id: number, ratePercent: number) => {
-    await api.put(`/api/admin/factors/loyalty/${id}`, { ratePercent });
+    await api.put(scoped(`/api/admin/factors/loyalty/${id}`), { ratePercent });
     setLoyaltyRows(prev => prev.map(r => r.id === id ? { ...r, ratePercent } : r));
   };
 
@@ -879,12 +886,16 @@ export default function AdminMaster() {
       <div className="flex flex-wrap gap-3 items-end bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-1">Product Code (optional)</label>
-          <input
+          <select
             value={productScope}
             onChange={e => setProductScope(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-            placeholder="e.g. CENTURY_INCOME"
-          />
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm min-w-[200px]"
+          >
+            <option value="">All products</option>
+            {products.map(p => (
+              <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-1">Version (optional)</label>
@@ -896,8 +907,11 @@ export default function AdminMaster() {
           />
         </div>
         <div className="text-xs text-slate-500">
-          Scope is optional and reserved for future product/version-aware factor tables. Current APIs will ignore blank values.
+          Scope filters factor-table APIs by product/version (when supported). Blank = all.
         </div>
+        <button className="ml-auto text-xs px-3 py-2 border rounded-lg text-slate-500 bg-slate-50" disabled>
+          CSV/Excel upload (coming soon)
+        </button>
       </div>
 
       {/* Tab bar */}

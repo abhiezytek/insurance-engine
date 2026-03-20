@@ -119,6 +119,10 @@ export interface BenefitIllustrationRow {
 }
 
 export interface BenefitIllustrationResult {
+  productCode: string;
+  productVersion?: string | null;
+  factorVersion?: string | null;
+  formulaVersion?: string | null;
   annualisedPremium: number;
   annualPremium: number;
   installmentPremium: number;

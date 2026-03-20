@@ -3,23 +3,9 @@ import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
 import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
 import { api } from '../api';
 import { DEFAULT_YPYG_PRODUCTS, loadYpygProductMap, type YpygProductMap } from '../config/products';
+import { YPYG_RESULT_META } from '../config/resultMeta';
+import type { ProductParameter } from '../api';
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-
-const TBV_META = {
-  traditional: [
-    { label: 'Survival Benefit', currentKey: 'currentSurvivalBenefit', maturityKey: 'maturitySurvivalBenefit' },
-    { label: 'Maturity Benefit', currentKey: 'currentMaturityBenefit', maturityKey: 'maturityMaturityBenefit' },
-    { label: 'Death Benefit', currentKey: 'currentDeathBenefit', maturityKey: 'maturityDeathBenefit' },
-  ] as const,
-  ulip: [
-    { label: 'Fund Value (@4%)', currentKey: 'currentFundValue4', maturityKey: 'maturityFundValue4' },
-    { label: 'Fund Value (@8%)', currentKey: 'currentFundValue8', maturityKey: 'maturityFundValue8' },
-    { label: 'Maturity Benefit (@4%)', currentKey: 'currentFundValue4', maturityKey: 'maturityBenefit4' },
-    { label: 'Maturity Benefit (@8%)', currentKey: 'currentFundValue8', maturityKey: 'maturityBenefit8' },
-    { label: 'Death Benefit (@4%)', currentKey: 'currentDeathBenefit4', maturityKey: 'maturityDeathBenefit4' },
-    { label: 'Death Benefit (@8%)', currentKey: 'currentDeathBenefit8', maturityKey: 'maturityDeathBenefit8' },
-  ] as const,
-};
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -70,6 +56,9 @@ interface YpygResult {
   policyNumber: string;
   productCode: string;
   productCategory: string;
+  productVersion?: string;
+  factorVersion?: string;
+  formulaVersion?: string;
   uin: string;
   customerName: string;
   gender?: string;
@@ -117,6 +106,7 @@ interface YpygResult {
   currentDeathBenefit8?: number;
   maturityDeathBenefit4?: number;
   maturityDeathBenefit8?: number;
+  validationRules?: string[];
 }
 
 // ─── Sub-page: Policy Number mode ───────────────────────────────────────────
@@ -301,6 +291,8 @@ const DEFAULT_INPUTS = {
 function InputValueMode() {
   const [form, setForm] = useState(DEFAULT_INPUTS);
   const [productMap, setProductMap] = useState<YpygProductMap>(DEFAULT_YPYG_PRODUCTS);
+  const [parameters, setParameters] = useState<ProductParameter[]>([]);
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const productConfig = useMemo(
     () => productMap[form.productCategory] ?? DEFAULT_YPYG_PRODUCTS.Traditional,
     [form.productCategory, productMap],
@@ -312,7 +304,14 @@ function InputValueMode() {
 
   useEffect(() => {
     setForm(f => ({ ...f, productVersion: '' }));
+    setParamValues({});
   }, [form.productCategory]);
+
+  useEffect(() => {
+    api.get<ProductParameter[]>('/api/admin/parameters', {
+      params: { productCode: productConfig.code, version: form.productVersion || undefined },
+    }).then(res => setParameters(res.data)).catch(() => setParameters([]));
+  }, [productConfig.code, form.productVersion]);
   const [result, setResult] = useState<YpygResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -331,6 +330,7 @@ function InputValueMode() {
         ...rest,
         ...(riskCommencementDate ? { riskCommencementDate } : {}),
         productCode: productConfig.code,
+        ...(Object.keys(paramValues).length ? { additionalParameters: paramValues } : {}),
         ...(productVersion ? { productVersion } : {}),
       };
       const res = await api.post<YpygResult>('/api/ypyg/calculate', payload);
@@ -375,6 +375,22 @@ function InputValueMode() {
                 ))}
               </select>
             </Field>
+          )}
+          {parameters.length > 0 && (
+            <div className="space-y-3 border border-slate-100 rounded-lg p-3 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Config-driven inputs</p>
+              {parameters.map(p => (
+                <Field key={p.id} label={`${p.name}${p.isRequired ? ' *' : ''}`}>
+                  <input
+                    type={p.dataType === 'number' ? 'number' : p.dataType === 'date' ? 'date' : 'text'}
+                    value={paramValues[p.name] ?? ''}
+                    onChange={e => setParamValues(v => ({ ...v, [p.name]: e.target.value }))}
+                    className={INPUT_CLS}
+                    placeholder={p.description}
+                  />
+                </Field>
+              ))}
+            </div>
           )}
           <Field label="Policy Number (optional)">
             <input type="text" value={form.policyNumber}
@@ -533,6 +549,7 @@ function InputValueMode() {
 
 function ResultSection({ result }: { result: YpygResult }) {
   const isUlip = result.productCategory === 'ULIP';
+  const resultMeta = YPYG_RESULT_META[isUlip ? 'ULIP' : 'Traditional'];
   const calcDate = result.calculationDate
     ? new Date(result.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -554,7 +571,7 @@ function ResultSection({ result }: { result: YpygResult }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(isUlip ? TBV_META.ulip : TBV_META.traditional).map(row => (
+              {resultMeta.tbvRows.map(row => (
                 <tr key={row.label} className="hover:bg-slate-50">
                   <td className="px-6 py-3 font-semibold text-slate-700">{row.label}</td>
                   <td className="px-6 py-3 text-right font-bold text-[#004282]">
@@ -591,16 +608,32 @@ function ResultSection({ result }: { result: YpygResult }) {
           </>
         )}
       </div>
+      {result.validationRules && result.validationRules.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-100 p-4 text-xs text-slate-600">
+          <p className="font-semibold text-slate-700 mb-2">Validation Rules (preview)</p>
+          <div className="flex flex-wrap gap-2">
+            {result.validationRules.map(r => (
+              <span key={r} className="px-2 py-1 bg-slate-100 rounded-full">{r}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Yearly table */}
       <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <h3 className="text-base font-bold text-[#004282]">
-            {isUlip ? 'ULIP Fund Projection Table' : 'Yearly Benefit Table'}
+            {resultMeta.tableTitle}
             <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
           </h3>
           <button
             onClick={() => {
+              const template = {
+                title: resultMeta.tableTitle,
+                subtitle: `Policy Number: ${result.policyNumber || 'N/A'}`,
+                tbvRows: resultMeta.tbvRows.map(r => ({ ...r })),
+                tableHeaders: [...resultMeta.yearlyHeaders],
+              };
               if (isUlip && result.ulipYearlyTable) {
                 downloadYpygUlipPdf({
                   policyNumber: result.policyNumber,
@@ -624,9 +657,9 @@ function ResultSection({ result }: { result: YpygResult }) {
                   maturityDeathBenefit8: result.maturityDeathBenefit8,
                   calculationDate: result.calculationDate,
                   yearlyTable: result.ulipYearlyTable,
-                });
+                }, template);
               } else {
-                downloadYpygPdf(result as YpygPdfResult, result.policyNumber);
+                downloadYpygPdf(result as YpygPdfResult, result.policyNumber, template);
               }
             }}
             className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
@@ -641,7 +674,7 @@ function ResultSection({ result }: { result: YpygResult }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
-                  {['Yr', 'Age', 'Annual Prem.', 'Invested', 'MC', 'PC', 'FV @4%', 'DB @4%', 'SV @4%', 'FV @8%', 'DB @8%', 'SV @8%'].map(h => (
+                  {resultMeta.yearlyHeaders.map(h => (
                     <th key={h} className="px-3 py-3 text-right first:text-center">{h}</th>
                   ))}
                 </tr>
@@ -669,7 +702,7 @@ function ResultSection({ result }: { result: YpygResult }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-blue-50/60 text-slate-500 uppercase tracking-wider">
-                  {['Yr', 'Annual Prem.', 'Total Paid', 'Guar. Income', 'Loyalty Inc.', 'Total Inc.', 'SV', 'Death Benefit', 'Maturity'].map(h => (
+                  {resultMeta.yearlyHeaders.map(h => (
                     <th key={h} className="px-4 py-3 text-right first:text-center">{h}</th>
                   ))}
                 </tr>
