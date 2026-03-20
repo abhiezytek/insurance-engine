@@ -127,31 +127,11 @@ public class UlipCalculationRequest
     /// <summary>Whether the policyholder/LA is a staff / family member of the distributor.</summary>
     public bool IsStaffFamily { get; set; }
 
-    /// <summary>Age at risk commencement (typically = Entry Age for adults).</summary>
-    public int AgeRiskCommencement { get; set; }
-
     /// <summary>Whether standard age proof has been submitted for the Life Assured (Yes/No).</summary>
     public bool StandardAgeProofLA { get; set; } = true;
 
     /// <summary>Whether standard age proof has been submitted for the Policyholder (Yes/No).</summary>
     public bool StandardAgeProofPH { get; set; } = true;
-
-    // ---- EMR / extra charges ----
-
-    /// <summary>EMR class for Life Assured: Standard, or EMR level (1-9).</summary>
-    public string EmrClassLifeAssured { get; set; } = "Standard";
-
-    /// <summary>EMR class for Policyholder: Standard, or EMR level (1-9).</summary>
-    public string EmrClassPolicyholder { get; set; } = "Standard";
-
-    /// <summary>Flat Extra per ₹1,000 Sum At Risk for Life Assured (occupational/avocation loading).</summary>
-    public decimal FlatExtraLifeAssured { get; set; }
-
-    /// <summary>Flat Extra per ₹1,000 Sum At Risk for Policyholder.</summary>
-    public decimal FlatExtraPolicyholder { get; set; }
-
-    /// <summary>Whether Kerala Flood Cess is applicable (state-specific levy).</summary>
-    public bool KeralaFloodCess { get; set; }
 }
 
 /// <summary>

@@ -110,10 +110,12 @@ export interface BenefitIllustrationRequest {
   annualPremium: number;
   ppt: number;
   policyTerm: number;
-  entryAge: number;
+  entryAge?: number;
+  dateOfBirth?: string;
   nameOfLifeAssured?: string;
   nameOfPolicyHolder?: string;
   ageOfPolicyHolder?: number;
+  policyholderDateOfBirth?: string;
   lifeAssuredSameAsProposer?: boolean;
   option: 'Immediate' | 'Deferred' | 'Twin';
   channel: string;
@@ -196,7 +198,7 @@ export interface UlipFundAllocation {
 }
 
 export interface UlipCalculationRequest {
-  policyNumber: string;
+  policyNumber?: string;
   customerName: string;
   policyholderName?: string;
   lifeAssuredSameAsPolicyholder?: boolean;
@@ -204,7 +206,7 @@ export interface UlipCalculationRequest {
   option: 'Platinum' | 'Platinum Plus';
   gender: 'Male' | 'Female';
   dateOfBirth: string;        // ISO date string
-  entryAge: number;
+  entryAge?: number;
   policyholderDateOfBirth?: string;
   policyholderAge?: number;
   policyholderGender?: 'Male' | 'Female';
@@ -221,14 +223,8 @@ export interface UlipCalculationRequest {
   fundAllocations: UlipFundAllocation[];
   distributionChannel?: string;
   isStaffFamily?: boolean;
-  ageRiskCommencement?: number;
   standardAgeProofLA?: boolean;
   standardAgeProofPH?: boolean;
-  emrClassLifeAssured?: string;   // Standard or EMR class level
-  emrClassPolicyholder?: string;
-  flatExtraLifeAssured?: number;  // per 1000 SAR
-  flatExtraPolicyholder?: number;
-  keralaFloodCess?: boolean;
 }
 
 export interface UlipIllustrationRow {

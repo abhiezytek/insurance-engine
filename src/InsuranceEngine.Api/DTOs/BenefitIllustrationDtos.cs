@@ -36,6 +36,9 @@ public class BenefitIllustrationRequest
     /// <summary>Age of the life assured at entry.</summary>
     public int EntryAge { get; set; }
 
+    /// <summary>Date of birth of the Life Assured.</summary>
+    public DateTime DateOfBirth { get; set; }
+
     /// <summary>Name of the Life Assured.</summary>
     public string? NameOfLifeAssured { get; set; }
 
@@ -44,6 +47,9 @@ public class BenefitIllustrationRequest
 
     /// <summary>Age of the Policy Holder.</summary>
     public int? AgeOfPolicyHolder { get; set; }
+
+    /// <summary>Date of birth of the Policy Holder.</summary>
+    public DateTime? PolicyholderDateOfBirth { get; set; }
 
     /// <summary>Whether Life Assured and Proposer are the same person.</summary>
     public bool LifeAssuredSameAsProposer { get; set; } = true;

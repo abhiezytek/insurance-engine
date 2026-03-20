@@ -162,7 +162,7 @@ export function downloadEndowmentBiPdf(result: BenefitIllustrationResult) {
   addPageHeader(
     doc,
     'Endowment Plan — Benefit Illustration (Annexure Part A)',
-    'Pre-issuance illustration. All values in Rs. Figures are illustrative only.',
+    'Benefit illustration. All values in Rs. Figures are illustrative only.',
   );
 
   const summaryY = addSummaryGrid(doc, [

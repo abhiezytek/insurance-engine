@@ -10,6 +10,7 @@ import {
   type PartBRow,
   API_BASE_URL,
 } from '../api';
+import { calculateAge } from '../utils/age';
 
 // ---------------------------------------------------------------------------
 // Abbreviations displayed in the UI:
@@ -35,7 +36,6 @@ const INPUT_CLS = `w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
 export default function UlipIllustration() {
   const [products, setProducts]   = useState<UlipProduct[]>([]);
   const [form, setForm]           = useState<UlipCalculationRequest>({
-    policyNumber:        '',
     customerName:        '',
     policyholderName:    '',
     lifeAssuredSameAsPolicyholder: true,
@@ -43,9 +43,7 @@ export default function UlipIllustration() {
     option:              'Platinum',
     gender:              'Male',
     dateOfBirth:         '',
-    entryAge:            37,
     policyholderDateOfBirth: '',
-    policyholderAge:     37,
     policyholderGender:  'Male',
     typeOfPpt:           'Limited',
     policyTerm:          20,
@@ -60,14 +58,8 @@ export default function UlipIllustration() {
     fundAllocations:     [{ fundType: 'SUD Life Nifty Alpha 50 Index Fund', allocationPercent: 100 }],
     distributionChannel: 'Corporate Agency',
     isStaffFamily:       false,
-    ageRiskCommencement: 37,
     standardAgeProofLA:  true,
     standardAgeProofPH:  true,
-    emrClassLifeAssured: 'Standard',
-    emrClassPolicyholder:'Standard',
-    flatExtraLifeAssured: 0,
-    flatExtraPolicyholder: 0,
-    keralaFloodCess:     false,
   });
   const [result,  setResult]  = useState<UlipCalculationResult | null>(null);
   const [error,   setError]   = useState<string | null>(null);
@@ -80,6 +72,9 @@ export default function UlipIllustration() {
     const multiplier = isSingle ? 1.25 : 10;
     return Math.round((form.annualizedPremium || 0) * multiplier);
   };
+
+  const lifeAssuredAge = calculateAge(form.dateOfBirth);
+  const policyholderAge = calculateAge(form.policyholderDateOfBirth);
 
   // Load ULIP products
   useEffect(() => {
@@ -119,9 +114,18 @@ export default function UlipIllustration() {
     setError(null);
     setResult(null);
     try {
+      const resolvedName = form.lifeAssuredSameAsPolicyholder
+        ? (form.policyholderName || form.customerName || '')
+        : (form.customerName || '');
       const payload: UlipCalculationRequest = {
         ...form,
+        customerName: resolvedName,
+        policyholderName: form.lifeAssuredSameAsPolicyholder ? resolvedName : form.policyholderName,
+        policyholderDateOfBirth: form.lifeAssuredSameAsPolicyholder ? (form.policyholderDateOfBirth || form.dateOfBirth) : form.policyholderDateOfBirth,
+        policyholderGender: form.lifeAssuredSameAsPolicyholder ? (form.policyholderGender ?? form.gender) : form.policyholderGender,
         sumAssured: derivedSumAssured(),
+        entryAge: lifeAssuredAge,
+        policyholderAge: policyholderAge,
         lifeAssuredSameAsPolicyholder: form.lifeAssuredSameAsPolicyholder ?? false,
       };
       const resp = await runUlipCalculation(payload);
@@ -310,6 +314,106 @@ export default function UlipIllustration() {
             </select>
           </div>
 
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              id="laSameUlip"
+              checked={form.lifeAssuredSameAsPolicyholder ?? false}
+              onChange={e => {
+                const same = e.target.checked;
+                setForm(p => ({
+                  ...p,
+                  lifeAssuredSameAsPolicyholder: same,
+                  customerName: same ? (p.customerName || p.policyholderName || '') : p.customerName,
+                  policyholderName: same ? (p.policyholderName || p.customerName || '') : p.policyholderName,
+                  policyholderGender: same ? p.policyholderGender ?? p.gender : p.policyholderGender,
+                  policyholderDateOfBirth: same ? (p.policyholderDateOfBirth || p.dateOfBirth) : p.policyholderDateOfBirth,
+                }));
+              }}
+              className="accent-[#004282]"
+            />
+            <label htmlFor="laSameUlip">Life Assured and Proposer are same?</label>
+          </div>
+
+          {/* Policyholder Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Proposer / Policyholder Name</label>
+            <input
+              type="text"
+              value={form.policyholderName ?? ''}
+              onChange={e => {
+                const val = e.target.value;
+                setForm(p => ({
+                  ...p,
+                  policyholderName: val,
+                  customerName: p.lifeAssuredSameAsPolicyholder ? val : p.customerName,
+                }));
+              }}
+              placeholder="Full name" className={INPUT_CLS} />
+          </div>
+
+          {/* Policyholder Gender */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Policyholder)</label>
+            <select
+              value={form.policyholderGender ?? 'Male'}
+              onChange={e => {
+                const val = e.target.value as 'Male' | 'Female';
+                setForm(p => ({
+                  ...p,
+                  policyholderGender: val,
+                  gender: p.lifeAssuredSameAsPolicyholder ? val : p.gender,
+                }));
+              }}
+              className={INPUT_CLS}>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          {/* Policyholder DOB */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Policyholder)</label>
+            <input
+              type="date"
+              value={form.policyholderDateOfBirth ?? ''}
+              onChange={e => {
+                const val = e.target.value || undefined;
+                setForm(p => ({
+                  ...p,
+                  policyholderDateOfBirth: val,
+                  dateOfBirth: p.lifeAssuredSameAsPolicyholder ? (val ?? p.dateOfBirth) : p.dateOfBirth,
+                }));
+              }}
+              className={INPUT_CLS} />
+            {policyholderAge > 0 && <p className="text-xs text-slate-500 mt-1">Derived Age: {policyholderAge} years</p>}
+          </div>
+
+          {/* Life Assured fields (when different) */}
+          {!form.lifeAssuredSameAsPolicyholder && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (Life Assured)</label>
+                <input type="text" value={form.customerName} onChange={e => set('customerName', e.target.value)}
+                  placeholder="Full name" className={INPUT_CLS} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Life Assured)</label>
+                <select value={form.gender} onChange={e => set('gender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Life Assured)</label>
+                <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={INPUT_CLS} />
+                {lifeAssuredAge > 0 && <p className="text-xs text-slate-500 mt-1">Derived Age: {lifeAssuredAge} years</p>}
+              </div>
+            </>
+          )}
+
           {/* Option */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Option</label>
@@ -317,41 +421,6 @@ export default function UlipIllustration() {
               <option value="Platinum">Platinum</option>
               <option value="Platinum Plus">Platinum Plus</option>
             </select>
-          </div>
-
-          {/* Policy Number */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Number</label>
-            <input type="text" value={form.policyNumber} onChange={e => set('policyNumber', e.target.value)}
-              placeholder="e.g. UL-2026-0001" className={INPUT_CLS} />
-          </div>
-
-          {/* Customer Name */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (Life Assured)</label>
-            <input type="text" value={form.customerName} onChange={e => set('customerName', e.target.value)}
-              placeholder="Full name" className={INPUT_CLS} />
-          </div>
-
-          {/* Gender */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
-            <select value={form.gender} onChange={e => set('gender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-
-          {/* Date of Birth */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Life Assured)</label>
-            <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={INPUT_CLS} />
-          </div>
-
-          {/* Entry Age */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Age (Life Assured)</label>
-            <input type="number" value={form.entryAge} onChange={e => set('entryAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
           </div>
 
           {/* Standard Age Proof LA */}
@@ -378,55 +447,6 @@ export default function UlipIllustration() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Effective Date <span className="text-slate-400 text-xs">(optional)</span></label>
             <input type="date" value={form.policyEffectiveDate ?? ''} onChange={e => set('policyEffectiveDate', e.target.value || undefined)} className={INPUT_CLS} />
-          </div>
-
-          {/* Policyholder Name */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Policyholder Name</label>
-            <input type="text" value={form.policyholderName ?? ''} onChange={e => set('policyholderName', e.target.value)}
-              placeholder="Full name (if different from Life Assured)" className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder} />
-          </div>
-
-          {/* Policyholder Gender */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Policyholder)</label>
-            <select value={form.policyholderGender ?? 'Male'} onChange={e => set('policyholderGender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder}>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-
-          {/* Policyholder DOB */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Policyholder)</label>
-            <input type="date" value={form.policyholderDateOfBirth ?? ''} onChange={e => set('policyholderDateOfBirth', e.target.value || undefined)} className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder} />
-          </div>
-
-          {/* Policyholder Age */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Age (Policyholder)</label>
-            <input type="number" value={form.policyholderAge ?? 0} onChange={e => set('policyholderAge', parseInt(e.target.value) || 0)} className={INPUT_CLS} disabled={form.lifeAssuredSameAsPolicyholder} />
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-slate-700 col-span-2">
-            <input
-              type="checkbox"
-              id="laSameUlip"
-              checked={form.lifeAssuredSameAsPolicyholder ?? false}
-              onChange={e => {
-                const same = e.target.checked;
-                setForm(p => ({
-                  ...p,
-                  lifeAssuredSameAsPolicyholder: same,
-                  policyholderName: same ? p.customerName : p.policyholderName,
-                  policyholderGender: same ? p.gender : p.policyholderGender,
-                  policyholderDateOfBirth: same ? p.dateOfBirth : p.policyholderDateOfBirth,
-                  policyholderAge: same ? p.entryAge : p.policyholderAge,
-                }));
-              }}
-              className="accent-[#004282]"
-            />
-            <label htmlFor="laSameUlip">Life Assured is the same as Policyholder</label>
           </div>
         </div>
 
@@ -531,54 +551,6 @@ export default function UlipIllustration() {
             </div>
           )}
 
-          {/* Age at Risk Commencement */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Age at Risk Commencement</label>
-            <input type="number" value={form.ageRiskCommencement ?? 0} onChange={e => set('ageRiskCommencement', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* EMR Class LA */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">EMR Class (Life Assured)</label>
-              <select value={form.emrClassLifeAssured ?? 'Standard'} onChange={e => set('emrClassLifeAssured', e.target.value)} className={INPUT_CLS}>
-                <option value="Standard">Standard</option>
-                {[1,2,3,4,5,6,7,8,9].map(n => <option key={n} value={String(n)}>{n}</option>)}
-              </select>
-            </div>
-
-            {/* EMR Class PH */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">EMR Class (Policyholder)</label>
-              <select value={form.emrClassPolicyholder ?? 'Standard'} onChange={e => set('emrClassPolicyholder', e.target.value)} className={INPUT_CLS}>
-                <option value="Standard">Standard</option>
-                {[1,2,3,4,5,6,7,8,9].map(n => <option key={n} value={String(n)}>{n}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Flat Extra LA */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Flat Extra (LA) ₹/1000 SAR</label>
-              <input type="number" value={form.flatExtraLifeAssured ?? 0} onChange={e => set('flatExtraLifeAssured', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
-
-            {/* Flat Extra PH */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Flat Extra (PH) ₹/1000 SAR</label>
-              <input type="number" value={form.flatExtraPolicyholder ?? 0} onChange={e => set('flatExtraPolicyholder', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
-          </div>
-
-          {/* Kerala Flood Cess */}
-          <div className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" id="keralaFloodCess" checked={form.keralaFloodCess ?? false}
-              onChange={e => set('keralaFloodCess', e.target.checked)}
-              className="accent-[#004282]" />
-            <label htmlFor="keralaFloodCess">Kerala Flood Cess (applicable only for State of Kerala)</label>
-          </div>
-
           {/* Fund Allocation */}
           {isSelfManaged && (
             <div className="pt-3 border-t border-slate-100 space-y-3">
@@ -617,7 +589,7 @@ export default function UlipIllustration() {
 
           {/* Calculate button */}
           <button onClick={handleCalculate}
-            disabled={loading || (isSelfManaged && (allocError || allocationStepError)) || !form.policyNumber}
+            disabled={loading || (isSelfManaged && (allocError || allocationStepError))}
             className="w-full py-3 px-6 rounded-xl bg-[#004282] text-white font-semibold text-sm
                        hover:bg-[#003570] disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors shadow-md flex items-center justify-center gap-2">
@@ -670,7 +642,6 @@ export default function UlipIllustration() {
             </h3>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {[
-                ['Policy Number',        result.policyNumber],
                 ['Customer Name',        result.customerName],
                 ['Product',              result.productName],
                 ['Option',               result.option],
