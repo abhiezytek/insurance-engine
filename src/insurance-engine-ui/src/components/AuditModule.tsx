@@ -4,11 +4,10 @@ import {
   FileSpreadsheet, AlertCircle, CheckCircle2,
   Filter, ChevronDown,
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../api';
 
 // ─── Constants & helpers ─────────────────────────────────────────────────────
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
 const AUDIT_TYPES = {
   payoutVerification: 'PayoutVerification',
   additionBonus: 'AdditionBonus',
@@ -147,7 +146,7 @@ function SinglePolicy({ sub }: { sub: AuditSubModule }) {
     setResult(null);
     setDecisionMsg(null);
     try {
-      const res = await axios.post(`${API_URL}/api/audit/search`, {
+      const res = await api.post<AuditCase>('/api/audit/search', {
         policyNumber: policyNumber.trim(),
         auditType: auditTypeLabel(sub),
       });
@@ -165,7 +164,7 @@ function SinglePolicy({ sub }: { sub: AuditSubModule }) {
     setDeciding(true);
     setDecisionMsg(null);
     try {
-      await axios.post(`${API_URL}/api/audit/${decision}`, {
+      await api.post(`/api/audit/${decision}`, {
         caseId: result.caseId,
         remarks: remarks.trim(),
       });
@@ -299,7 +298,7 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
 
   const handleDownloadTemplate = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/audit/template`, {
+      const res = await api.get('/api/audit/template', {
         params: { auditType },
         responseType: 'blob',
       });
@@ -325,7 +324,7 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await axios.post(`${API_URL}/api/audit/upload?auditType=${auditType}`, fd, {
+      const res = await api.post(`/api/audit/upload?auditType=${auditType}`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: e => {
           if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
@@ -358,7 +357,7 @@ function ExcelUpload({ sub }: { sub: AuditSubModule }) {
     setDeciding(true);
     setDecisionMsg(null);
     try {
-      await axios.post(`${API_URL}/api/audit/bulk-decision`, {
+      await api.post('/api/audit/bulk-decision', {
         caseIds: Array.from(selected),
         decision: confirmAction === 'approve' ? 'Approved' : 'Rejected',
         remarks: bulkRemarks.trim(),
@@ -544,7 +543,7 @@ export function IndividualAuditTable({ auditType }: { auditType: string }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await axios.get(`${API_URL}/api/audit/cases`, { params: { auditType, inputMode: 'Single' } });
+      const r = await api.get<AuditCase[]>('/api/audit/cases', { params: { auditType, inputMode: 'Single' } });
       setCases(r.data);
     } catch {
       setError('Failed to load audit cases.');
@@ -633,7 +632,7 @@ export function BatchAuditTable({ auditType }: { auditType: string }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await axios.get(`${API_URL}/api/audit/batches`, { params: { auditType } });
+      const r = await api.get<BatchRecord[]>('/api/audit/batches', { params: { auditType } });
       setBatches(r.data);
     } catch {
       setError('Failed to load batch records.');
@@ -650,7 +649,7 @@ export function BatchAuditTable({ auditType }: { auditType: string }) {
     setCasesLoading(true);
     setBatchCases([]);
     try {
-      const r = await axios.get(`${API_URL}/api/audit/batches/${batchId}/cases`);
+      const r = await api.get<AuditCase[]>(`/api/audit/batches/${batchId}/cases`);
       setBatchCases(r.data);
     } catch {
       setBatchCases([]);
@@ -756,7 +755,7 @@ export function AuditLogsTable() {
     setLoading(true);
     setError(null);
     try {
-      const r = await axios.get(`${API_URL}/api/audit/logs`);
+      const r = await api.get<AuditLogEntry[]>('/api/audit/logs');
       setLogs(r.data);
     } catch {
       setError('Failed to load audit logs.');

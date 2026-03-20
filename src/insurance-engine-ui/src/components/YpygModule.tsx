@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
-import axios from 'axios';
 import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
+import { api } from '../api';
 
 const PRODUCT_CONFIG: Record<
   string,
@@ -140,10 +138,10 @@ function PolicyNumberMode() {
     setPolicy(null);
     setResult(null);
     try {
-      const res = await axios.get(`${API_URL}/api/ypyg/policy/${encodeURIComponent(policyNumber.trim())}`);
+      const res = await api.get<PolicyData>(`/api/ypyg/policy/${encodeURIComponent(policyNumber.trim())}`);
       setPolicy(res.data);
     } catch (e: any) {
-      setLookupError(e?.response?.data?.error || 'Policy not found.');
+      setLookupError(e?.response?.data?.error || e?.message || 'Policy not found.');
     } finally {
       setLookupLoading(false);
     }
@@ -155,7 +153,7 @@ function PolicyNumberMode() {
     setCalcError(null);
     setResult(null);
     try {
-      const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
+      const res = await api.post<YpygResult>('/api/ypyg/calculate', {
         policyNumber: policy.policyNumber,
         productCode: policy.productCode,
         productCategory: policy.productCategory,
@@ -179,7 +177,7 @@ function PolicyNumberMode() {
       });
       setResult(res.data);
     } catch (e: any) {
-      setCalcError(e?.response?.data?.error || 'Calculation failed.');
+      setCalcError(e?.response?.data?.error || e?.message || 'Calculation failed.');
     } finally {
       setCalcLoading(false);
     }
@@ -317,13 +315,16 @@ function InputValueMode() {
     setError(null);
     setResult(null);
     try {
-      const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
-        ...form,
+      const { riskCommencementDate, ...rest } = form;
+      const payload = {
+        ...rest,
+        ...(riskCommencementDate ? { riskCommencementDate } : {}),
         productCode: productConfig.code,
-      });
+      };
+      const res = await api.post<YpygResult>('/api/ypyg/calculate', payload);
       setResult(res.data);
     } catch (e: any) {
-      setError(e?.response?.data?.error || 'Calculation failed.');
+      setError(e?.response?.data?.error || e?.message || 'Calculation failed.');
     } finally {
       setLoading(false);
     }
@@ -541,12 +542,12 @@ function ResultSection({ result }: { result: YpygResult }) {
                   </tr>
                   <tr className="hover:bg-slate-50">
                     <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@4%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue4 ?? 0)}</td>
                     <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit4 ?? 0)}</td>
                   </tr>
                   <tr className="hover:bg-slate-50">
                     <td className="px-6 py-3 font-semibold text-slate-700">Maturity Benefit (@8%)</td>
-                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentMaturityBenefit)}</td>
+                    <td className="px-6 py-3 text-right font-bold text-[#004282]">₹ {INR(result.currentFundValue8 ?? 0)}</td>
                     <td className="px-6 py-3 text-right font-bold text-green-700">₹ {INR(result.maturityBenefit8 ?? 0)}</td>
                   </tr>
                   <tr className="hover:bg-slate-50">

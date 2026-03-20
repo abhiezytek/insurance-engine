@@ -1,8 +1,7 @@
-import axios from 'axios';
+import { API_BASE_URL, apiClient } from './utils/apiClient';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com',
-});
+export { API_BASE_URL, apiClient };
+export const api = apiClient;
 
 export interface Product {
   id: number;
