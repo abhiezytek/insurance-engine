@@ -24,9 +24,9 @@ apiClient.interceptors.request.use(config => {
 
   // Attach role header for Admin APIs (header-driven mock RBAC).
   try {
-    const storedAuth = localStorage.getItem('precision_pro_auth');
-    if (storedAuth) {
-      const parsed = JSON.parse(storedAuth) as { role?: string };
+    const storedAuthJson = localStorage.getItem('precision_pro_auth');
+    if (storedAuthJson) {
+      const parsed = JSON.parse(storedAuthJson) as { role?: string };
       if (parsed.role) headers['X-Role'] = parsed.role;
     }
   } catch {
