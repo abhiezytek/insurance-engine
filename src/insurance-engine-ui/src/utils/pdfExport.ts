@@ -404,7 +404,7 @@ export interface YpygUlipPdfData {
   policyNumber: string;
   customerName: string;
   productCode: string;
-  gender: string;
+  gender?: string;
   entryAge: number;
   policyTerm: number;
   ppt: number;

@@ -15,7 +15,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Settings, RefreshCw, AlertCircle, Edit3, Save, X, Info, Plus } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:5000';
+// Use the same hosted fallback as other modules (YPYG/Audit) to avoid localhost failures
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://ezytek1706-003-site3.rtempurl.com';
 const api = axios.create({ baseURL: API_URL });
 api.interceptors.request.use(cfg => {
   const token = localStorage.getItem('auth_token');
@@ -324,7 +325,10 @@ function LoyaltyTable({ rows, onUpdate }: { rows: LoyaltyFactor[]; onUpdate: (id
 // ---------------------------------------------------------------------------
 async function safeFetch<T>(url: string, fallback: T): Promise<T> {
   try { return (await api.get<T>(url)).data; }
-  catch { return fallback; }
+  catch (e: any) {
+    console.error('Admin safeFetch failed', url, e?.response?.status, e?.response?.data);
+    return fallback;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -797,8 +801,10 @@ export default function AdminMaster() {
       setUlipRows(ulip.data);
       setMortalityRows(mort.data);
       setLoyaltyRows(loyal.data);
-    } catch {
-      setError('Could not load factor tables from server. Check that the API is running and you are logged in.');
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.error || e?.message || 'Unknown error';
+      setError(`Could not load factor tables. ${status ? `HTTP ${status}: ` : ''}${msg}`);
     } finally { setLoading(false); }
     // Load new tabs in parallel, gracefully
     loadUsers(); loadRoles(); loadModules(); loadIntegrations(); loadAuditLogs();

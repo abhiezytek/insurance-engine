@@ -9,6 +9,10 @@ import axios from 'axios';
 // ─── Constants & helpers ─────────────────────────────────────────────────────
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
+const AUDIT_TYPES = {
+  payoutVerification: 'PayoutVerification',
+  additionBonus: 'AdditionBonus',
+} as const;
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const INPUT_CLS = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#007bff]';
 const CARD_CLS = 'bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)]';
@@ -18,7 +22,7 @@ const fmtDate = (d: string) =>
   new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 function auditTypeLabel(sub: AuditSubModule) {
-  return sub === 'payout-verification' ? 'PayoutVerification' : 'AdditionBonus';
+  return sub === 'payout-verification' ? AUDIT_TYPES.payoutVerification : AUDIT_TYPES.additionBonus;
 }
 
 function subTitle(sub: AuditSubModule) {

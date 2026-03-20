@@ -153,6 +153,7 @@ public class YpygController : ControllerBase
             PolicyNumber = req.PolicyNumber,
             ProductCode = req.ProductCode,
             ProductCategory = "Traditional",
+            Gender = req.Gender,
             Uin = req.Uin,
             CustomerName = req.CustomerName,
             PolicyStatus = req.PolicyStatus,
@@ -252,6 +253,7 @@ public class YpygController : ControllerBase
             PolicyNumber = req.PolicyNumber,
             ProductCode = req.ProductCode,
             ProductCategory = "ULIP",
+            Gender = req.Gender,
             Uin = req.Uin,
             CustomerName = req.CustomerName,
             PolicyStatus = req.PolicyStatus,
@@ -384,6 +386,7 @@ public class YpygCalculationResponse
     public string PolicyNumber { get; set; } = string.Empty;
     public string ProductCode { get; set; } = string.Empty;
     public string ProductCategory { get; set; } = "Traditional";
+    public string Gender { get; set; } = string.Empty;
     public string Uin { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public string PolicyStatus { get; set; } = "In-Force";

@@ -4,6 +4,24 @@ import axios from 'axios';
 import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://ezytek1706-003-site3.rtempurl.com';
+
+const PRODUCT_CONFIG: Record<
+  string,
+  { code: string; displayName: string; options: string[]; channels?: string[] }
+> = {
+  Traditional: {
+    code: 'CENTURY_INCOME',
+    displayName: 'Endowment (Traditional)',
+    options: ['Immediate', 'Deferred', 'Twin'],
+    channels: ['Online', 'StaffDirect', 'Other'],
+  },
+  ULIP: {
+    code: 'EWEALTH-ROYALE',
+    displayName: 'ULIP (Unit Linked)',
+    options: ['Platinum', 'Platinum Plus'],
+    channels: ['Online', 'StaffDirect', 'Other'],
+  },
+};
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -57,6 +75,7 @@ interface YpygResult {
   productCategory: string;
   uin: string;
   customerName: string;
+  gender?: string;
   policyStatus: string;
   annualPremium: number;
   policyTerm: number;
@@ -290,6 +309,7 @@ function InputValueMode() {
   const set = (k: keyof typeof DEFAULT_INPUTS, v: string | number) =>
     setForm(f => ({ ...f, [k]: v }));
 
+  const productConfig = PRODUCT_CONFIG[form.productCategory] ?? PRODUCT_CONFIG.Traditional;
   const isUlip = form.productCategory === 'ULIP';
 
   const handleCalculate = async () => {
@@ -299,7 +319,7 @@ function InputValueMode() {
     try {
       const res = await axios.post(`${API_URL}/api/ypyg/calculate`, {
         ...form,
-        productCode: isUlip ? 'EWEALTH-ROYALE' : 'CENTURY_INCOME',
+        productCode: productConfig.code,
       });
       setResult(res.data);
     } catch (e: any) {
@@ -317,11 +337,16 @@ function InputValueMode() {
           <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Input Parameters</h3>
 
           <Field label="Product Type">
-            <select value={form.productCategory}
+            <select
+              value={form.productCategory}
               onChange={e => set('productCategory', e.target.value)}
-              className={INPUT_CLS}>
-              <option value="Traditional">Endowment (Traditional)</option>
-              <option value="ULIP">ULIP (Unit Linked)</option>
+              className={INPUT_CLS}
+            >
+              {Object.entries(PRODUCT_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>
+                  {cfg.displayName}
+                </option>
+              ))}
             </select>
           </Field>
           <Field label="Policy Number (optional)">
@@ -413,37 +438,34 @@ function InputValueMode() {
                   onChange={e => set('fundValue', +e.target.value)}
                   className={INPUT_CLS} />
               </Field>
-              <Field label="Option">
-                <select value={form.option}
-                  onChange={e => set('option', e.target.value)}
-                  className={INPUT_CLS}>
-                  <option>Platinum</option>
-                  <option>Platinum Plus</option>
-                </select>
-              </Field>
-            </>
-          ) : (
-            <>
-              <Field label="Option">
-                <select value={form.option}
-                  onChange={e => set('option', e.target.value)}
-                  className={INPUT_CLS}>
-                  <option>Immediate</option>
-                  <option>Deferred</option>
-                  <option>Twin</option>
-                </select>
-              </Field>
-              <Field label="Channel">
-                <select value={form.channel}
-                  onChange={e => set('channel', e.target.value)}
-                  className={INPUT_CLS}>
-                  <option>Online</option>
-                  <option>StaffDirect</option>
-                  <option>Other</option>
-                </select>
-              </Field>
-            </>
-          )}
+               <Field label="Option">
+                 <select value={form.option}
+                   onChange={e => set('option', e.target.value)}
+                   className={INPUT_CLS}>
+                   {productConfig.options.map(o => <option key={o}>{o}</option>)}
+                 </select>
+               </Field>
+             </>
+           ) : (
+             <>
+               <Field label="Option">
+                 <select value={form.option}
+                   onChange={e => set('option', e.target.value)}
+                   className={INPUT_CLS}>
+                   {productConfig.options.map(o => <option key={o}>{o}</option>)}
+                 </select>
+               </Field>
+               {productConfig.channels && (
+                 <Field label="Channel">
+                   <select value={form.channel}
+                     onChange={e => set('channel', e.target.value)}
+                     className={INPUT_CLS}>
+                     {productConfig.channels.map(c => <option key={c}>{c}</option>)}
+                   </select>
+                 </Field>
+               )}
+             </>
+           )}
           <Field label="Risk Commencement Date">
             <input type="date" value={form.riskCommencementDate}
               onChange={e => set('riskCommencementDate', e.target.value)}
@@ -567,12 +589,20 @@ function ResultSection({ result }: { result: YpygResult }) {
       </div>
 
       {/* ── Additional info ── */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <InfoCard label="Policy Number" value={result.policyNumber || '—'} />
+        <InfoCard label="Product Code" value={result.productCode || '—'} />
         <InfoCard label="Sum Assured on Death" value={`₹ ${INR(result.sumAssuredOnDeath)}`} />
         {isUlip ? (
-          <InfoCard label="Current Policy Year" value={`Year ${result.currentPolicyYear ?? 1}`} />
+          <>
+            <InfoCard label="Current Policy Year" value={`Year ${result.currentPolicyYear ?? 1}`} />
+            <InfoCard label="Policy Status" value={result.policyStatus || 'In-Force'} />
+          </>
         ) : (
-          <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
+          <>
+            <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
+            <InfoCard label="Policy Status" value={result.policyStatus || 'In-Force'} />
+          </>
         )}
       </div>
 
@@ -590,7 +620,7 @@ function ResultSection({ result }: { result: YpygResult }) {
                   policyNumber: result.policyNumber,
                   customerName: result.customerName || '',
                   productCode: result.productCode,
-                  gender: result.ulipYearlyTable.length > 0 ? '' : '',
+                  gender: result.gender,
                   entryAge: result.ulipYearlyTable.length > 0 ? result.ulipYearlyTable[0].age : 0,
                   policyTerm: result.policyTerm,
                   ppt: result.premiumPayingTerm,
