@@ -3,6 +3,7 @@ import { TrendingUp, AlertCircle, Info, FileDown, User, Settings2 } from 'lucide
 import { runBenefitIllustration, getEndowmentConfig } from '../api';
 import type { BenefitIllustrationResult, BenefitIllustrationRequest, EndowmentProductConfig } from '../api';
 import { downloadEndowmentBiPdf } from '../utils/pdfExport';
+import { calculateAge } from '../utils/age';
 
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 const INPUT_CLS = `w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
@@ -74,7 +75,26 @@ export default function BenefitIllustration() {
   const handleCalculate = async () => {
     setLoading(true); setError(null); setResult(null);
     try {
-      const resp = await runBenefitIllustration(form);
+      const lifeAssuredAge = form.dateOfBirth ? calculateAge(form.dateOfBirth) : form.entryAge;
+      const proposerAge = form.policyholderDateOfBirth
+        ? calculateAge(form.policyholderDateOfBirth)
+        : form.ageOfPolicyHolder;
+
+      const payload: BenefitIllustrationRequest = {
+        ...form,
+        entryAge: lifeAssuredAge,
+        ageOfPolicyHolder: proposerAge,
+        nameOfLifeAssured: form.lifeAssuredSameAsProposer
+          ? (form.nameOfPolicyHolder || form.nameOfLifeAssured)
+          : form.nameOfLifeAssured,
+        nameOfPolicyHolder: form.nameOfPolicyHolder,
+        dateOfBirth: form.lifeAssuredSameAsProposer ? (form.dateOfBirth || form.policyholderDateOfBirth || '') : form.dateOfBirth,
+        policyholderDateOfBirth: form.lifeAssuredSameAsProposer
+          ? (form.policyholderDateOfBirth || form.dateOfBirth)
+          : form.policyholderDateOfBirth,
+      };
+
+      const resp = await runBenefitIllustration(payload);
       setResult(resp.data);
     } catch (e: any) {
       const msg = e.response?.data || e.message;
@@ -93,7 +113,7 @@ export default function BenefitIllustration() {
           <span className="block mt-1 w-12 h-1 rounded-full bg-[#007bff]" />
         </h2>
         <p className="mt-2 text-slate-500 text-sm">
-          Pre-issuance illustration. Enter policyholder details and plan parameters, then generate the yearly benefit table.
+          Enter proposer details and plan parameters, then generate the yearly benefit table.
         </p>
       </div>
 
@@ -106,29 +126,6 @@ export default function BenefitIllustration() {
             <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
           </div>
 
-          <Field label="Name of the Life Assured">
-            <input type="text" value={form.nameOfLifeAssured ?? ''}
-              onChange={e => set('nameOfLifeAssured', e.target.value)}
-              placeholder="Enter name" className={INPUT_CLS} />
-          </Field>
-
-          <Field label="Age of the Life Assured (years)">
-            <input type="number" value={form.entryAge}
-              onChange={e => set('entryAge', +e.target.value)} className={INPUT_CLS} />
-          </Field>
-
-          <Field label="Name of the Policy Holder">
-            <input type="text" value={form.nameOfPolicyHolder ?? ''}
-              onChange={e => set('nameOfPolicyHolder', e.target.value)}
-              placeholder="Enter name" className={INPUT_CLS} />
-          </Field>
-
-          <Field label="Age of the Policy Holder (years)">
-            <input type="number" value={form.ageOfPolicyHolder ?? ''}
-              onChange={e => set('ageOfPolicyHolder', e.target.value === '' ? undefined : +e.target.value)}
-              placeholder="Enter age" className={INPUT_CLS} />
-          </Field>
-
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <input
               id="laSame"
@@ -140,15 +137,65 @@ export default function BenefitIllustration() {
                   ...p,
                   lifeAssuredSameAsProposer: same,
                   nameOfPolicyHolder: same ? p.nameOfLifeAssured : p.nameOfPolicyHolder,
-                  ageOfPolicyHolder: same ? p.entryAge : p.ageOfPolicyHolder,
+                  policyholderDateOfBirth: same ? (p.policyholderDateOfBirth || p.dateOfBirth) : p.policyholderDateOfBirth,
+                  ageOfPolicyHolder: same ? (p.entryAge || calculateAge(p.dateOfBirth)) : p.ageOfPolicyHolder,
+                  dateOfBirth: same ? (p.dateOfBirth || p.policyholderDateOfBirth || '') : p.dateOfBirth,
                 }));
               }}
               className="accent-[#004282]"
             />
             <label htmlFor="laSame" className="cursor-pointer">
-              Life Assured is the same as Policyholder
+              Life Assured and Proposer are same?
             </label>
           </div>
+
+          {!form.lifeAssuredSameAsProposer && (
+            <>
+              <Field label="Name of the Life Assured">
+                <input type="text" value={form.nameOfLifeAssured ?? ''}
+                  onChange={e => set('nameOfLifeAssured', e.target.value)}
+                  placeholder="Enter name" className={INPUT_CLS} />
+              </Field>
+
+              <Field label="Date of Birth (Life Assured)">
+                <input type="date" value={form.dateOfBirth ?? ''}
+                  onChange={e => set('dateOfBirth', e.target.value)}
+                  className={INPUT_CLS} />
+                {form.dateOfBirth && <p className="text-xs text-slate-500 mt-1">Derived Age: {calculateAge(form.dateOfBirth)} years</p>}
+              </Field>
+            </>
+          )}
+
+          <Field label="Name of the Policy Holder">
+            <input type="text" value={form.nameOfPolicyHolder ?? ''}
+              onChange={e => {
+                const val = e.target.value;
+                setForm(p => ({
+                  ...p,
+                  nameOfPolicyHolder: val,
+                  nameOfLifeAssured: p.lifeAssuredSameAsProposer ? val : p.nameOfLifeAssured,
+                }));
+              }}
+              placeholder="Enter name" className={INPUT_CLS} />
+          </Field>
+
+          <Field label="Date of Birth (Policy Holder)">
+            <input type="date" value={form.policyholderDateOfBirth ?? ''}
+              onChange={e => {
+                const val = e.target.value;
+                setForm(p => ({
+                  ...p,
+                  policyholderDateOfBirth: val,
+                  dateOfBirth: p.lifeAssuredSameAsProposer ? val : p.dateOfBirth,
+                }));
+              }}
+              className={INPUT_CLS} />
+            {form.policyholderDateOfBirth && (
+              <p className="text-xs text-slate-500 mt-1">
+                Derived Age: {calculateAge(form.policyholderDateOfBirth)} years
+              </p>
+            )}
+          </Field>
 
           <Field label="Gender">
             <select value={form.gender ?? 'Male'}
@@ -173,13 +220,6 @@ export default function BenefitIllustration() {
             </select>
           </Field>
 
-          <div className="pt-2 border-t border-slate-100">
-            <p className="text-xs text-slate-400">
-              <strong>SA</strong> = 10 × Annual Premium &nbsp;·&nbsp;
-              <strong>SV</strong> = Max(GSV, SSV) &nbsp;·&nbsp;
-              <strong>DB</strong> = Max(SA, SV, 105% × TPP)
-            </p>
-          </div>
         </div>
 
         {/* Section 2 — Product Selection / Plan Parameters */}
@@ -259,13 +299,6 @@ export default function BenefitIllustration() {
               <option value="Yes">Yes</option>
             </select>
           </Field>
-
-          <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
-            <input type="checkbox" id="preIssuance" checked={form.isPreIssuance ?? true}
-              onChange={e => set('isPreIssuance', e.target.checked)}
-              className="accent-[#004282]" />
-            <label htmlFor="preIssuance">Pre-issuance (skip policy date logic)</label>
-          </div>
 
           <button
             onClick={handleCalculate}

@@ -83,23 +83,21 @@ public class UlipCalculationService : IUlipCalculationService
     {
         var effectiveDate = req.PolicyEffectiveDate ?? DateTime.UtcNow;
 
+        // Auto-generate a policy number when UI does not supply one (UI no longer asks for it)
+        if (string.IsNullOrWhiteSpace(req.PolicyNumber))
+            req.PolicyNumber = $"ULIP-{effectiveDate:yyyyMMddHHmmssfff}";
+
         // Life Assured same as Policyholder → mirror fields for validation/calculation
         if (req.LifeAssuredSameAsPolicyholder)
         {
             req.PolicyholderName = string.IsNullOrWhiteSpace(req.PolicyholderName) ? req.CustomerName : req.PolicyholderName;
             req.PolicyholderGender = string.IsNullOrWhiteSpace(req.PolicyholderGender) ? req.Gender : req.PolicyholderGender;
             req.PolicyholderDateOfBirth = req.PolicyholderDateOfBirth == default ? req.DateOfBirth : req.PolicyholderDateOfBirth;
-            req.PolicyholderAge = req.PolicyholderAge == 0 ? req.EntryAge : req.PolicyholderAge;
         }
 
-        // Derive EntryAge from DOB when not explicitly provided (UI should already
-        // send DOB per correction prompt; EntryAge retained for backward compatibility).
-        if (req.EntryAge <= 0 && req.DateOfBirth != default)
-        {
-            var age = effectiveDate.Year - req.DateOfBirth.Year;
-            if (req.DateOfBirth.Date > effectiveDate.AddYears(-age)) age--;
-            req.EntryAge = Math.Max(0, age);
-        }
+        // Derive ages from DOB (UI sends DOB only; ages kept for backward compatibility)
+        req.EntryAge = DeriveAgeOrFallback(req.DateOfBirth, req.EntryAge, effectiveDate);
+        req.PolicyholderAge = DeriveAgeOrFallback(req.PolicyholderDateOfBirth, req.PolicyholderAge, effectiveDate);
 
         // Validate PPT/PT combination using CSV rulebook.
         var pptValidation = PptPtRuleBook.Validate(req, req.EntryAge, effectiveDate);
@@ -624,6 +622,14 @@ public class UlipCalculationService : IUlipCalculationService
             return (double)csvRate;
 
         return (double)FallbackMortalityRate(age);
+    }
+
+    private static int DeriveAgeOrFallback(DateTime dob, int fallback, DateTime asOf)
+    {
+        if (dob == default) return fallback;
+        var age = asOf.Year - dob.Year;
+        if (dob.Date > asOf.AddYears(-age)) age--;
+        return Math.Max(age, 0);
     }
 
     /// <summary>

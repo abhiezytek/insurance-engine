@@ -87,8 +87,6 @@ public class UlipController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UlipCalculationResponse>> Calculate([FromBody] UlipCalculationRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.PolicyNumber))
-            return BadRequest("PolicyNumber is required.");
         if (request.AnnualizedPremium <= 0)
             return BadRequest("AnnualizedPremium must be positive.");
         if (request.SumAssured <= 0)
@@ -97,8 +95,10 @@ public class UlipController : ControllerBase
             return BadRequest("PPT must be between 1 and PolicyTerm.");
         if (request.PolicyTerm < 5 || request.PolicyTerm > 30)
             return BadRequest("PolicyTerm must be between 5 and 30 years.");
+        if (request.EntryAge <= 0 && request.DateOfBirth == default)
+            return BadRequest("DateOfBirth is required.");
         if (request.EntryAge < 0 || request.EntryAge > 65)
-            return BadRequest("EntryAge must be between 0 and 65.");
+            return BadRequest("EntryAge must be between 0 and 65 (or provide DateOfBirth).");
 
         try
         {
@@ -347,7 +347,6 @@ public class UlipController : ControllerBase
         void gl(string k, string v) => sb.AppendLine($"<tr><td>{k}</td><td>{v}</td></tr>");
         gl("Name of the Product",          "SUD Life e-Wealth Royale");
         gl("Plan Option",                  r.Option);
-        gl("Policy Number",                r.PolicyNumber);
         gl("Customer Name",                r.CustomerName);
         gl("Entry Age",                    $"{r.EntryAge} years");
         gl("Maturity Age",                 $"{r.MaturityAge} years");
@@ -471,4 +470,5 @@ public class UlipController : ControllerBase
         sb.AppendLine("</body></html>");
         return sb.ToString();
     }
+
 }

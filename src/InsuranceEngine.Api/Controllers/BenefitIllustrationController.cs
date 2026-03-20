@@ -39,6 +39,23 @@ public class BenefitIllustrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BenefitIllustrationResponse>> Calculate([FromBody] BenefitIllustrationRequest request)
     {
+        var asOf = DateTime.UtcNow;
+
+        if (request.EntryAge <= 0 && request.DateOfBirth != default)
+            request.EntryAge = DeriveAge(request.DateOfBirth, asOf);
+
+        if (request.AgeOfPolicyHolder.GetValueOrDefault() <= 0 && request.PolicyholderDateOfBirth.HasValue && request.PolicyholderDateOfBirth.Value != default)
+            request.AgeOfPolicyHolder = DeriveAge(request.PolicyholderDateOfBirth.Value, asOf);
+
+        if (request.LifeAssuredSameAsProposer)
+        {
+            request.PolicyholderDateOfBirth ??= request.DateOfBirth;
+            request.AgeOfPolicyHolder ??= request.EntryAge;
+            request.NameOfPolicyHolder = string.IsNullOrWhiteSpace(request.NameOfPolicyHolder)
+                ? request.NameOfLifeAssured
+                : request.NameOfPolicyHolder;
+        }
+
         var premium = request.AnnualisedPremium ?? request.AnnualPremium;
         if (premium <= 0) return BadRequest("Premium must be positive.");
         if (request.Ppt < 1 || request.Ppt > request.PolicyTerm) return BadRequest("PPT must be between 1 and Policy Term.");
@@ -47,6 +64,13 @@ public class BenefitIllustrationController : ControllerBase
 
         var result = await _svc.CalculateAsync(request);
         return Ok(result);
+    }
+
+    private static int DeriveAge(DateTime dob, DateTime asOf)
+    {
+        var age = asOf.Year - dob.Year;
+        if (dob.Date > asOf.AddYears(-age)) age--;
+        return Math.Max(age, 0);
     }
 }
 
