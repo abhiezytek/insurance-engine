@@ -205,7 +205,7 @@ export default function BenefitIllustration() {
               />
               {form.premiumFrequency && (
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Modal factor: {MODAL_FACTORS[form.premiumFrequency as PremiumFrequency]}
+                  Modal factor: {MODAL_FACTORS[form.premiumFrequency]}
                 </p>
               )}
             </Field>

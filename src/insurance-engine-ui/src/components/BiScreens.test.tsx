@@ -45,45 +45,6 @@ vi.mock('../api', () => ({
 import BenefitIllustration from './BenefitIllustration';
 import UlipIllustration from './UlipIllustration';
 
-vi.mock('../api', () => ({
-  getEndowmentConfig: vi.fn().mockResolvedValue({
-    data: {
-      pptOptions: [7, 10, 12],
-      ptOptionsByPpt: { '7': [15, 20], '10': [20, 25], '12': [25] },
-      channels: ['Agency'],
-      paymentModes: ['Yearly', 'Half-Yearly', 'Quarterly', 'Monthly'],
-    },
-  }),
-  runBenefitIllustration: vi.fn().mockResolvedValue({ data: null }),
-  getUlipProducts: vi.fn().mockResolvedValue({ data: [{ code: 'EWEALTH-ROYALE', name: 'SUD Life e-Wealth Royale' }] }),
-  runUlipCalculation: vi.fn().mockResolvedValue({
-    data: {
-      policyNumber: 'TEST',
-      customerName: 'Test',
-      productName: 'SUD Life e-Wealth Royale',
-      option: 'Platinum',
-      gender: 'Male',
-      entryAge: 30,
-      policyTerm: 20,
-      ppt: 10,
-      annualizedPremium: 60000,
-      sumAssured: 600000,
-      premiumFrequency: 'Yearly',
-      maturityAge: 50,
-      premiumInstallment: 0,
-      netYield4: 0,
-      netYield8: 0,
-      maturityBenefit4: 0,
-      maturityBenefit8: 0,
-      irdaiDisclaimer: '',
-      partARows: [],
-      partBRows4: [],
-      partBRows8: [],
-      yearlyTable: [],
-    },
-  }),
-}));
-
 describe('BI screens', () => {
   beforeEach(() => {
     vi.clearAllMocks();
