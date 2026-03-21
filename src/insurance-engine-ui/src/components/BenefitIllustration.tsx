@@ -1,21 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TrendingUp, AlertCircle, Info, FileDown, User, Settings2 } from 'lucide-react';
 import { runBenefitIllustration, getEndowmentConfig } from '../api';
 import type { BenefitIllustrationResult, BenefitIllustrationRequest, EndowmentProductConfig } from '../api';
 import { downloadEndowmentBiPdf } from '../utils/pdfExport';
-import { calculateAge } from '../utils/age';
+import {
+  MODAL_FACTORS,
+  calculateAge,
+  deriveCenturyIncomeValues,
+  getCenturyIncomePtOptions,
+  type CenturyIncomeForm,
+  type PremiumFrequency,
+  type SalesChannel,
+  type Gender,
+  validateCenturyIncome,
+} from '../utils/biRules';
 
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 const INPUT_CLS = `w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]
-                   placeholder:text-slate-300`;
+                    focus:outline-none focus:ring-2 focus:ring-[#007bff] focus:border-[#007bff]
+                    placeholder:text-slate-300`;
 
 /* Fallback config used until the backend responds */
 const DEFAULT_CONFIG: EndowmentProductConfig = {
   pptOptions: [7, 10, 12],
   ptOptionsByPpt: { '7': [15, 20], '10': [20, 25], '12': [25] },
   channels: ['Corporate Agency', 'Direct Marketing', 'Online', 'Broker', 'Agency', 'Web Aggregator', 'Insurance Marketing Firm'],
-  paymentModes: ['Yearly', 'Half Yearly', 'Quarterly', 'Monthly'],
+  paymentModes: ['Yearly', 'Half-Yearly', 'Quarterly', 'Monthly'],
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -29,23 +39,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function BenefitIllustration() {
   const [config, setConfig] = useState<EndowmentProductConfig>(DEFAULT_CONFIG);
-  const [form, setForm] = useState<BenefitIllustrationRequest>({
-    annualisedPremium: 50000,
-    annualPremium: 0,
-    ppt: 7,
-    policyTerm: 15,
-    entryAge: 35,
-    nameOfLifeAssured: '',
-    nameOfPolicyHolder: '',
-    ageOfPolicyHolder: undefined,
-    lifeAssuredSameAsProposer: true,
+  const [form, setForm] = useState<CenturyIncomeForm>({
+    product: 'CENTURY_INCOME',
     option: 'Immediate',
-    channel: 'Agency',
-    gender: 'Male',
+    isProposerDifferent: false,
+    lifeAssuredName: '',
+    proposerName: '',
+    lifeAssuredDob: null,
+    proposerDob: null,
+    lifeAssuredGender: null,
+    proposerGender: null,
+    lifeAssuredAge: null,
+    proposerAge: null,
+    premium: null,
     premiumFrequency: 'Yearly',
-    standardAgeProof: false,
+    annualisedPremium: null,
+    sumAssured: null,
+    ppt: 7,
+    pt: 15,
+    standardAgeProof: null,
+    salesChannel: 'Agency',
     staffPolicy: false,
-    isPreIssuance: true,
   });
   const [result, setResult] = useState<BenefitIllustrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,40 +72,65 @@ export default function BenefitIllustration() {
       .catch(() => { /* keep fallback */ });
   }, []);
 
-  const set = (k: keyof BenefitIllustrationRequest, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const set = <K extends keyof CenturyIncomeForm>(k: K, v: CenturyIncomeForm[K]) =>
+    setForm(p => ({ ...p, [k]: v }));
 
   /* When PPT changes, reset Policy Term to first valid option */
   const handlePptChange = (newPpt: number) => {
-    const ptOptions = config.ptOptionsByPpt[String(newPpt)] ?? [];
+    const ptOptions = getCenturyIncomePtOptions(newPpt as any);
     setForm(p => ({
       ...p,
-      ppt: newPpt,
-      policyTerm: ptOptions.length > 0 ? ptOptions[0] : p.policyTerm,
+      ppt: newPpt as any,
+      pt: ptOptions.length > 0 ? (ptOptions[0] as any) : p.pt,
     }));
   };
 
-  const ptOptions = config.ptOptionsByPpt[String(form.ppt)] ?? [];
+  const ptOptions = useMemo(() => getCenturyIncomePtOptions(form.ppt), [form.ppt]);
+
+  const derived = useMemo(() => deriveCenturyIncomeValues(form), [form]);
 
   const handleCalculate = async () => {
     setLoading(true); setError(null); setResult(null);
-    try {
-      const lifeAssuredAge = form.dateOfBirth ? calculateAge(form.dateOfBirth) : form.entryAge;
-      const proposerAge = form.policyholderDateOfBirth
-        ? calculateAge(form.policyholderDateOfBirth)
-        : form.ageOfPolicyHolder;
+    const lifeAssuredAge = calculateAge(form.lifeAssuredDob ?? null);
+    const proposerAge = calculateAge(form.proposerDob ?? null);
 
+    const nextForm: CenturyIncomeForm = {
+      ...form,
+      lifeAssuredAge,
+      proposerAge,
+      annualisedPremium: derived.annualisedPremium,
+      sumAssured: derived.sumAssured,
+    };
+
+    const validationErrors = validateCenturyIncome(nextForm);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('; '));
+      setLoading(false);
+      return;
+    }
+
+    try {
       const payload: BenefitIllustrationRequest = {
-        ...form,
-        entryAge: lifeAssuredAge,
-        ageOfPolicyHolder: proposerAge,
-        nameOfLifeAssured: form.lifeAssuredSameAsProposer
-          ? (form.nameOfPolicyHolder || form.nameOfLifeAssured)
-          : form.nameOfLifeAssured,
-        nameOfPolicyHolder: form.nameOfPolicyHolder,
-        dateOfBirth: form.lifeAssuredSameAsProposer ? (form.dateOfBirth || form.policyholderDateOfBirth || '') : form.dateOfBirth,
-        policyholderDateOfBirth: form.lifeAssuredSameAsProposer
-          ? (form.policyholderDateOfBirth || form.dateOfBirth)
-          : form.policyholderDateOfBirth,
+        annualisedPremium: nextForm.annualisedPremium ?? undefined,
+        annualPremium: 0,
+        ppt: nextForm.ppt ?? 0,
+        policyTerm: nextForm.pt ?? 0,
+        entryAge: lifeAssuredAge ?? undefined,
+        dateOfBirth: nextForm.lifeAssuredDob ?? undefined,
+        nameOfLifeAssured: nextForm.lifeAssuredName,
+        nameOfPolicyHolder: nextForm.isProposerDifferent ? nextForm.proposerName : nextForm.lifeAssuredName,
+        ageOfPolicyHolder: proposerAge ?? undefined,
+        policyholderDateOfBirth: nextForm.isProposerDifferent ? nextForm.proposerDob ?? undefined : nextForm.lifeAssuredDob ?? undefined,
+        lifeAssuredSameAsProposer: !nextForm.isProposerDifferent,
+        option: nextForm.option === 'Twin Income' ? 'Twin' : (nextForm.option as any),
+        channel: (nextForm.salesChannel ?? '') as string,
+        gender: (nextForm.lifeAssuredGender ?? 'Male') as any,
+        premiumFrequency: (nextForm.premiumFrequency === 'Half-Yearly' ? 'Half Yearly' : nextForm.premiumFrequency) as any,
+        standardAgeProof: nextForm.standardAgeProof ?? undefined,
+        staffPolicy: nextForm.staffPolicy ?? undefined,
+        premiumsPaid: undefined,
+        sumAssured: nextForm.sumAssured ?? undefined,
+        isPreIssuance: true,
       };
 
       const resp = await runBenefitIllustration(payload);
@@ -119,193 +158,133 @@ export default function BenefitIllustration() {
 
       {/* ── 2-Section input layout ── */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Section 1 — Policyholder Details */}
-        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <User size={16} className="text-[#004282]" />
-            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <input
-              id="laSame"
-              type="checkbox"
-              checked={form.lifeAssuredSameAsProposer ?? false}
-              onChange={e => {
-                const same = e.target.checked;
-                setForm(p => ({
-                  ...p,
-                  lifeAssuredSameAsProposer: same,
-                  nameOfPolicyHolder: same ? p.nameOfLifeAssured : p.nameOfPolicyHolder,
-                  policyholderDateOfBirth: same ? (p.policyholderDateOfBirth || p.dateOfBirth) : p.policyholderDateOfBirth,
-                  ageOfPolicyHolder: same ? (p.entryAge || calculateAge(p.dateOfBirth)) : p.ageOfPolicyHolder,
-                  dateOfBirth: same ? (p.dateOfBirth || p.policyholderDateOfBirth || '') : p.dateOfBirth,
-                }));
-              }}
-              className="accent-[#004282]"
-            />
-            <label htmlFor="laSame" className="cursor-pointer">
-              Life Assured and Proposer are same?
-            </label>
-          </div>
-
-          {!form.lifeAssuredSameAsProposer && (
-            <>
-              <Field label="Name of the Life Assured">
-                <input type="text" value={form.nameOfLifeAssured ?? ''}
-                  onChange={e => set('nameOfLifeAssured', e.target.value)}
-                  placeholder="Enter name" className={INPUT_CLS} />
-              </Field>
-
-              <Field label="Date of Birth (Life Assured)">
-                <input type="date" value={form.dateOfBirth ?? ''}
-                  onChange={e => set('dateOfBirth', e.target.value)}
-                  className={INPUT_CLS} />
-                {form.dateOfBirth && <p className="text-xs text-slate-500 mt-1">Derived Age: {calculateAge(form.dateOfBirth)} years</p>}
-              </Field>
-            </>
-          )}
-
-          <Field label="Name of the Policy Holder">
-            <input type="text" value={form.nameOfPolicyHolder ?? ''}
-              onChange={e => {
-                const val = e.target.value;
-                setForm(p => ({
-                  ...p,
-                  nameOfPolicyHolder: val,
-                  nameOfLifeAssured: p.lifeAssuredSameAsProposer ? val : p.nameOfLifeAssured,
-                }));
-              }}
-              placeholder="Enter name" className={INPUT_CLS} />
-          </Field>
-
-          <Field label="Date of Birth (Policy Holder)">
-            <input type="date" value={form.policyholderDateOfBirth ?? ''}
-              onChange={e => {
-                const val = e.target.value;
-                setForm(p => ({
-                  ...p,
-                  policyholderDateOfBirth: val,
-                  dateOfBirth: p.lifeAssuredSameAsProposer ? val : p.dateOfBirth,
-                }));
-              }}
-              className={INPUT_CLS} />
-            {form.policyholderDateOfBirth && (
-              <p className="text-xs text-slate-500 mt-1">
-                Derived Age: {calculateAge(form.policyholderDateOfBirth)} years
-              </p>
-            )}
-          </Field>
-
-          <Field label="Gender">
-            <select value={form.gender ?? 'Male'}
-              onChange={e => set('gender', e.target.value as 'Male' | 'Female')}
-              className={INPUT_CLS}>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </Field>
-
-          <Field label="Sum Assured (₹) — derived (10 × Annual Premium)">
-            <input type="number" value={(result?.sumAssuredOnDeath ?? 10 * (form.annualisedPremium ?? 0)).toFixed(0)}
-              readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
-          </Field>
-
-          <Field label="Standard Age Proof">
-            <select value={form.standardAgeProof ? 'Yes' : 'No'}
-              onChange={e => set('standardAgeProof', e.target.value === 'Yes')}
-              className={INPUT_CLS}>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </Field>
-
-        </div>
-
-        {/* Section 2 — Product Selection / Plan Parameters */}
-        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
+        {/* Section 1 — Product Selection / Plan Parameters */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
             <Settings2 size={16} className="text-[#004282]" />
             <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Plan Parameters</h3>
           </div>
 
-          <Field label="Annualised Premium (₹)">
-            <input type="number" value={form.annualisedPremium ?? 0}
-              onChange={e => set('annualisedPremium', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="Product">
+              <select
+                value={form.product}
+                onChange={e => set('product', e.target.value as CenturyIncomeForm['product'])}
+                className={INPUT_CLS}>
+                <option value="CENTURY_INCOME">SUD Life Century Income</option>
+              </select>
+            </Field>
 
-          <Field label="Calculated Installment Premium (₹)">
-            <input type="number" value={result?.installmentPremium ?? 0}
-              readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
-          </Field>
+            <Field label="Option">
+              <select value={form.option}
+                onChange={e => set('option', e.target.value as CenturyIncomeForm['option'])}
+                className={INPUT_CLS}>
+                <option value="Immediate">Immediate</option>
+                <option value="Deferred">Deferred</option>
+                <option value="Twin Income">Twin Income</option>
+              </select>
+            </Field>
 
-          <Field label="Premium Payment Mode">
-            <select value={form.premiumFrequency ?? 'Yearly'}
-              onChange={e => set('premiumFrequency', e.target.value as BenefitIllustrationRequest['premiumFrequency'])}
-              className={INPUT_CLS}>
-              {config.paymentModes.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </Field>
+            <Field label="Premium Frequency">
+              <select value={form.premiumFrequency ?? 'Yearly'}
+                onChange={e => set('premiumFrequency', e.target.value as PremiumFrequency)}
+                className={INPUT_CLS}>
+                {config.paymentModes.map(m => (
+                  <option key={m} value={m as PremiumFrequency}>{m}</option>
+                ))}
+              </select>
+            </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="PPT (years)">
-              <select value={form.ppt}
+            <Field label="Premium (Installment)">
+              <input
+                type="number"
+                value={form.premium ?? ''}
+                onChange={e => set('premium', e.target.value ? Number(e.target.value) : null)}
+                placeholder="Enter premium"
+                className={INPUT_CLS}
+              />
+              {form.premiumFrequency && (
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Modal factor: {MODAL_FACTORS[form.premiumFrequency]}
+                </p>
+              )}
+            </Field>
+
+            <Field label="Annualised Premium (Derived)">
+              <input
+                type="number"
+                value={(derived.annualisedPremium ?? 0).toFixed(0)}
+                readOnly
+                className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`}
+              />
+            </Field>
+
+            <Field label="Sum Assured on Death (10 × Annualised Premium)">
+              <input
+                type="number"
+                value={(result?.sumAssuredOnDeath ?? derived.sumAssured ?? 0).toFixed(0)}
+                readOnly
+                className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`}
+              />
+            </Field>
+
+            <Field label="Premium Payment Term (PPT)">
+              <select value={form.ppt ?? undefined}
                 onChange={e => handlePptChange(+e.target.value)}
                 className={INPUT_CLS}>
+                <option value="">Select PPT</option>
                 {config.pptOptions.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Policy Term (years)">
-              <select value={form.policyTerm}
-                onChange={e => set('policyTerm', +e.target.value)}
+
+            <Field label="Policy Term (PT)">
+              <select value={form.pt ?? undefined}
+                onChange={e => set('pt', (+e.target.value || null) as any)}
                 className={INPUT_CLS}>
+                <option value="">Select PT</option>
                 {ptOptions.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </Field>
+
+            <Field label="Sales Channel">
+              <select value={form.salesChannel ?? ''}
+                onChange={e => set('salesChannel', e.target.value as SalesChannel)}
+                className={INPUT_CLS}>
+                {config.channels.map(ch => (
+                  <option key={ch} value={ch}>{ch}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Staff Policy">
+              <select value={form.staffPolicy ? 'Yes' : 'No'}
+                onChange={e => set('staffPolicy', e.target.value === 'Yes')}
+                className={INPUT_CLS}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </Field>
+
+            <Field label="Standard Age Proof">
+              <select value={form.standardAgeProof ? 'Yes' : 'No'}
+                onChange={e => set('standardAgeProof', e.target.value === 'Yes')}
+                className={INPUT_CLS}>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </Field>
           </div>
-
-          <Field label="Income Option">
-            <select value={form.option}
-              onChange={e => set('option', e.target.value as BenefitIllustrationRequest['option'])}
-              className={INPUT_CLS}>
-              <option value="Immediate">Immediate</option>
-              <option value="Deferred">Deferred</option>
-              <option value="Twin">Twin Income</option>
-            </select>
-          </Field>
-
-          <Field label="Sales Channel">
-            <select value={form.channel}
-              onChange={e => set('channel', e.target.value)}
-              className={INPUT_CLS}>
-              {config.channels.map(ch => (
-                <option key={ch} value={ch}>{ch}</option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Staff Policy">
-            <select value={form.staffPolicy ? 'Yes' : 'No'}
-              onChange={e => set('staffPolicy', e.target.value === 'Yes')}
-              className={INPUT_CLS}>
-              <option value="No">No</option>
-              <option value="Yes">Yes</option>
-            </select>
-          </Field>
 
           <button
             onClick={handleCalculate}
             disabled={loading}
             className="w-full py-3 bg-[#004282] text-white rounded-xl font-semibold text-sm
                        hover:bg-[#003370] disabled:opacity-50 transition-colors
-                       flex items-center justify-center gap-2"
+                       flex items-center justify-center gap-2 mt-1"
           >
             {loading
               ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -317,6 +296,123 @@ export default function BenefitIllustration() {
             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
               <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Section 2 — Life Assured / Proposer */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <User size={16} className="text-[#004282]" />
+            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Life Assured & Proposer</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="Life Assured Name">
+              <input
+                type="text"
+                value={form.lifeAssuredName}
+                onChange={e => set('lifeAssuredName', e.target.value)}
+                placeholder="Life Assured Name"
+                className={INPUT_CLS}
+              />
+            </Field>
+
+            <Field label="Life Assured Gender">
+              <select
+                value={form.lifeAssuredGender ?? ''}
+                onChange={e => set('lifeAssuredGender', e.target.value as Gender)}
+                className={INPUT_CLS}>
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Transgender">Transgender</option>
+              </select>
+            </Field>
+
+            <Field label="Life Assured DOB">
+              <input
+                type="date"
+                value={form.lifeAssuredDob ?? ''}
+                onChange={e => set('lifeAssuredDob', e.target.value || null)}
+                className={INPUT_CLS}
+              />
+            </Field>
+
+            <Field label="Life Assured Age (auto)">
+              <input
+                type="number"
+                value={calculateAge(form.lifeAssuredDob) ?? ''}
+                readOnly
+                className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`}
+              />
+            </Field>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              id="proposer-different"
+              type="checkbox"
+              checked={form.isProposerDifferent}
+              onChange={e => {
+                const next = e.target.checked;
+                setForm(p => ({
+                  ...p,
+                  isProposerDifferent: next,
+                  proposerName: next ? p.proposerName : '',
+                  proposerDob: next ? p.proposerDob : null,
+                  proposerAge: next ? p.proposerAge : null,
+                  proposerGender: next ? p.proposerGender : null,
+                }));
+              }}
+              className="accent-[#004282]"
+            />
+            <label htmlFor="proposer-different" className="cursor-pointer">
+              Proposer is different from Life Assured
+            </label>
+          </div>
+
+          {form.isProposerDifferent && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Proposer Name">
+                <input
+                  type="text"
+                  value={form.proposerName ?? ''}
+                  onChange={e => set('proposerName', e.target.value)}
+                  placeholder="Proposer Name"
+                  className={INPUT_CLS}
+                />
+              </Field>
+
+              <Field label="Proposer Gender">
+                <select
+                  value={form.proposerGender ?? ''}
+                  onChange={e => set('proposerGender', e.target.value as Gender)}
+                  className={INPUT_CLS}>
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Transgender">Transgender</option>
+                </select>
+              </Field>
+
+              <Field label="Proposer DOB">
+                <input
+                  type="date"
+                  value={form.proposerDob ?? ''}
+                  onChange={e => set('proposerDob', e.target.value || null)}
+                  className={INPUT_CLS}
+                />
+              </Field>
+
+              <Field label="Proposer Age (auto)">
+                <input
+                  type="number"
+                value={calculateAge(form.proposerDob ?? null) ?? ''}
+                  readOnly
+                  className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`}
+                />
+              </Field>
             </div>
           )}
         </div>

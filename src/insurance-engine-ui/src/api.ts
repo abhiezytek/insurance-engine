@@ -119,8 +119,8 @@ export interface BenefitIllustrationRequest {
   lifeAssuredSameAsProposer?: boolean;
   option: 'Immediate' | 'Deferred' | 'Twin';
   channel: string;
-  gender?: 'Male' | 'Female';
-  premiumFrequency?: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
+  gender?: 'Male' | 'Female' | 'Transgender';
+  premiumFrequency?: 'Yearly' | 'Half Yearly' | 'Half-Yearly' | 'Quarterly' | 'Monthly';
   standardAgeProof?: boolean;
   staffPolicy?: boolean;
   premiumsPaid?: number;
@@ -204,18 +204,18 @@ export interface UlipCalculationRequest {
   lifeAssuredSameAsPolicyholder?: boolean;
   productCode: string;
   option: 'Platinum' | 'Platinum Plus';
-  gender: 'Male' | 'Female';
+  gender: 'Male' | 'Female' | 'Transgender';
   dateOfBirth: string;        // ISO date string
   entryAge?: number;
   policyholderDateOfBirth?: string;
   policyholderAge?: number;
-  policyholderGender?: 'Male' | 'Female';
-  typeOfPpt?: 'Limited' | 'Till_Maturity' | 'Single';
+  policyholderGender?: 'Male' | 'Female' | 'Transgender';
+  typeOfPpt?: 'Limited' | 'Till_Maturity' | 'Single' | 'Regular';
   policyTerm: number;
   ppt: number;
   annualizedPremium: number;
   sumAssured: number;
-  premiumFrequency: 'Yearly' | 'Half Yearly' | 'Quarterly' | 'Monthly';
+  premiumFrequency: 'Yearly' | 'Half Yearly' | 'Half-Yearly' | 'Quarterly' | 'Monthly';
   policyEffectiveDate?: string;  // ISO date string (used for birthday-month tracking)
   fundOption?: string;          // Fund option category
   investmentStrategy?: 'Age-based Investment Strategy' | 'Self-Managed Investment Strategy' | 'Life-Stage Aggressive' | 'Life-Stage Conservative' | 'Self-Managed';
