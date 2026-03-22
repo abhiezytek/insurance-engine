@@ -6,8 +6,6 @@ import { DEFAULT_YPYG_PRODUCTS, loadYpygProductMap, type YpygProductMap, type Yp
 import { YPYG_RESULT_META } from '../config/resultMeta';
 import type { ProductParameter } from '../api';
 import {
-  YES_NO_OPTIONS,
-  POLICY_STATUSES,
   applyPolicyPrefill,
   applyProductDefaults,
   buildDefaultForm,
@@ -15,7 +13,9 @@ import {
   computeSumAssured,
   deriveAnnualPremium,
   resolvePtOptions,
+  type BuildContext,
   type PolicyLookupModel,
+  type YpygFieldDefinition,
   type YpygFormState,
 } from '../ypyg/fieldSchema';
 import { MOCK_TRADITIONAL_POLICY, MOCK_ULIP_POLICY } from '../ypyg/mockPolicies';
@@ -766,14 +766,16 @@ function ModeButton({ active, children, onClick }: { active: boolean; children: 
 }
 
 function renderInput(
-  field: { key: FormFieldKey; type: string; options?: string[]; readOnly?: (ctx: any) => boolean; helperText?: string },
+  field: YpygFieldDefinition,
   form: YpygFormState,
   product: YpygProductMeta,
   update: (key: FormFieldKey, value: string | number) => void,
   ptOptions: number[],
 ) {
   const value = form[field.key];
-  const isReadOnly = typeof field.readOnly === 'function' ? field.readOnly({ product, form, ptOptions }) : field.readOnly;
+  const ctx: BuildContext = { product, form, ptOptions };
+  const isReadOnly = typeof field.readOnly === 'function' ? field.readOnly(ctx) : field.readOnly;
+  const resolvedOptions = typeof field.options === 'function' ? field.options(ctx) : field.options;
   switch (field.type) {
     case 'select':
       return (
@@ -786,7 +788,7 @@ function renderInput(
           className={INPUT_CLS}
           disabled={isReadOnly}
         >
-          {(field.options ?? []).map(opt => (
+          {(resolvedOptions ?? []).map(opt => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
