@@ -103,7 +103,7 @@ export const YPYG_FIELD_DEFINITIONS: YpygFieldDefinition[] = [
     key: 'annualPremium',
     label: 'Annualized Premium',
     type: 'number',
-    readOnly: ctx => true,
+    readOnly: () => true,
     helperText: 'Auto-calculated from modal premium and frequency',
   },
   {
