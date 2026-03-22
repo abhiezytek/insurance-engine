@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, AlertCircle, Info, ChevronDown, ChevronUp, FileDown, User, Settings2 } from 'lucide-react';
 import {
   getUlipProducts,
@@ -10,7 +10,23 @@ import {
   type PartBRow,
   API_BASE_URL,
 } from '../api';
-import { calculateAge } from '../utils/age';
+import {
+  SELF_MANAGED_FUNDS,
+  calculateAge,
+  deriveUlipPptYears,
+  deriveUlipValues,
+  getUlipPptYearOptions,
+  getUlipPtOptions,
+  shouldShowFundOption,
+  validateUlip,
+  onInvestmentStrategyChange,
+  type EwealthRoyaleForm,
+  type InvestmentStrategy,
+  type PremiumFrequency,
+  type PptType,
+  type Gender,
+  MODAL_FACTORS,
+} from '../utils/biRules';
 
 // ---------------------------------------------------------------------------
 // Abbreviations displayed in the UI:
@@ -35,31 +51,30 @@ const INPUT_CLS = `w-full rounded-lg border border-gray-200 px-3 py-2 text-sm
 
 export default function UlipIllustration() {
   const [products, setProducts]   = useState<UlipProduct[]>([]);
-  const [form, setForm]           = useState<UlipCalculationRequest>({
-    customerName:        '',
-    policyholderName:    '',
-    lifeAssuredSameAsPolicyholder: true,
-    productCode:         'EWEALTH-ROYALE',
-    option:              'Platinum',
-    gender:              'Male',
-    dateOfBirth:         '',
-    policyholderDateOfBirth: '',
-    policyholderGender:  'Male',
-    typeOfPpt:           'Limited',
-    policyTerm:          20,
-    ppt:                 10,
-    annualizedPremium:   24000,
-    sumAssured:          240000,
-    premiumFrequency:    'Yearly',
+  const [form, setForm]           = useState<EwealthRoyaleForm>({
+    product: 'EWEALTH_ROYALE',
+    option: 'Platinum',
+    isProposerDifferent: false,
+    lifeAssuredName: '',
+    proposerName: '',
+    lifeAssuredDob: '',
+    proposerDob: '',
+    lifeAssuredGender: null,
+    proposerGender: null,
+    lifeAssuredAge: null,
+    proposerAge: null,
+    premium: 50000,
+    premiumFrequency: 'Yearly',
+    annualisedPremium: null,
+    pptType: 'Limited',
+    pptYears: 10,
+    pt: 20,
     policyEffectiveDate: '',
-    fundOption:          '',
-    investmentStrategy:  'Self-Managed Investment Strategy',
-    riskPreference:      undefined,
-    fundAllocations:     [{ fundType: 'SUD Life Nifty Alpha 50 Index Fund', allocationPercent: 100 }],
-    distributionChannel: 'Corporate Agency',
-    isStaffFamily:       false,
-    standardAgeProofLA:  true,
-    standardAgeProofPH:  true,
+    investmentStrategy: 'Self-Managed Investment Strategy',
+    fundOption: null,
+    standardAgeProof: true,
+    salesChannel: 'Corporate Agency',
+    staffPolicy: false,
   });
   const [result,  setResult]  = useState<UlipCalculationResult | null>(null);
   const [error,   setError]   = useState<string | null>(null);
@@ -67,46 +82,27 @@ export default function UlipIllustration() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [activeTab, setActiveTab] = useState<'partA' | 'partB4' | 'partB8'>('partA');
 
-  const derivedSumAssured = () => {
-    const isSingle = form.ppt === 1 || form.typeOfPpt === 'Single';
-    const multiplier = isSingle ? 1.25 : 10;
-    return Math.round((form.annualizedPremium || 0) * multiplier);
-  };
-
-  const lifeAssuredAge = calculateAge(form.dateOfBirth);
-  const policyholderAge = calculateAge(form.policyholderDateOfBirth);
+  const derived = useMemo(() => deriveUlipValues(form), [form]);
+  const lifeAssuredAge = calculateAge(form.lifeAssuredDob ?? null);
+  const policyholderAge = calculateAge(form.proposerDob ?? null);
 
   // Load ULIP products
   useEffect(() => {
     getUlipProducts()
       .then(r => {
         setProducts(r.data);
-        if (r.data.length > 0) setForm(f => ({ ...f, productCode: r.data[0].code }));
+        if (r.data.length > 0) setForm(f => ({ ...f, product: 'EWEALTH_ROYALE' }));
       })
       .catch(() => {/* silently fall back to default code */});
   }, []);
 
-  const set = <K extends keyof UlipCalculationRequest>(
+  const set = <K extends keyof EwealthRoyaleForm>(
     key: K,
-    value: UlipCalculationRequest[K],
+    value: EwealthRoyaleForm[K],
   ) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const handleStrategyChange = (value: UlipCalculationRequest['investmentStrategy']) => {
-    setForm(prev => {
-      const nextRiskPref = value === 'Age-based Investment Strategy'
-        ? (prev.riskPreference ?? 'Aggressive')
-        : undefined;
-      const nextAllocations = value === 'Age-based Investment Strategy'
-        ? []
-        : (prev.fundAllocations.length ? prev.fundAllocations : [{ fundType: '', allocationPercent: 0 }]);
-
-      return {
-        ...prev,
-        investmentStrategy: value,
-        riskPreference: nextRiskPref,
-        fundAllocations: nextAllocations,
-      };
-    });
+  const handleStrategyChange = (value: InvestmentStrategy) => {
+    setForm(prev => onInvestmentStrategyChange(value, prev));
   };
 
   const handleCalculate = async () => {
@@ -114,19 +110,50 @@ export default function UlipIllustration() {
     setError(null);
     setResult(null);
     try {
-      const resolvedName = form.lifeAssuredSameAsPolicyholder
-        ? (form.policyholderName || form.customerName || '')
-        : (form.customerName || '');
-      const payload: UlipCalculationRequest = {
+      const nextForm: EwealthRoyaleForm = {
         ...form,
-        customerName: resolvedName,
-        policyholderName: form.lifeAssuredSameAsPolicyholder ? resolvedName : form.policyholderName,
-        policyholderDateOfBirth: form.lifeAssuredSameAsPolicyholder ? (form.policyholderDateOfBirth || form.dateOfBirth) : form.policyholderDateOfBirth,
-        policyholderGender: form.lifeAssuredSameAsPolicyholder ? (form.policyholderGender ?? form.gender) : form.policyholderGender,
-        sumAssured: derivedSumAssured(),
-        entryAge: lifeAssuredAge,
-        policyholderAge: policyholderAge,
-        lifeAssuredSameAsPolicyholder: form.lifeAssuredSameAsPolicyholder ?? false,
+        lifeAssuredAge,
+        proposerAge: policyholderAge,
+        annualisedPremium: derived.annualisedPremium,
+        sumAssured: derived.sumAssured,
+      };
+
+      const validationErrors = validateUlip(nextForm);
+      if (validationErrors.length > 0) {
+        setError(validationErrors.join('; '));
+        return;
+      }
+
+      const entryAge = lifeAssuredAge ?? 0;
+      const payload: UlipCalculationRequest = {
+        customerName: nextForm.lifeAssuredName,
+        policyholderName: nextForm.isProposerDifferent ? nextForm.proposerName ?? '' : nextForm.lifeAssuredName,
+        lifeAssuredSameAsPolicyholder: !nextForm.isProposerDifferent,
+        productCode: 'EWEALTH-ROYALE',
+        option: (nextForm.option as any) ?? 'Platinum',
+        gender: (nextForm.lifeAssuredGender ?? 'Male') as any,
+        dateOfBirth: nextForm.lifeAssuredDob ?? '',
+        entryAge,
+        policyholderDateOfBirth: nextForm.isProposerDifferent ? nextForm.proposerDob ?? '' : nextForm.lifeAssuredDob ?? '',
+        policyholderAge: policyholderAge ?? entryAge,
+        policyholderGender: nextForm.isProposerDifferent ? (nextForm.proposerGender ?? 'Male') as any : (nextForm.lifeAssuredGender ?? 'Male') as any,
+        typeOfPpt: (nextForm.pptType === 'Regular' ? 'Regular' : nextForm.pptType) as any,
+        policyTerm: nextForm.pt ?? 0,
+        ppt: nextForm.pptYears ?? 0,
+        annualizedPremium: derived.annualisedPremium ?? 0,
+        sumAssured: derived.sumAssured ?? 0,
+        premiumFrequency: (nextForm.premiumFrequency === 'Half-Yearly' ? 'Half Yearly' : nextForm.premiumFrequency) as any,
+        policyEffectiveDate: nextForm.policyEffectiveDate ?? '',
+        fundOption: shouldShowFundOption(nextForm.investmentStrategy) ? nextForm.fundOption ?? '' : '',
+        investmentStrategy: (nextForm.investmentStrategy ?? 'Self-Managed Investment Strategy') as any,
+        riskPreference: undefined,
+        fundAllocations: shouldShowFundOption(nextForm.investmentStrategy)
+          ? [{ fundType: nextForm.fundOption ?? '', allocationPercent: 100 }]
+          : [],
+        distributionChannel: nextForm.salesChannel ?? '',
+        isStaffFamily: nextForm.staffPolicy ?? false,
+        standardAgeProofLA: nextForm.standardAgeProof ?? true,
+        standardAgeProofPH: nextForm.standardAgeProof ?? true,
       };
       const resp = await runUlipCalculation(payload);
       setResult(resp.data);
@@ -144,32 +171,7 @@ export default function UlipIllustration() {
     }
   };
 
-  // ---- fund allocation helpers ----
-  const isSelfManaged = form.investmentStrategy === 'Self-Managed Investment Strategy';
-  const totalAlloc = form.fundAllocations.reduce((s, f) => s + f.allocationPercent, 0);
-  const allocError = isSelfManaged && Math.abs(totalAlloc - 100) > 0.01;
-  const allocationStepError = isSelfManaged && form.fundAllocations.some(f => f.allocationPercent % 5 !== 0);
-
-  const updateAlloc = (idx: number, field: 'fundType' | 'allocationPercent', val: string | number) => {
-    setForm(prev => {
-      const updated = prev.fundAllocations.map((f, i) =>
-        i === idx ? { ...f, [field]: val } : f,
-      );
-      return { ...prev, fundAllocations: updated };
-    });
-  };
-
-  const addAlloc = () =>
-    setForm(prev => ({
-      ...prev,
-      fundAllocations: [...prev.fundAllocations, { fundType: '', allocationPercent: 0 }],
-    }));
-
-  const removeAlloc = (idx: number) =>
-    setForm(prev => ({
-      ...prev,
-      fundAllocations: prev.fundAllocations.filter((_, i) => i !== idx),
-    }));
+  const isSelfManaged = shouldShowFundOption(form.investmentStrategy);
 
   // ---- PDF download ----
   const handleDownload = () => {
@@ -297,299 +299,207 @@ export default function UlipIllustration() {
 
       {/* ── 2-Section input layout ── */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Section 1 — Policyholder Details */}
-        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <User size={16} className="text-[#004282]" />
-            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Policyholder Details</h3>
-          </div>
-
-          {/* Product */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Product</label>
-            <select value={form.productCode} onChange={e => set('productCode', e.target.value)} className={INPUT_CLS}>
-              {products.length > 0
-                ? products.map(p => <option key={p.code} value={p.code}>{p.name}</option>)
-                : <option value="EWEALTH-ROYALE">SUD Life e-Wealth Royale</option>}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              id="laSameUlip"
-              checked={form.lifeAssuredSameAsPolicyholder ?? false}
-              onChange={e => {
-                const same = e.target.checked;
-                setForm(p => ({
-                  ...p,
-                  lifeAssuredSameAsPolicyholder: same,
-                  customerName: same ? (p.customerName || p.policyholderName || '') : p.customerName,
-                  policyholderName: same ? (p.policyholderName || p.customerName || '') : p.policyholderName,
-                  policyholderGender: same ? p.policyholderGender ?? p.gender : p.policyholderGender,
-                  policyholderDateOfBirth: same ? (p.policyholderDateOfBirth || p.dateOfBirth) : p.policyholderDateOfBirth,
-                }));
-              }}
-              className="accent-[#004282]"
-            />
-            <label htmlFor="laSameUlip">Life Assured and Proposer are same?</label>
-          </div>
-
-          {/* Policyholder Name */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Proposer / Policyholder Name</label>
-            <input
-              type="text"
-              value={form.policyholderName ?? ''}
-              onChange={e => {
-                const val = e.target.value;
-                setForm(p => ({
-                  ...p,
-                  policyholderName: val,
-                  customerName: p.lifeAssuredSameAsPolicyholder ? val : p.customerName,
-                }));
-              }}
-              placeholder="Full name" className={INPUT_CLS} />
-          </div>
-
-          {/* Policyholder Gender */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Policyholder)</label>
-            <select
-              value={form.policyholderGender ?? 'Male'}
-              onChange={e => {
-                const val = e.target.value as 'Male' | 'Female';
-                setForm(p => ({
-                  ...p,
-                  policyholderGender: val,
-                  gender: p.lifeAssuredSameAsPolicyholder ? val : p.gender,
-                }));
-              }}
-              className={INPUT_CLS}>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-
-          {/* Policyholder DOB */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Policyholder)</label>
-            <input
-              type="date"
-              value={form.policyholderDateOfBirth ?? ''}
-              onChange={e => {
-                const val = e.target.value || undefined;
-                setForm(p => ({
-                  ...p,
-                  policyholderDateOfBirth: val,
-                  dateOfBirth: p.lifeAssuredSameAsPolicyholder ? (val ?? p.dateOfBirth) : p.dateOfBirth,
-                }));
-              }}
-              className={INPUT_CLS} />
-            {policyholderAge > 0 && <p className="text-xs text-slate-500 mt-1">Derived Age: {policyholderAge} years</p>}
-          </div>
-
-          {/* Life Assured fields (when different) */}
-          {!form.lifeAssuredSameAsPolicyholder && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (Life Assured)</label>
-                <input type="text" value={form.customerName} onChange={e => set('customerName', e.target.value)}
-                  placeholder="Full name" className={INPUT_CLS} />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender (Life Assured)</label>
-                <select value={form.gender} onChange={e => set('gender', e.target.value as 'Male' | 'Female')} className={INPUT_CLS}>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of Birth (Life Assured)</label>
-                <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={INPUT_CLS} />
-                {lifeAssuredAge > 0 && <p className="text-xs text-slate-500 mt-1">Derived Age: {lifeAssuredAge} years</p>}
-              </div>
-            </>
-          )}
-
-          {/* Option */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Option</label>
-            <select value={form.option} onChange={e => set('option', e.target.value as 'Platinum' | 'Platinum Plus')} className={INPUT_CLS}>
-              <option value="Platinum">Platinum</option>
-              <option value="Platinum Plus">Platinum Plus</option>
-            </select>
-          </div>
-
-          {/* Standard Age Proof LA */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Standard Age Proof (Life Assured)</label>
-            <select value={form.standardAgeProofLA ? 'Yes' : 'No'}
-              onChange={e => set('standardAgeProofLA', e.target.value === 'Yes')} className={INPUT_CLS}>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-
-          {/* Standard Age Proof PH */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Standard Age Proof (Policyholder)</label>
-            <select value={form.standardAgeProofPH ? 'Yes' : 'No'}
-              onChange={e => set('standardAgeProofPH', e.target.value === 'Yes')} className={INPUT_CLS}>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-
-          {/* Policy Effective Date */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Effective Date <span className="text-slate-400 text-xs">(optional)</span></label>
-            <input type="date" value={form.policyEffectiveDate ?? ''} onChange={e => set('policyEffectiveDate', e.target.value || undefined)} className={INPUT_CLS} />
-          </div>
-        </div>
-
-        {/* Section 2 — Plan Parameters */}
+        {/* Section 1 — Plan Parameters */}
         <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Settings2 size={16} className="text-[#004282]" />
             <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Plan Parameters</h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {/* Policy Term */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Term (PT) — years</label>
-              <input type="number" value={form.policyTerm} onChange={e => set('policyTerm', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
-
-            {/* PPT */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Payment Term (PPT)</label>
-              <input type="number" value={form.ppt} onChange={e => set('ppt', parseInt(e.target.value) || 0)} className={INPUT_CLS} />
-            </div>
-          </div>
-
-          {/* Annualized Premium */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Annualized Premium (AP) ₹</label>
-            <input type="number" value={form.annualizedPremium} onChange={e => set('annualizedPremium', parseFloat(e.target.value) || 0)} className={INPUT_CLS} />
-          </div>
-
-          {/* Sum Assured */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Sum Assured (SA) ₹ — derived</label>
-            <input type="number" value={derivedSumAssured()} readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
-          </div>
-
-          {/* Premium Frequency */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Frequency</label>
-            <select value={form.premiumFrequency}
-              onChange={e => set('premiumFrequency', e.target.value as UlipCalculationRequest['premiumFrequency'])} className={INPUT_CLS}>
-              <option value="Yearly">Yearly</option>
-              <option value="Half Yearly">Half Yearly</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="Monthly">Monthly</option>
-            </select>
-          </div>
-
-          {/* Distribution Channel */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Distribution Channel</label>
-            <select value={form.distributionChannel ?? ''} onChange={e => set('distributionChannel', e.target.value)} className={INPUT_CLS}>
-              <option value="Corporate Agency">Corporate Agency</option>
-              <option value="Agency">Agency</option>
-              <option value="Broker">Broker</option>
-              <option value="Direct Marketing">Direct Marketing</option>
-              <option value="Online">Online</option>
-              <option value="Insurance Marketing Firm">Insurance Marketing Firm</option>
-            </select>
-          </div>
-
-          {/* Staff/Family */}
-          <div className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" id="staffFamily" checked={form.isStaffFamily ?? false}
-              onChange={e => set('isStaffFamily', e.target.checked)}
-              className="accent-[#004282]" />
-            <label htmlFor="staffFamily">Staff / Family Policy</label>
-          </div>
-
-          {/* Type of PPT */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Type of PPT</label>
-            <select value={form.typeOfPpt ?? 'Limited'} onChange={e => set('typeOfPpt', e.target.value as 'Limited' | 'Till_Maturity')} className={INPUT_CLS}>
-              <option value="Limited">Limited</option>
-              <option value="Till_Maturity">Till Maturity</option>
-            </select>
-          </div>
-
-          {/* Investment Strategy */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Investment Strategy</label>
-            <select
-              value={form.investmentStrategy ?? 'Self-Managed Investment Strategy'}
-              onChange={e => handleStrategyChange(e.target.value as UlipCalculationRequest['investmentStrategy'])}
-              className={INPUT_CLS}>
-              <option value="Self-Managed Investment Strategy">Self-Managed Investment Strategy</option>
-              <option value="Age-based Investment Strategy">Age-based Investment Strategy</option>
-            </select>
-          </div>
-
-          {/* Risk Preference */}
-          {form.investmentStrategy === 'Age-based Investment Strategy' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Risk Preference</label>
-              <select
-                value={form.riskPreference ?? 'Aggressive'}
-                onChange={e => set('riskPreference', e.target.value as 'Aggressive' | 'Conservative')}
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Product</label>
+              <select value={form.product}
+                onChange={e => set('product', e.target.value as EwealthRoyaleForm['product'])}
                 className={INPUT_CLS}>
-                <option value="Aggressive">Aggressive</option>
-                <option value="Conservative">Conservative</option>
+                {products.length > 0
+                  ? products.map(p => <option key={p.code} value="EWEALTH_ROYALE">{p.name}</option>)
+                  : <option value="EWEALTH_ROYALE">SUD Life e-Wealth Royale</option>}
               </select>
             </div>
-          )}
 
-          {/* Fund Allocation */}
-          {isSelfManaged && (
-            <div className="pt-3 border-t border-slate-100 space-y-3">
-              <h4 className="text-xs font-bold text-[#004282] uppercase tracking-wider">Fund Allocation</h4>
-
-              {form.fundAllocations.map((alloc, idx) => (
-                <div key={idx} className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Fund</label>
-                    <input type="text" value={alloc.fundType} onChange={e => updateAlloc(idx, 'fundType', e.target.value)}
-                      placeholder="Fund name" className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
-                  </div>
-                  <div className="w-16">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">%</label>
-                    <input type="number" value={alloc.allocationPercent}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        updateAlloc(idx, 'allocationPercent', Number.isNaN(val) ? 0 : val);
-                      }}
-                      min={0} max={100} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bff]" />
-                  </div>
-                  {form.fundAllocations.length > 1 && (
-                    <button onClick={() => removeAlloc(idx)} className="text-red-400 hover:text-red-600 text-xs pb-1" aria-label="Remove">✕</button>
-                  )}
-                </div>
-              ))}
-
-              <div className="flex items-center justify-between">
-                <button onClick={addAlloc} className="text-xs text-[#007bff] hover:underline">+ Add Fund</button>
-                <span className={`text-xs font-semibold ${allocError ? 'text-red-500' : 'text-green-600'}`}>Total: {totalAlloc}%</span>
-              </div>
-              {allocError && <p className="text-xs text-red-500">Fund allocations must sum to exactly 100%.</p>}
-              {allocationStepError && <p className="text-xs text-red-500">Each fund allocation must be in multiples of 5%.</p>}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Option</label>
+              <select value={form.option ?? 'Platinum'} onChange={e => set('option', e.target.value)} className={INPUT_CLS}>
+                <option value="Platinum">Platinum</option>
+                <option value="Platinum Plus">Platinum Plus</option>
+              </select>
             </div>
-          )}
 
-          {/* Calculate button */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Effective Date</label>
+              <input
+                type="date"
+                value={form.policyEffectiveDate ?? ''}
+                onChange={e => set('policyEffectiveDate', e.target.value || null)}
+                className={INPUT_CLS}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Frequency</label>
+              <select
+                value={form.premiumFrequency ?? 'Yearly'}
+                onChange={e => set('premiumFrequency', e.target.value as PremiumFrequency)}
+                className={INPUT_CLS}>
+                {(['Yearly', 'Half-Yearly', 'Quarterly', 'Monthly'] as PremiumFrequency[]).map(f => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+              {form.premiumFrequency && (
+                <p className="text-[11px] text-slate-400 mt-1">Modal factor: {MODAL_FACTORS[form.premiumFrequency]}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium (Installment)</label>
+              <input
+                type="number"
+                value={form.premium ?? ''}
+                onChange={e => set('premium', e.target.value ? Number(e.target.value) : null)}
+                className={INPUT_CLS}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Annualised Premium (Derived)</label>
+              <input
+                type="number"
+                value={(derived.annualisedPremium ?? 0).toFixed(0)}
+                readOnly
+                className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sum Assured (Derived)</label>
+              <input
+                type="number"
+                value={(derived.sumAssured ?? 0).toFixed(0)}
+                readOnly
+                className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">PPT Type</label>
+              <select
+                value={form.pptType ?? 'Limited'}
+                onChange={e => {
+                  const type = e.target.value as PptType;
+                  const nextPptYears = deriveUlipPptYears(type, form.pt, getUlipPptYearOptions(type)[0]);
+                  const nextPt = getUlipPtOptions(type, nextPptYears)[0] ?? form.pt ?? 10;
+                  setForm(prev => ({ ...prev, pptType: type, pptYears: nextPptYears, pt: nextPt }));
+                }}
+                className={INPUT_CLS}>
+                <option value="Single">Single</option>
+                <option value="Limited">Limited</option>
+                <option value="Regular">Regular</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Premium Payment Term (PPT)</label>
+              <select
+                value={form.pptYears ?? ''}
+                onChange={e => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  const nextPtOptions = getUlipPtOptions(form.pptType, val);
+                  const nextPt = nextPtOptions.includes(form.pt ?? 0) ? form.pt : (nextPtOptions[0] ?? null);
+                  setForm(prev => ({ ...prev, pptYears: val, pt: nextPt }));
+                }}
+                disabled={form.pptType === 'Regular'}
+                className={INPUT_CLS}>
+                <option value="">Select PPT</option>
+                {getUlipPptYearOptions(form.pptType).map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+                {form.pptType === 'Regular' && form.pt && <option value={form.pt}>{form.pt}</option>}
+              </select>
+              {form.pptType === 'Regular' && (
+                <p className="text-[11px] text-slate-400 mt-1">Regular pay aligns PPT with Policy Term.</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Policy Term (PT)</label>
+              <select
+                value={form.pt ?? ''}
+                onChange={e => {
+                  const nextPt = e.target.value ? Number(e.target.value) : null;
+                  const nextPptYears = deriveUlipPptYears(form.pptType, nextPt, form.pptYears);
+                  setForm(prev => ({ ...prev, pt: nextPt, pptYears: nextPptYears }));
+                }}
+                className={INPUT_CLS}>
+                <option value="">Select PT</option>
+                {getUlipPtOptions(form.pptType, form.pptYears).map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Investment Strategy</label>
+              <select
+                value={form.investmentStrategy ?? 'Self-Managed Investment Strategy'}
+                onChange={e => handleStrategyChange(e.target.value as InvestmentStrategy)}
+                className={INPUT_CLS}>
+                <option value="Self-Managed Investment Strategy">Self-Managed Investment Strategy</option>
+                <option value="Age-Based Strategy">Age-Based Strategy</option>
+                <option value="System Managed">System Managed</option>
+              </select>
+            </div>
+
+            {isSelfManaged && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Fund Option</label>
+                <select
+                  value={form.fundOption ?? ''}
+                  onChange={e => set('fundOption', e.target.value || null)}
+                  className={INPUT_CLS}>
+                  <option value="">Select Fund</option>
+                  {SELF_MANAGED_FUNDS.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sales Channel</label>
+              <select
+                value={form.salesChannel ?? ''}
+                onChange={e => set('salesChannel', e.target.value as any)}
+                className={INPUT_CLS}>
+                {['Corporate Agency', 'Agency', 'Broker', 'Direct Marketing', 'Online', 'Insurance Marketing Firm', 'Web Aggregator'].map(ch => (
+                  <option key={ch} value={ch}>{ch}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Staff Policy</label>
+              <select value={form.staffPolicy ? 'Yes' : 'No'}
+                onChange={e => set('staffPolicy', e.target.value === 'Yes')}
+                className={INPUT_CLS}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Standard Age Proof</label>
+              <select value={form.standardAgeProof ? 'Yes' : 'No'}
+                onChange={e => set('standardAgeProof', e.target.value === 'Yes')}
+                className={INPUT_CLS}>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+          </div>
+
           <button onClick={handleCalculate}
-            disabled={loading || (isSelfManaged && (allocError || allocationStepError))}
+            disabled={loading}
             className="w-full py-3 px-6 rounded-xl bg-[#004282] text-white font-semibold text-sm
                        hover:bg-[#003570] disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors shadow-md flex items-center justify-center gap-2">
@@ -603,6 +513,108 @@ export default function UlipIllustration() {
             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
               <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Section 2 — Life Assured & Proposer */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <User size={16} className="text-[#004282]" />
+            <h3 className="text-sm font-bold text-[#004282] uppercase tracking-wider">Life Assured & Proposer</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Life Assured Name</label>
+              <input
+                type="text"
+                value={form.lifeAssuredName}
+                onChange={e => set('lifeAssuredName', e.target.value)}
+                placeholder="Life Assured Name"
+                className={INPUT_CLS}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Life Assured Gender</label>
+              <select
+                value={form.lifeAssuredGender ?? ''}
+                onChange={e => set('lifeAssuredGender', e.target.value as Gender)}
+                className={INPUT_CLS}>
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Transgender">Transgender</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Life Assured DOB</label>
+              <input
+                type="date"
+                value={form.lifeAssuredDob ?? ''}
+                onChange={e => set('lifeAssuredDob', e.target.value || '')}
+                className={INPUT_CLS}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Life Assured Age (auto)</label>
+              <input type="number" value={lifeAssuredAge ?? ''} readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              id="laSameUlip"
+              checked={!form.isProposerDifferent}
+              onChange={e => set('isProposerDifferent', !e.target.checked)}
+              className="accent-[#004282]"
+            />
+            <label htmlFor="laSameUlip">Proposer is same as Life Assured</label>
+          </div>
+
+          {form.isProposerDifferent && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Proposer Name</label>
+                <input
+                  type="text"
+                  value={form.proposerName ?? ''}
+                  onChange={e => set('proposerName', e.target.value)}
+                  className={INPUT_CLS}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Proposer Gender</label>
+                <select
+                  value={form.proposerGender ?? ''}
+                  onChange={e => set('proposerGender', e.target.value as Gender)}
+                  className={INPUT_CLS}>
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Transgender">Transgender</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Proposer DOB</label>
+                <input
+                  type="date"
+                  value={form.proposerDob ?? ''}
+                  onChange={e => set('proposerDob', e.target.value || '')}
+                  className={INPUT_CLS}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Proposer Age (auto)</label>
+                <input type="number" value={policyholderAge ?? ''} readOnly className={`${INPUT_CLS} bg-slate-50 cursor-not-allowed`} />
+              </div>
             </div>
           )}
         </div>
@@ -651,7 +663,6 @@ export default function UlipIllustration() {
                 ['Policy Term (PT)',     `${result.policyTerm} yrs`],
                 ['PPT',                  `${result.ppt} yrs`],
                 ['Premium Frequency',    result.premiumFrequency],
-                ['Premium Installment',  `₹${INR(result.premiumInstallment)}`],
                 ['Net Yield @ 4%',       `${result.netYield4}%`],
                 ['Net Yield @ 8%',       `${result.netYield8}%`],
                 ['GST Rate',             '0%'],

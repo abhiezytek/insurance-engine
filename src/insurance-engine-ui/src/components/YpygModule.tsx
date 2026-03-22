@@ -443,6 +443,7 @@ function InputValueMode() {
               className={INPUT_CLS}>
               <option>Male</option>
               <option>Female</option>
+              <option>Transgender</option>
             </select>
           </Field>
           <Field label="Premium Frequency">
@@ -498,15 +499,15 @@ function InputValueMode() {
                    {productConfig.options.map(o => <option key={o}>{o}</option>)}
                  </select>
                </Field>
-               {productConfig.channels && (
-                 <Field label="Channel">
-                   <select value={form.channel}
-                     onChange={e => set('channel', e.target.value)}
-                     className={INPUT_CLS}>
-                     {productConfig.channels.map(c => <option key={c}>{c}</option>)}
-                   </select>
-                 </Field>
-               )}
+                {productConfig.channels && (
+                  <Field label="Sales Channel">
+                    <select value={form.channel}
+                      onChange={e => set('channel', e.target.value)}
+                      className={INPUT_CLS}>
+                      {productConfig.channels.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </Field>
+                )}
              </>
            )}
           <Field label="Risk Commencement Date">
