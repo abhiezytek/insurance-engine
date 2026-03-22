@@ -1,41 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, BarChart3, AlertCircle, FileDown } from 'lucide-react';
+import { AlertCircle, BarChart3, FileDown, RefreshCcw, Search } from 'lucide-react';
 import { downloadYpygPdf, downloadYpygUlipPdf, type YpygPdfResult } from '../utils/pdfExport';
 import { api } from '../api';
-import { DEFAULT_YPYG_PRODUCTS, loadYpygProductMap, type YpygProductMap } from '../config/products';
+import { DEFAULT_YPYG_PRODUCTS, loadYpygProductMap, type YpygProductMap, type YpygProductMeta } from '../config/products';
 import { YPYG_RESULT_META } from '../config/resultMeta';
 import type { ProductParameter } from '../api';
+import {
+  YES_NO_OPTIONS,
+  POLICY_STATUSES,
+  applyPolicyPrefill,
+  applyProductDefaults,
+  buildDefaultForm,
+  buildVisibleFields,
+  computeSumAssured,
+  deriveAnnualPremium,
+  resolvePtOptions,
+  type PolicyLookupModel,
+  type YpygFormState,
+} from '../ypyg/fieldSchema';
+import { MOCK_TRADITIONAL_POLICY, MOCK_ULIP_POLICY } from '../ypyg/mockPolicies';
+
 const INR = (v: number) => v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface PolicyData {
-  policyNumber: string;
-  customerName: string;
-  productType: string;
-  productCode: string;
-  productCategory: string;
-  uin: string;
-  annualPremium: number;
-  policyTerm: number;
-  premiumPayingTerm: number;
-  premiumsPaid: number;
-  sumAssured: number;
-  fundValue: number;
-  policyStatus: string;
-  option: string;
-  channel: string;
-  entryAge: number;
-  gender: string;
-  dateOfBirth: string;
-  premiumFrequency: string;
-  premiumStatus: string;
-  dateOfCommencement: string;
-  riskCommencementDate: string;
-  pendingPremiums: number;
-  survivalBenefitPaid: number;
-  investmentStrategy: string;
-}
+export type YpygMode = 'policy-number' | 'input-value';
 
 interface YpygUlipRow {
   year: number;
@@ -109,61 +96,130 @@ interface YpygResult {
   validationRules?: string[];
 }
 
-// ─── Sub-page: Policy Number mode ───────────────────────────────────────────
+type FormFieldKey = keyof YpygFormState;
 
-function PolicyNumberMode() {
-  const [policyNumber, setPolicyNumber] = useState('');
-  const [policy, setPolicy] = useState<PolicyData | null>(null);
+export default function YpygModule({ mode }: { mode: YpygMode }) {
+  const [pageMode, setPageMode] = useState<YpygMode>(mode);
+  const [productMap, setProductMap] = useState<YpygProductMap>(DEFAULT_YPYG_PRODUCTS);
+  const [form, setForm] = useState<YpygFormState>(buildDefaultForm(DEFAULT_YPYG_PRODUCTS));
+  const [policyLookup, setPolicyLookup] = useState<PolicyLookupModel | null>(null);
+  const [parameters, setParameters] = useState<ProductParameter[]>([]);
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<YpygResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
 
-  const handleSearch = async () => {
-    if (!policyNumber.trim()) return;
+  const productConfig = useMemo<YpygProductMeta>(() => productMap[form.productKey] ?? DEFAULT_YPYG_PRODUCTS.Traditional, [form.productKey, productMap]);
+  const ptOptions = useMemo(() => resolvePtOptions(productConfig, form.ppt), [form.ppt, productConfig]);
+  const visibleFields = useMemo(
+    () => buildVisibleFields({ form, product: productConfig, ptOptions }),
+    [form, productConfig, ptOptions],
+  );
+
+  useEffect(() => {
+    loadYpygProductMap().then(map => {
+      setProductMap(map);
+      setForm(f => applyProductDefaults(f, map[f.productKey] ?? DEFAULT_YPYG_PRODUCTS.Traditional));
+    }).catch(() => {
+      setProductMap(DEFAULT_YPYG_PRODUCTS);
+      setForm(f => applyProductDefaults(f, DEFAULT_YPYG_PRODUCTS[f.productKey]));
+    });
+  }, []);
+
+  useEffect(() => {
+    const cfg = productMap[form.productKey] ?? productConfig;
+    api.get<ProductParameter[]>('/api/admin/parameters', {
+      params: { productCode: cfg.code, version: form.productVersion || undefined },
+    }).then(res => setParameters(res.data)).catch(() => setParameters([]));
+  }, [form.productKey, form.productVersion, productMap, productConfig.code]);
+
+  const updateField = (key: FormFieldKey, value: string | number) => {
+    setForm(current => {
+      let next: YpygFormState = { ...current, [key]: value };
+
+      // Product switching
+      if (key === 'productKey') {
+        const newProduct = productMap[value as keyof YpygProductMap] ?? productConfig;
+        next = applyProductDefaults(
+          { ...next, productVersion: '', policyYear: 1 },
+          newProduct,
+        );
+      }
+
+      // PPT changes drive PT options and policy year bounds
+      if (key === 'ppt') {
+        const newPtOptions = resolvePtOptions(productConfig, Number(value));
+        next.pt = newPtOptions[0] ?? Number(value);
+        next.policyYear = Math.min(next.policyYear, next.pt);
+      }
+
+      if (key === 'policyYear') {
+        next.policyYear = Math.min(Number(value), next.pt || Number(value));
+      }
+
+      // Frequency / modal premium updates annual premium
+      if (key === 'modalPremium' || key === 'premiumFrequency') {
+        next.annualPremium = deriveAnnualPremium(
+          Number(next.modalPremium),
+          next.premiumFrequency,
+          productConfig,
+        );
+      }
+
+      // Recompute sum assured where formula exists
+      next.sumAssured = computeSumAssured(next, productConfig);
+      return next;
+    });
+  };
+
+  const handlePolicyFetch = async () => {
+    if (!form.policyNumber.trim()) return;
     setLookupLoading(true);
     setLookupError(null);
-    setPolicy(null);
-    setResult(null);
     try {
-      const res = await api.get<PolicyData>(`/api/ypyg/policy/${encodeURIComponent(policyNumber.trim())}`);
-      setPolicy(res.data);
+      const res = await api.get<PolicyLookupModel>(`/api/ypyg/policy/${encodeURIComponent(form.policyNumber.trim())}`);
+      const filled = applyPolicyPrefill(res.data, form, productMap);
+      setForm(filled);
+      setPolicyLookup(res.data);
     } catch (e: any) {
       setLookupError(e?.response?.data?.error || e?.message || 'Policy not found.');
+      setPolicyLookup(null);
     } finally {
       setLookupLoading(false);
     }
   };
 
   const handleCalculate = async () => {
-    if (!policy) return;
     setCalcLoading(true);
     setCalcError(null);
     setResult(null);
     try {
-      const res = await api.post<YpygResult>('/api/ypyg/calculate', {
-        policyNumber: policy.policyNumber,
-        productCode: policy.productCode,
-        productCategory: policy.productCategory,
-        uin: policy.uin,
-        customerName: policy.customerName,
-        gender: policy.gender,
-        dateOfBirth: policy.dateOfBirth,
-        premiumFrequency: policy.premiumFrequency,
-        policyStatus: policy.policyStatus,
-        investmentStrategy: policy.investmentStrategy,
-        annualPremium: policy.annualPremium,
-        policyTerm: policy.policyTerm,
-        premiumPayingTerm: policy.premiumPayingTerm,
-        premiumsPaid: policy.premiumsPaid,
-        sumAssured: policy.sumAssured,
-        entryAge: policy.entryAge,
-        option: policy.option,
-        channel: policy.channel,
-        fundValue: policy.fundValue,
-        riskCommencementDate: policy.riskCommencementDate || undefined,
-      });
+      const payload = {
+        policyNumber: form.policyNumber,
+        productCode: productConfig.code,
+        productCategory: productConfig.category,
+        productVersion: form.productVersion || undefined,
+        uin: form.uin,
+        customerName: form.customerName,
+        gender: form.gender,
+        premiumFrequency: form.premiumFrequency,
+        policyStatus: form.policyStatus,
+        annualPremium: form.annualPremium,
+        policyTerm: form.pt,
+        premiumPayingTerm: form.ppt,
+        premiumsPaid: form.policyYear,
+        sumAssured: form.sumAssured,
+        entryAge: form.age,
+        option: form.productOption,
+        channel: form.distributionChannel,
+        fundValue: policyLookup?.fundValue ?? 0,
+        riskCommencementDate: form.riskCommencementDate || undefined,
+        investmentStrategy: policyLookup?.investmentStrategy,
+        ...(Object.keys(paramValues).length ? { additionalParameters: paramValues } : {}),
+      };
+      const res = await api.post<YpygResult>('/api/ypyg/calculate', payload);
       setResult(res.data);
     } catch (e: any) {
       setCalcError(e?.response?.data?.error || e?.message || 'Calculation failed.');
@@ -172,383 +228,280 @@ function PolicyNumberMode() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Search bar */}
-      <div className="flex gap-3">
-        <input
-          type="text"
-          value={policyNumber}
-          onChange={e => setPolicyNumber(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          placeholder="Enter Policy Number (e.g. POL-001234)"
-          className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-[#004282]"
-        />
-        <button
-          onClick={handleSearch}
-          disabled={lookupLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#004282] text-white rounded-xl
-                     text-sm font-semibold hover:bg-[#003370] disabled:opacity-60 transition"
-        >
-          <Search size={15} />
-          {lookupLoading ? 'Searching…' : 'Search'}
-        </button>
-      </div>
+  const handleUseMock = (mock: PolicyLookupModel) => {
+    const filled = applyPolicyPrefill(mock, form, productMap);
+    setForm(filled);
+    setPolicyLookup(mock);
+  };
 
-      {lookupError && (
-        <ErrorBanner message={lookupError} />
-      )}
-
-      {policy && (
-        <>
-          {/* Policy details card */}
-          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[#004282]">
-                Policy Details
-                <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
-              </h3>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                policy.policyStatus === 'In-Force'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-amber-100 text-amber-700'
-              }`}>
-                {policy.policyStatus}
-              </span>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-              {[
-                ['Policy Number', policy.policyNumber],
-                ['Customer Name', policy.customerName],
-                ['Product', `${policy.productType} (${policy.productCode})`],
-                ['Category', policy.productCategory],
-                ['UIN', policy.uin || 'N/A'],
-                ['Annual Premium', `₹ ${INR(policy.annualPremium)}`],
-                ['Policy Term', `${policy.policyTerm} yrs`],
-                ['Premium Paying Term', `${policy.premiumPayingTerm} yrs`],
-                ['Premiums Paid', `${policy.premiumsPaid} yrs`],
-                ['Sum Assured', `₹ ${INR(policy.sumAssured)}`],
-                ['Entry Age', `${policy.entryAge} yrs`],
-                ['Gender', policy.gender],
-                ['Premium Frequency', policy.premiumFrequency],
-                ['Option', policy.option],
-                ['Channel', policy.channel],
-                ...(policy.productCategory === 'ULIP' ? [
-                  ['Fund Value', `₹ ${INR(policy.fundValue)}`],
-                  ['Investment Strategy', policy.investmentStrategy || 'N/A'],
-                ] : []),
-              ].map(([k, v]) => (
-                <div key={k as string}>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider">{k}</p>
-                  <p className="font-semibold text-slate-700 mt-0.5">{v}</p>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={handleCalculate}
-              disabled={calcLoading}
-              className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-[#004282] text-white rounded-xl
-                         text-sm font-semibold hover:bg-[#003370] disabled:opacity-60 transition"
-            >
-              <BarChart3 size={15} />
-              {calcLoading ? 'Calculating…' : 'Calculate Benefits'}
-            </button>
-          </div>
-
-          {calcError && <ErrorBanner message={calcError} />}
-          {result && <ResultSection result={result} />}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Sub-page: Input Value mode ──────────────────────────────────────────────
-
-const DEFAULT_INPUTS = {
-  policyNumber: '',
-  productCategory: 'Traditional' as string,
-  productVersion: '',
-  annualPremium: 50000,
-  policyTerm: 20,
-  premiumPayingTerm: 10,
-  premiumsPaid: 5,
-  sumAssured: 500000,
-  entryAge: 35,
-  gender: 'Male' as string,
-  option: 'Immediate',
-  channel: 'Other',
-  fundValue: 0,
-  riskCommencementDate: '' as string,
-  policyStatus: 'In-Force' as string,
-  investmentStrategy: 'Self-Managed Investment Strategy' as string,
-  premiumFrequency: 'Yearly' as string,
-  customerName: '' as string,
-  uin: '' as string,
-};
-
-function InputValueMode() {
-  const [form, setForm] = useState(DEFAULT_INPUTS);
-  const [productMap, setProductMap] = useState<YpygProductMap>(DEFAULT_YPYG_PRODUCTS);
-  const [parameters, setParameters] = useState<ProductParameter[]>([]);
-  const [paramValues, setParamValues] = useState<Record<string, string>>({});
-  const productConfig = useMemo(
-    () => productMap[form.productCategory] ?? DEFAULT_YPYG_PRODUCTS.Traditional,
-    [form.productCategory, productMap],
-  );
-
-  useEffect(() => {
-    loadYpygProductMap().then(setProductMap).catch(() => setProductMap(DEFAULT_YPYG_PRODUCTS));
-  }, []);
-
-  useEffect(() => {
-    setForm(f => ({ ...f, productVersion: '' }));
+  const resetForm = () => {
+    setForm(buildDefaultForm(productMap));
+    setPolicyLookup(null);
     setParamValues({});
-  }, [form.productCategory]);
-
-  useEffect(() => {
-    api.get<ProductParameter[]>('/api/admin/parameters', {
-      params: { productCode: productConfig.code, version: form.productVersion || undefined },
-    }).then(res => setParameters(res.data)).catch(() => setParameters([]));
-  }, [productConfig.code, form.productVersion]);
-  const [result, setResult] = useState<YpygResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const set = (k: keyof typeof DEFAULT_INPUTS, v: string | number) =>
-    setForm(f => ({ ...f, [k]: v }));
-  const isUlip = form.productCategory === 'ULIP';
-
-  const handleCalculate = async () => {
-    setLoading(true);
-    setError(null);
     setResult(null);
-    try {
-      const { riskCommencementDate, productVersion, ...rest } = form;
-      const payload = {
-        ...rest,
-        ...(riskCommencementDate ? { riskCommencementDate } : {}),
-        productCode: productConfig.code,
-        ...(Object.keys(paramValues).length ? { additionalParameters: paramValues } : {}),
-        ...(productVersion ? { productVersion } : {}),
-      };
-      const res = await api.post<YpygResult>('/api/ypyg/calculate', payload);
-      setResult(res.data);
-    } catch (e: any) {
-      setError(e?.response?.data?.error || e?.message || 'Calculation failed.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
-    <div className="grid lg:grid-cols-3 gap-8">
-      {/* Input form */}
-      <div className="lg:col-span-1">
-        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 space-y-4">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Input Parameters</h3>
-
-          <Field label="Product Type">
-            <select
-              value={form.productCategory}
-              onChange={e => set('productCategory', e.target.value)}
-              className={INPUT_CLS}
-            >
-              {Object.entries(productMap).map(([key, cfg]) => (
-                <option key={key} value={key}>
-                  {cfg.displayName}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {productConfig.versions && productConfig.versions.length > 0 && (
-            <Field label="Product Version">
-              <select
-                value={form.productVersion}
-                onChange={e => set('productVersion', e.target.value)}
-                className={INPUT_CLS}
-              >
-                <option value="">Latest</option>
-                {productConfig.versions.map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-            </Field>
-          )}
-          {parameters.length > 0 && (
-            <div className="space-y-3 border border-slate-100 rounded-lg p-3 bg-slate-50/60">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Config-driven inputs</p>
-              {parameters.map(p => (
-                <Field key={p.id} label={`${p.name}${p.isRequired ? ' *' : ''}`}>
-                  <input
-                    type={p.dataType === 'number' ? 'number' : p.dataType === 'date' ? 'date' : 'text'}
-                    value={paramValues[p.name] ?? ''}
-                    onChange={e => setParamValues(v => ({ ...v, [p.name]: e.target.value }))}
-                    className={INPUT_CLS}
-                    placeholder={p.description}
-                  />
-                </Field>
-              ))}
-            </div>
-          )}
-          <Field label="Policy Number (optional)">
-            <input type="text" value={form.policyNumber}
-              onChange={e => set('policyNumber', e.target.value)}
-              className={INPUT_CLS} placeholder="Optional" />
-          </Field>
-          <Field label="Customer Name (optional)">
-            <input type="text" value={form.customerName}
-              onChange={e => set('customerName', e.target.value)}
-              className={INPUT_CLS} placeholder="Optional" />
-          </Field>
-          <Field label="UIN (optional)">
-            <input type="text" value={form.uin}
-              onChange={e => set('uin', e.target.value)}
-              className={INPUT_CLS} placeholder={isUlip ? '142L079V03' : '142N066V02'} />
-          </Field>
-          <Field label="Annual Premium (₹)">
-            <input type="number" value={form.annualPremium}
-              onChange={e => set('annualPremium', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
-          <Field label="Policy Term (yrs)">
-            <input type="number" value={form.policyTerm}
-              onChange={e => set('policyTerm', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
-          <Field label="Premium Paying Term (yrs)">
-            <input type="number" value={form.premiumPayingTerm}
-              onChange={e => set('premiumPayingTerm', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
-          <Field label="Premiums Paid">
-            <input type="number" value={form.premiumsPaid}
-              onChange={e => set('premiumsPaid', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
-          <Field label="Sum Assured (₹)">
-            <input type="number" value={form.sumAssured}
-              onChange={e => set('sumAssured', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
-          <Field label="Entry Age (yrs)">
-            <input type="number" value={form.entryAge}
-              onChange={e => set('entryAge', +e.target.value)}
-              className={INPUT_CLS} />
-          </Field>
-          <Field label="Gender">
-            <select value={form.gender}
-              onChange={e => set('gender', e.target.value)}
-              className={INPUT_CLS}>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Transgender</option>
-            </select>
-          </Field>
-          <Field label="Premium Frequency">
-            <select value={form.premiumFrequency}
-              onChange={e => set('premiumFrequency', e.target.value)}
-              className={INPUT_CLS}>
-              <option>Yearly</option>
-              <option>Half Yearly</option>
-              <option>Quarterly</option>
-              <option>Monthly</option>
-            </select>
-          </Field>
-          <Field label="Policy Status">
-            <select value={form.policyStatus}
-              onChange={e => set('policyStatus', e.target.value)}
-              className={INPUT_CLS}>
-              <option>In-Force</option>
-              <option>Paid-Up</option>
-              <option>Lapsed</option>
-              <option>Revived</option>
-              <option>Discontinued</option>
-            </select>
-          </Field>
-          {isUlip ? (
-            <>
-              <Field label="Investment Strategy">
-                <select value={form.investmentStrategy}
-                  onChange={e => set('investmentStrategy', e.target.value)}
-                  className={INPUT_CLS}>
-                  <option>Self-Managed Investment Strategy</option>
-                  <option>Age-based Investment Strategy</option>
-                </select>
-              </Field>
-              <Field label="Fund Value (₹)">
-                <input type="number" value={form.fundValue}
-                  onChange={e => set('fundValue', +e.target.value)}
-                  className={INPUT_CLS} />
-              </Field>
-               <Field label="Option">
-                 <select value={form.option}
-                   onChange={e => set('option', e.target.value)}
-                   className={INPUT_CLS}>
-                   {productConfig.options.map(o => <option key={o}>{o}</option>)}
-                 </select>
-               </Field>
-             </>
-           ) : (
-             <>
-               <Field label="Option">
-                 <select value={form.option}
-                   onChange={e => set('option', e.target.value)}
-                   className={INPUT_CLS}>
-                   {productConfig.options.map(o => <option key={o}>{o}</option>)}
-                 </select>
-               </Field>
-                {productConfig.channels && (
-                  <Field label="Sales Channel">
-                    <select value={form.channel}
-                      onChange={e => set('channel', e.target.value)}
-                      className={INPUT_CLS}>
-                      {productConfig.channels.map(c => <option key={c}>{c}</option>)}
-                    </select>
-                  </Field>
-                )}
-             </>
-           )}
-          <Field label="Risk Commencement Date">
-            <input type="date" value={form.riskCommencementDate}
-              onChange={e => set('riskCommencementDate', e.target.value)}
-              className={INPUT_CLS}
-              title="Date when risk cover started (YPYG mode). Leave blank for pre-issuance." />
-            <p className="mt-1 text-xs text-slate-400">Used to determine elapsed policy years</p>
-          </Field>
-
-          <button
-            onClick={handleCalculate}
-            disabled={loading}
-            className="w-full py-3 bg-[#004282] text-white rounded-xl font-semibold text-sm
-                       hover:bg-[#003370] disabled:opacity-60 transition flex items-center justify-center gap-2"
-          >
-            {loading
-              ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              : <BarChart3 size={15} />}
-            {loading ? 'Calculating…' : 'Calculate Benefits'}
-          </button>
-
-          {error && <ErrorBanner message={error} />}
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-[#004282]">
+            YPYG — {pageMode === 'policy-number' ? 'Policy Driven' : 'Manual'} Mode
+            <span className="block mt-1 w-12 h-1 rounded-full bg-[#007bff]" />
+          </h2>
+          <p className="mt-2 text-slate-500 text-sm max-w-2xl">
+            Use policy number to auto-fill or manually enter the compact 2-column inputs.
+            The left pane stays focused on inputs; the right pane mirrors the PDF-style summary.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-white shadow-[0_4px_18px_rgba(0,0,0,0.08)] rounded-xl p-2">
+          <ModeButton active={pageMode === 'policy-number'} onClick={() => setPageMode('policy-number')}>
+            Policy Number
+          </ModeButton>
+          <ModeButton active={pageMode === 'input-value'} onClick={() => setPageMode('input-value')}>
+            Manual
+          </ModeButton>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="lg:col-span-2">
-        {result ? <ResultSection result={result} /> : (
-          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex items-center justify-center h-64 text-slate-400 text-sm">
-            Enter parameters and click <strong className="mx-1">Calculate Benefits</strong> to see results.
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
+        {/* Left pane */}
+        <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 space-y-5">
+          {pageMode === 'policy-number' && (
+            <div className="space-y-3">
+              <div className="flex gap-3 flex-col sm:flex-row">
+                <input
+                  type="text"
+                  value={form.policyNumber}
+                  onChange={e => updateField('policyNumber', e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handlePolicyFetch()}
+                  placeholder="Enter Policy Number"
+                  className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#004282]"
+                />
+                <button
+                  onClick={handlePolicyFetch}
+                  disabled={lookupLoading}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#004282] text-white rounded-lg text-sm font-semibold hover:bg-[#003370] disabled:opacity-60 transition"
+                >
+                  <Search size={14} />
+                  {lookupLoading ? 'Fetching…' : 'Fetch Policy'}
+                </button>
+              </div>
+              {lookupError && <ErrorBanner message={lookupError} />}
+              <div className="flex gap-2 text-xs text-slate-500">
+                <button
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 hover:border-slate-300"
+                  onClick={() => handleUseMock(MOCK_TRADITIONAL_POLICY)}
+                >
+                  <RefreshCcw size={12} />
+                  Prefill Traditional mock
+                </button>
+                <button
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 hover:border-slate-300"
+                  onClick={() => handleUseMock(MOCK_ULIP_POLICY)}
+                >
+                  <RefreshCcw size={12} />
+                  Prefill ULIP mock
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Product">
+              <select
+                value={form.productKey}
+                onChange={e => updateField('productKey', e.target.value)}
+                className={INPUT_CLS}
+              >
+                {(Object.keys(productMap) as Array<keyof YpygProductMap>).map(key => (
+                  <option key={key} value={key}>
+                    {productMap[key].displayName}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {productConfig.versions && productConfig.versions.length > 0 && (
+              <Field label="Product Version">
+                <select
+                  value={form.productVersion}
+                  onChange={e => updateField('productVersion', e.target.value)}
+                  className={INPUT_CLS}
+                >
+                  <option value="">Latest</option>
+                  {productConfig.versions.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+
+            {visibleFields.map(field => (
+              <Field
+                key={field.key}
+                label={field.label}
+                helper={field.helperText}
+                span={field.columns === 2}
+              >
+                {renderInput(field, form, productConfig, updateField, ptOptions)}
+              </Field>
+            ))}
+
+            {parameters.length > 0 && (
+              <div className="md:col-span-2 border border-slate-100 rounded-lg p-3 bg-slate-50/60 space-y-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase">Config driven inputs</p>
+                {parameters.map(p => (
+                  <Field key={p.id} label={`${p.name}${p.isRequired ? ' *' : ''}`}>
+                    <input
+                      type={p.dataType === 'number' ? 'number' : p.dataType === 'date' ? 'date' : 'text'}
+                      value={paramValues[p.name] ?? ''}
+                      onChange={e => setParamValues(v => ({ ...v, [p.name]: e.target.value }))}
+                      className={INPUT_CLS}
+                      placeholder={p.description}
+                    />
+                  </Field>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="flex flex-wrap gap-3 justify-end border-t border-slate-100 pt-3">
+            <button
+              onClick={resetForm}
+              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm hover:bg-slate-50"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleCalculate}
+              disabled={calcLoading}
+              className="flex items-center gap-2 px-5 py-2 bg-[#004282] text-white rounded-lg text-sm font-semibold hover:bg-[#003370] disabled:opacity-60 transition"
+            >
+              <BarChart3 size={15} />
+              {calcLoading ? 'Calculating…' : 'Calculate'}
+            </button>
+          </div>
+          {calcError && <ErrorBanner message={calcError} />}
+        </div>
+
+        {/* Right pane */}
+        <div className="space-y-4">
+          <PolicyAtGlance
+            product={productConfig}
+            form={form}
+            result={result}
+            policy={policyLookup}
+            onDownload={() => result && triggerDownload(result, productConfig)}
+          />
+
+          {result ? (
+            <ResultSection result={result} productName={productConfig.displayName} />
+          ) : (
+            <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center h-64 text-slate-400 text-sm">
+              <p className="font-semibold text-slate-600">Policy at a Glance</p>
+              <p className="text-center mt-1">Outputs will appear here once you calculate.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Shared result section ───────────────────────────────────────────────────
+function PolicyAtGlance({
+  product,
+  form,
+  result,
+  policy,
+  onDownload,
+}: {
+  product: YpygProductMeta;
+  form: YpygFormState;
+  result: YpygResult | null;
+  policy: PolicyLookupModel | null;
+  onDownload: () => void;
+}) {
+  const isUlip = product.category === 'ULIP';
+  const policyStatus = result?.policyStatus || form.policyStatus || 'In-Force';
+  const premiumPaid = form.policyYear * form.annualPremium;
+  const balancePayable = Math.max(form.ppt - form.policyYear, 0) * form.annualPremium;
+  const valueTillDate = result?.currentMaturityBenefit ?? 0;
+  const valueOnMaturity = result?.maturityMaturityBenefit ?? 0;
+  const fundValueCurrent = result?.currentFundValue8 ?? result?.currentFundValue4 ?? result?.fundValue8 ?? 0;
+  const fundValueProjected = result?.maturityFundValue8 ?? 0;
+  const survivalBenefitInstalment = result?.yearlyTable?.[0]?.guaranteedIncome ?? 0;
+  const summaryItems = [
+    ['Policy Number', result?.policyNumber || form.policyNumber || '—'],
+    ['Customer Name', result?.customerName || form.customerName || policy?.customerName || '—'],
+    ['Product', product.displayName],
+    ['UIN', form.uin || '—'],
+    ['Premium Frequency', form.premiumFrequency],
+    ['Premium Status', policy?.premiumStatus || 'Paid'],
+    ['Policy Status', policyStatus],
+  ];
 
-function ResultSection({ result }: { result: YpygResult }) {
+  return (
+    <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider">Policy at a Glance</p>
+          <h3 className="text-lg font-bold text-[#004282]">{product.displayName}</h3>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+            {product.category}
+          </span>
+          <button
+            onClick={onDownload}
+            disabled={!result}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#004282] text-white rounded-lg hover:bg-[#003370] transition disabled:opacity-60"
+          >
+            <FileDown size={13} />
+            Download PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div className="grid sm:grid-cols-2 gap-3">
+          {summaryItems.map(([label, value]) => (
+            <SummaryCell key={label} label={label} value={value} />
+          ))}
+          <SummaryCell label="Premium Payment Term" value={`${result?.premiumPayingTerm ?? form.ppt} yrs`} />
+          <SummaryCell label="Policy Term" value={`${result?.policyTerm ?? form.pt} yrs`} />
+          <SummaryCell label="Risk Cover" value={`₹ ${INR(result?.sumAssuredOnDeath ?? form.sumAssured)}`} />
+          {isUlip && (
+            <SummaryCell label="Fund Option" value={form.fundOption || policy?.investmentStrategy || '—'} />
+          )}
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <ValueBlock title="Till Date" rows={[
+            ['Value till date', `₹ ${INR(valueTillDate)}`],
+            ['Premium Paid till date', `₹ ${INR(premiumPaid)}`],
+            ['Balance Payable', `₹ ${INR(balancePayable)}`],
+            ['Survival Benefit Paid till date', `₹ ${INR(policy?.survivalBenefitPaid ?? result?.currentSurvivalBenefit ?? 0)}`],
+          ]} />
+          <ValueBlock title="On Maturity" rows={[
+            [isUlip ? 'Projected Fund Value @8%' : 'Value on Maturity', `₹ ${INR(isUlip ? fundValueProjected : valueOnMaturity)}`],
+            [isUlip ? 'Fund Value as on date' : 'Revival Amount Due', `₹ ${INR(isUlip ? fundValueCurrent : policy?.pendingPremiums ?? 0)}`],
+            ['Sum Assured / Risk Cover', `₹ ${INR(result?.sumAssuredOnDeath ?? form.sumAssured)}`],
+            ['Survival Benefit Instalment', `₹ ${INR(survivalBenefitInstalment)}`],
+          ]} />
+        </div>
+
+        <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg p-3">
+          {isUlip
+            ? 'Fund values are illustrative. Projected values @8% are not guaranteed. Please refer to the ULIP YPYG format for statutory wording.'
+            : 'Values are indicative and aligned with the YPYG Traditional “Policy at a Glance” format.'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResultSection({ result, productName }: { result: YpygResult; productName: string }) {
   const isUlip = result.productCategory === 'ULIP';
   const resultMeta = YPYG_RESULT_META[isUlip ? 'ULIP' : 'Traditional'];
   const readVal = (key: string) => {
@@ -561,12 +514,54 @@ function ResultSection({ result }: { result: YpygResult }) {
     ? new Date(result.calculationDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+  const template = {
+    title: 'Policy at a Glance',
+    subtitle: `${productName} — Policy Number: ${result.policyNumber || 'N/A'}`,
+    tbvRows: resultMeta.tbvRows.map(r => ({ ...r })),
+    tableHeaders: [...resultMeta.yearlyHeaders],
+    sectionTitle: resultMeta.tableTitle,
+  };
+
   return (
-    <div className="space-y-6">
-      {/* ── Total Benefit Value table ── */}
-      <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
-        <div className="px-6 py-4 border-b-2 border-[#00796b]">
-          <h3 className="text-center text-lg font-extrabold text-[#004282] tracking-wide">Total Benefit Value</h3>
+    <div className="space-y-5">
+      <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden">
+        <div className="px-6 py-4 border-b-2 border-[#00796b] flex items-center gap-3">
+          <h3 className="text-base font-extrabold text-[#004282] tracking-wide">Total Benefit Value</h3>
+          <button
+            onClick={() => {
+              if (isUlip && result.ulipYearlyTable) {
+                downloadYpygUlipPdf({
+                  policyNumber: result.policyNumber,
+                  customerName: result.customerName || '',
+                  productCode: result.productCode,
+                  gender: result.gender,
+                  entryAge: result.ulipYearlyTable.length > 0 ? result.ulipYearlyTable[0].age : 0,
+                  policyTerm: result.policyTerm,
+                  ppt: result.premiumPayingTerm,
+                  annualizedPremium: result.annualPremium,
+                  sumAssured: result.sumAssuredOnDeath,
+                  maturityBenefit4: result.maturityBenefit4 ?? 0,
+                  maturityBenefit8: result.maturityBenefit8 ?? 0,
+                  currentFundValue4: result.currentFundValue4,
+                  currentFundValue8: result.currentFundValue8,
+                  maturityFundValue4: result.maturityFundValue4,
+                  maturityFundValue8: result.maturityFundValue8,
+                  currentDeathBenefit4: result.currentDeathBenefit4,
+                  currentDeathBenefit8: result.currentDeathBenefit8,
+                  maturityDeathBenefit4: result.maturityDeathBenefit4,
+                  maturityDeathBenefit8: result.maturityDeathBenefit8,
+                  calculationDate: result.calculationDate,
+                  yearlyTable: result.ulipYearlyTable,
+                }, template);
+              } else {
+                downloadYpygPdf(result as YpygPdfResult, result.policyNumber, template);
+              }
+            }}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#004282] text-white rounded-lg hover:bg-[#003370] transition"
+          >
+            <FileDown size={13} />
+            Download PDF
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -598,84 +593,12 @@ function ResultSection({ result }: { result: YpygResult }) {
         </div>
       </div>
 
-      {/* ── Additional info ── */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <InfoCard label="Policy Number" value={result.policyNumber || '—'} />
-        <InfoCard label="Product Code" value={result.productCode || '—'} />
-        <InfoCard label="Sum Assured on Death" value={`₹ ${INR(result.sumAssuredOnDeath)}`} />
-        {isUlip ? (
-          <>
-            <InfoCard label="Current Policy Year" value={`Year ${result.currentPolicyYear ?? 1}`} />
-            <InfoCard label="Policy Status" value={result.policyStatus || 'In-Force'} />
-          </>
-        ) : (
-          <>
-            <InfoCard label="Max Loan Amount" value={`₹ ${INR(result.maxLoanAmount)}`} />
-            <InfoCard label="Policy Status" value={result.policyStatus || 'In-Force'} />
-          </>
-        )}
-      </div>
-      {result.validationRules && result.validationRules.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-100 p-4 text-xs text-slate-600">
-          <p className="font-semibold text-slate-700 mb-2">Validation Rules (preview)</p>
-          <div className="flex flex-wrap gap-2">
-            {result.validationRules.map(r => (
-              <span key={r} className="px-2 py-1 bg-slate-100 rounded-full">{r}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Yearly table */}
-      <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <h3 className="text-base font-bold text-[#004282]">
             {resultMeta.tableTitle}
             <span className="block mt-0.5 w-8 h-0.5 rounded-full bg-[#007bff]" />
           </h3>
-          <button
-            onClick={() => {
-              const template = {
-                title: resultMeta.tableTitle,
-                subtitle: `Policy Number: ${result.policyNumber || 'N/A'}`,
-                tbvRows: resultMeta.tbvRows.map(r => ({ ...r })),
-                tableHeaders: [...resultMeta.yearlyHeaders],
-                sectionTitle: resultMeta.tableTitle,
-              };
-              if (isUlip && result.ulipYearlyTable) {
-                downloadYpygUlipPdf({
-                  policyNumber: result.policyNumber,
-                  customerName: result.customerName || '',
-                  productCode: result.productCode,
-                  gender: result.gender,
-                  entryAge: result.ulipYearlyTable.length > 0 ? result.ulipYearlyTable[0].age : 0,
-                  policyTerm: result.policyTerm,
-                  ppt: result.premiumPayingTerm,
-                  annualizedPremium: result.annualPremium,
-                  sumAssured: result.sumAssuredOnDeath,
-                  maturityBenefit4: result.maturityBenefit4 ?? 0,
-                  maturityBenefit8: result.maturityBenefit8 ?? 0,
-                  currentFundValue4: result.currentFundValue4,
-                  currentFundValue8: result.currentFundValue8,
-                  maturityFundValue4: result.maturityFundValue4,
-                  maturityFundValue8: result.maturityFundValue8,
-                  currentDeathBenefit4: result.currentDeathBenefit4,
-                  currentDeathBenefit8: result.currentDeathBenefit8,
-                  maturityDeathBenefit4: result.maturityDeathBenefit4,
-                  maturityDeathBenefit8: result.maturityDeathBenefit8,
-                  calculationDate: result.calculationDate,
-                  yearlyTable: result.ulipYearlyTable,
-                }, template);
-              } else {
-                downloadYpygPdf(result as YpygPdfResult, result.policyNumber, template);
-              }
-            }}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
-                       bg-[#004282] text-white rounded-lg hover:bg-[#003370] transition"
-          >
-            <FileDown size={13} />
-            Download PDF
-          </button>
         </div>
         <div className="overflow-x-auto">
           {isUlip && result.ulipYearlyTable ? (
@@ -738,25 +661,82 @@ function ResultSection({ result }: { result: YpygResult }) {
   );
 }
 
+function triggerDownload(result: YpygResult, product: YpygProductMeta) {
+  const isUlip = result.productCategory === 'ULIP';
+  const resultMeta = YPYG_RESULT_META[isUlip ? 'ULIP' : 'Traditional'];
+  const template = {
+    title: 'Policy at a Glance',
+    subtitle: `${product.displayName} — Policy Number: ${result.policyNumber || 'N/A'}`,
+    tbvRows: resultMeta.tbvRows.map(r => ({ ...r })),
+    tableHeaders: [...resultMeta.yearlyHeaders],
+    sectionTitle: resultMeta.tableTitle,
+  };
+
+  if (isUlip && result.ulipYearlyTable) {
+    downloadYpygUlipPdf({
+      policyNumber: result.policyNumber,
+      customerName: result.customerName || '',
+      productCode: result.productCode,
+      gender: result.gender,
+      entryAge: result.ulipYearlyTable.length > 0 ? result.ulipYearlyTable[0].age : 0,
+      policyTerm: result.policyTerm,
+      ppt: result.premiumPayingTerm,
+      annualizedPremium: result.annualPremium,
+      sumAssured: result.sumAssuredOnDeath,
+      maturityBenefit4: result.maturityBenefit4 ?? 0,
+      maturityBenefit8: result.maturityBenefit8 ?? 0,
+      currentFundValue4: result.currentFundValue4,
+      currentFundValue8: result.currentFundValue8,
+      maturityFundValue4: result.maturityFundValue4,
+      maturityFundValue8: result.maturityFundValue8,
+      currentDeathBenefit4: result.currentDeathBenefit4,
+      currentDeathBenefit8: result.currentDeathBenefit8,
+      maturityDeathBenefit4: result.maturityDeathBenefit4,
+      maturityDeathBenefit8: result.maturityDeathBenefit8,
+      calculationDate: result.calculationDate,
+      yearlyTable: result.ulipYearlyTable,
+    }, template);
+  } else {
+    downloadYpygPdf(result as YpygPdfResult, result.policyNumber, template);
+  }
+}
+
 // ─── Helper components ───────────────────────────────────────────────────────
 
 const INPUT_CLS =
   'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#007bff]';
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, helper, span, children }: { label: string; helper?: string; span?: boolean; children: React.ReactNode }) {
   return (
-    <div>
+    <div className={span ? 'md:col-span-2' : ''}>
       <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
       {children}
+      {helper && <p className="mt-1 text-[11px] text-slate-400">{helper}</p>}
     </div>
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function SummaryCell({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-white rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.06)] p-4 border border-slate-100">
-      <p className="text-xs text-slate-400 uppercase tracking-wider">{label}</p>
-      <p className="text-lg font-bold text-[#004282] mt-1">{value}</p>
+    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1 break-words">{value}</p>
+    </div>
+  );
+}
+
+function ValueBlock({ title, rows }: { title: string; rows: [string, string][] }) {
+  return (
+    <div className="rounded-lg border border-slate-100 p-3 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+      <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{title}</p>
+      <div className="space-y-1.5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between text-sm">
+            <span className="text-slate-600">{label}</span>
+            <span className="font-semibold text-[#004282]">{value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -770,26 +750,76 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-// ─── Main export — mode switcher ─────────────────────────────────────────────
-
-export type YpygMode = 'policy-number' | 'input-value';
-
-export default function YpygModule({ mode }: { mode: YpygMode }) {
+function ModeButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-[#004282]">
-          YPYG — {mode === 'policy-number' ? 'Policy Number' : 'Input Value'}
-          <span className="block mt-1 w-12 h-1 rounded-full bg-[#007bff]" />
-        </h2>
-        <p className="mt-2 text-slate-500 text-sm">
-          {mode === 'policy-number'
-            ? 'Search by policy number to auto-populate fields and calculate benefits.'
-            : 'Manually enter policy parameters to calculate maturity value, surrender value and death benefit.'}
-        </p>
-      </div>
-
-      {mode === 'policy-number' ? <PolicyNumberMode /> : <InputValueMode />}
-    </div>
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+        active
+          ? 'bg-[#004282] text-white shadow-[0_4px_10px_rgba(0,0,0,0.15)]'
+          : 'bg-slate-50 text-slate-600 border border-slate-200'
+      }`}
+    >
+      {children}
+    </button>
   );
+}
+
+function renderInput(
+  field: { key: FormFieldKey; type: string; options?: string[]; readOnly?: (ctx: any) => boolean; helperText?: string },
+  form: YpygFormState,
+  product: YpygProductMeta,
+  update: (key: FormFieldKey, value: string | number) => void,
+  ptOptions: number[],
+) {
+  const value = form[field.key];
+  const isReadOnly = typeof field.readOnly === 'function' ? field.readOnly({ product, form, ptOptions }) : field.readOnly;
+  switch (field.type) {
+    case 'select':
+      return (
+        <select
+          value={value as string}
+          onChange={e => {
+            const nextValue = field.key === 'ppt' || field.key === 'pt' ? Number(e.target.value) : e.target.value;
+            update(field.key, nextValue);
+          }}
+          className={INPUT_CLS}
+          disabled={isReadOnly}
+        >
+          {(field.options ?? []).map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      );
+    case 'date':
+      return (
+        <input
+          type="date"
+          value={(value as string) ?? ''}
+          onChange={e => update(field.key, e.target.value)}
+          className={INPUT_CLS}
+          disabled={isReadOnly}
+        />
+      );
+    case 'number':
+      return (
+        <input
+          type="number"
+          value={Number(value ?? 0)}
+          onChange={e => update(field.key, Number(e.target.value))}
+          className={INPUT_CLS}
+          disabled={isReadOnly}
+        />
+      );
+    default:
+      return (
+        <input
+          type="text"
+          value={(value as string) ?? ''}
+          onChange={e => update(field.key, e.target.value)}
+          className={INPUT_CLS}
+          disabled={isReadOnly}
+        />
+      );
+  }
 }
