@@ -68,12 +68,36 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 
 var app = builder.Build();
+
+// Global exception handler — ensures CORS headers are present even on 500 responses.
+// Must be registered BEFORE CORS/routing so it wraps all middleware.
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+
+        var logger = context.RequestServices.GetService<ILoggerFactory>()
+            ?.CreateLogger("ExceptionHandler");
+        if (error != null)
+            logger?.LogError(error.Error, "Unhandled exception on {Path}", context.Request.Path);
+
+        await context.Response.WriteAsync(
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                status = 500,
+                message = "An internal server error occurred."
+            }));
+    });
+});
 
 // Swagger is available in all environments
 app.UseSwagger();
@@ -86,8 +110,11 @@ app.UseSwaggerUI(c =>
     c.EnableDeepLinking();
 });
 
-app.UseRouting();
+// CORS must come BEFORE routing so headers are present on all responses
+// including error responses and preflight (OPTIONS) requests.
 app.UseCors("AllowFrontend");
+
+app.UseRouting();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
