@@ -54,12 +54,22 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<InsuranceDbContext>("database");
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[]
+    {
+        "http://insuranceengineui.ezytekapis.com",
+        "https://insuranceengineui.ezytekapis.com"
+    };
+
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        // Allow custom headers (e.g., X-Role) for Admin UI calls served from a different origin.
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -76,7 +86,8 @@ app.UseSwaggerUI(c =>
     c.EnableDeepLinking();
 });
 
-app.UseCors();
+app.UseRouting();
+app.UseCors("AllowFrontend");
 app.MapControllers();
 
 app.MapHealthChecks("/health");
