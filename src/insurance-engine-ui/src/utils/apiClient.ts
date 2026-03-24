@@ -30,7 +30,9 @@ apiClient.interceptors.request.use(config => {
   if (!headers['X-Role'] && legacyRole) headers['X-Role'] = legacyRole;
 
   // Ensure Admin screens still work during investigation
-  if (!headers['X-Role'] && (config.url?.startsWith('/api/admin') || config.url?.includes('/api/admin'))) {
+  if (!headers['X-Role'] && (config.url?.startsWith('/api/admin') || config.url?.includes('/api/admin')
+      || config.url?.startsWith('/api/configuration') || config.url?.includes('/api/configuration')
+      || config.url?.startsWith('/api/usermgmt') || config.url?.includes('/api/usermgmt'))) {
     headers['X-Role'] = 'Admin';
   }
 

@@ -51,7 +51,8 @@ async function safeFetch<T>(url: string, fallback: T): Promise<T> {
   catch { return fallback; }
 }
 
-function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function downloadCsv(filename: string, rows: any[]) {
   if (rows.length === 0) return;
   const keys = Object.keys(rows[0]);
   const header = keys.join(',');

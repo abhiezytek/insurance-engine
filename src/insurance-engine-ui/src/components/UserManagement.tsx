@@ -10,7 +10,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Users, Shield, Grid3X3, ScrollText, Plus, Edit3, Save, X,
+  Users, Shield, Grid3X3, ScrollText, Plus, Edit3, Save,
   Search, Download, RefreshCw, AlertCircle, Check, XCircle, Key,
 } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';

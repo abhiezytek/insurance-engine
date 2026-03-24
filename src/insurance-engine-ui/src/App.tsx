@@ -5,18 +5,21 @@ import {
   BarChart3,
   ClipboardCheck,
   Settings,
+  Users,
   LogOut,
   ShieldCheck,
   ChevronDown,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PermissionProvider } from './context/PermissionContext';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import BenefitIllustration from './components/BenefitIllustration';
 import UlipIllustration from './components/UlipIllustration';
 import YpygModule from './components/YpygModule';
 import AuditModule from './components/AuditModule';
-import AdminMaster from './components/AdminMaster';
+import Configuration from './components/Configuration';
+import UserManagement from './components/UserManagement';
 
 // ---------------------------------------------------------------------------
 // View IDs
@@ -29,7 +32,8 @@ type ViewId =
   | 'ypyg-input'
   | 'audit-payout'
   | 'audit-bonus'
-  | 'admin-master';
+  | 'configuration'
+  | 'user-mgmt';
 
 // ---------------------------------------------------------------------------
 // Dropdown nav item
@@ -75,7 +79,8 @@ const NAV_ITEMS: NavItem[] = [
       { id: 'audit-bonus',  label: 'Bonus' },
     ],
   },
-  { id: 'admin-master', label: 'Admin Master', icon: <Settings size={15} /> },
+  { id: 'configuration', label: 'Configuration', icon: <Settings size={15} /> },
+  { id: 'user-mgmt', label: 'User Mgmt', icon: <Users size={15} /> },
 ];
 
 // ---------------------------------------------------------------------------
@@ -263,7 +268,8 @@ function AppInner() {
         {activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
         {activeView === 'audit-payout'    && <AuditModule sub="payout-verification" subOption="single" />}
         {activeView === 'audit-bonus'     && <AuditModule sub="addition-bonus" subOption="single" />}
-        {activeView === 'admin-master'  && <AdminMaster />}
+        {activeView === 'configuration'   && <Configuration />}
+        {activeView === 'user-mgmt'       && <UserManagement />}
       </main>
 
       <footer className="border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">
@@ -284,7 +290,9 @@ function AppWithAuth() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppWithAuth />
+      <PermissionProvider>
+        <AppWithAuth />
+      </PermissionProvider>
     </AuthProvider>
   );
 }
