@@ -19,6 +19,7 @@ import BenefitIllustration from './components/BenefitIllustration';
 import UlipIllustration from './components/UlipIllustration';
 import YpygModule from './components/YpygModule';
 import AuditModule from './components/AuditModule';
+import PayoutVerification from './components/PayoutVerification';
 import Configuration from './components/Configuration';
 import UserManagement from './components/UserManagement';
 
@@ -33,6 +34,7 @@ type ViewId =
   | 'ypyg-input'
   | 'audit-payout'
   | 'audit-bonus'
+  | 'payout-verify'
   | 'configuration'
   | 'user-mgmt';
 
@@ -49,6 +51,7 @@ const VIEW_MODULE_MAP: Record<string, string> = {
   'audit': 'AUDIT',
   'audit-payout': 'AUDIT',
   'audit-bonus': 'AUDIT',
+  'payout-verify': 'AUDIT',
   'configuration': 'CONFIG',
   'user-mgmt': 'USERMGMT',
 };
@@ -93,8 +96,9 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Audit',
     icon: <ClipboardCheck size={15} />,
     children: [
-      { id: 'audit-payout', label: 'Payout Verification' },
-      { id: 'audit-bonus',  label: 'Bonus' },
+      { id: 'payout-verify', label: 'Payout Verification' },
+      { id: 'audit-payout', label: 'Audit — Payout' },
+      { id: 'audit-bonus',  label: 'Audit — Bonus' },
     ],
   },
   { id: 'configuration', label: 'Configuration', icon: <Settings size={15} /> },
@@ -316,6 +320,7 @@ function AppInner() {
         {isAllowed && activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
         {isAllowed && activeView === 'audit-payout'    && <AuditModule sub="payout-verification" subOption="single" />}
         {isAllowed && activeView === 'audit-bonus'     && <AuditModule sub="addition-bonus" subOption="single" />}
+        {isAllowed && activeView === 'payout-verify'   && <PayoutVerification />}
         {isAllowed && activeView === 'configuration'   && <Configuration />}
         {isAllowed && activeView === 'user-mgmt'       && <UserManagement />}
       </main>
