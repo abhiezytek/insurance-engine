@@ -297,7 +297,7 @@ public class PayoutService : IPayoutService
         catch { return null; }
     }
 
-    public async Task<List<PayoutCaseDto>> GetCases(string? payoutType, string? status, string? inputMode, int page, int pageSize)
+    public async Task<(List<PayoutCaseDto> Data, int TotalCount)> GetCases(string? payoutType, string? status, string? inputMode, int page, int pageSize)
     {
         try
         {
@@ -310,36 +310,48 @@ public class PayoutService : IPayoutService
         }
     }
 
-    private async Task<List<PayoutCaseDto>> GetCasesDapper(string? payoutType, string? status, string? inputMode, int page, int pageSize)
+    private async Task<(List<PayoutCaseDto> Data, int TotalCount)> GetCasesDapper(string? payoutType, string? status, string? inputMode, int page, int pageSize)
     {
         var conn = TryGetDbConnection();
         if (conn == null) return await GetCasesFallback(payoutType, status, inputMode, page, pageSize);
-        var sql = new StringBuilder(@"
-            SELECT c.*, w.Id AS WId, w.PayoutCaseId, w.Action, w.FromStatus, w.ToStatus,
-                   w.Remarks AS WRemarks, w.PerformedBy, w.PerformedAt
-            FROM PayoutCases c
-            LEFT JOIN PayoutWorkflowHistories w ON w.PayoutCaseId = c.Id
-            WHERE 1=1");
 
+        var whereClauses = new StringBuilder();
+        var countSql = new StringBuilder("SELECT COUNT(*) FROM PayoutCases c WHERE 1=1");
         var parameters = new DynamicParameters();
 
         if (!string.IsNullOrWhiteSpace(payoutType))
         {
-            sql.Append(" AND c.PayoutType = @PayoutType");
+            whereClauses.Append(" AND c.PayoutType = @PayoutType");
             parameters.Add("PayoutType", payoutType);
         }
         if (!string.IsNullOrWhiteSpace(status))
         {
-            sql.Append(" AND c.Status = @Status");
+            whereClauses.Append(" AND c.Status = @Status");
             parameters.Add("Status", status);
         }
         if (!string.IsNullOrWhiteSpace(inputMode))
         {
-            sql.Append(" AND c.InputMode = @InputMode");
+            whereClauses.Append(" AND c.InputMode = @InputMode");
             parameters.Add("InputMode", inputMode);
         }
 
-        sql.Append(" ORDER BY c.CreatedAt DESC");
+        countSql.Append(whereClauses);
+        var totalCount = await conn.ExecuteScalarAsync<int>(countSql.ToString(), parameters);
+
+        // Use a subquery to paginate cases at the DB level, then join workflow histories
+        var sql = new StringBuilder($@"
+            SELECT cp.*, w.Id AS WId, w.PayoutCaseId, w.Action, w.FromStatus, w.ToStatus,
+                   w.Remarks AS WRemarks, w.PerformedBy, w.PerformedAt
+            FROM (
+                SELECT c.* FROM PayoutCases c WHERE 1=1{whereClauses}
+                ORDER BY c.CreatedAt DESC
+                OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
+            ) cp
+            LEFT JOIN PayoutWorkflowHistories w ON w.PayoutCaseId = cp.Id
+            ORDER BY cp.CreatedAt DESC");
+
+        parameters.Add("Offset", (page - 1) * pageSize);
+        parameters.Add("PageSize", pageSize);
 
         var caseDict = new Dictionary<int, PayoutCaseDto>();
 
@@ -371,13 +383,10 @@ public class PayoutService : IPayoutService
             parameters,
             splitOn: "WId");
 
-        return caseDict.Values
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
+        return (caseDict.Values.ToList(), totalCount);
     }
 
-    private async Task<List<PayoutCaseDto>> GetCasesFallback(string? payoutType, string? status, string? inputMode, int page, int pageSize)
+    private async Task<(List<PayoutCaseDto> Data, int TotalCount)> GetCasesFallback(string? payoutType, string? status, string? inputMode, int page, int pageSize)
     {
         var query = _db.PayoutCases.Include(c => c.WorkflowHistory).AsNoTracking().AsQueryable();
 
@@ -388,13 +397,14 @@ public class PayoutService : IPayoutService
         if (!string.IsNullOrWhiteSpace(inputMode))
             query = query.Where(c => c.InputMode == inputMode);
 
+        var totalCount = await query.CountAsync();
         var cases = await query
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        return cases.Select(MapToDto).ToList();
+        return (cases.Select(MapToDto).ToList(), totalCount);
     }
 
     public async Task<PayoutDashboardDto> GetDashboard()
@@ -448,18 +458,23 @@ public class PayoutService : IPayoutService
         };
     }
 
-    public async Task<List<PayoutBatchDto>> GetBatches(string? payoutType, int page, int pageSize)
+    public async Task<(List<PayoutBatchDto> Data, int TotalCount)> GetBatches(string? payoutType, int page, int pageSize)
     {
         var conn = TryGetDbConnection();
         if (conn == null) return await GetBatchesFallback(payoutType, page, pageSize);
+
+        var countSql = new StringBuilder("SELECT COUNT(*) FROM PayoutBatches WHERE 1=1");
         var sql = new StringBuilder("SELECT * FROM PayoutBatches WHERE 1=1");
         var parameters = new DynamicParameters();
 
         if (!string.IsNullOrWhiteSpace(payoutType))
         {
             sql.Append(" AND PayoutType = @PayoutType");
+            countSql.Append(" AND PayoutType = @PayoutType");
             parameters.Add("PayoutType", payoutType);
         }
+
+        var totalCount = await conn.ExecuteScalarAsync<int>(countSql.ToString(), parameters);
 
         sql.Append(" ORDER BY CreatedAt DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY");
         parameters.Add("Offset", (page - 1) * pageSize);
@@ -468,7 +483,7 @@ public class PayoutService : IPayoutService
         try
         {
             var batches = await conn.QueryAsync<PayoutBatch>(sql.ToString(), parameters);
-            return batches.Select(MapBatchToDto).ToList();
+            return (batches.Select(MapBatchToDto).ToList(), totalCount);
         }
         catch (Exception ex)
         {
@@ -477,20 +492,21 @@ public class PayoutService : IPayoutService
         }
     }
 
-    private async Task<List<PayoutBatchDto>> GetBatchesFallback(string? payoutType, int page, int pageSize)
+    private async Task<(List<PayoutBatchDto> Data, int TotalCount)> GetBatchesFallback(string? payoutType, int page, int pageSize)
     {
         var query = _db.PayoutBatches.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(payoutType))
             query = query.Where(b => b.PayoutType == payoutType);
 
+        var totalCount = await query.CountAsync();
         var batches = await query
             .OrderByDescending(b => b.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        return batches.Select(MapBatchToDto).ToList();
+        return (batches.Select(MapBatchToDto).ToList(), totalCount);
     }
 
     public async Task<List<PayoutCaseDto>> GetBatchCases(int batchId)

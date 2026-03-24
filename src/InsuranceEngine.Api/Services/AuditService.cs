@@ -189,7 +189,7 @@ public class AuditService : IAuditService
         return MapToDto(auditCase);
     }
 
-    public async Task<List<AuditCaseResultDto>> GetCases(string? auditType, string? status, string? inputMode, int page, int pageSize)
+    public async Task<(List<AuditCaseResultDto> Data, int TotalCount)> GetCases(string? auditType, string? status, string? inputMode, int page, int pageSize)
     {
         var query = _db.AuditCases.AsNoTracking().AsQueryable();
 
@@ -202,13 +202,14 @@ public class AuditService : IAuditService
         if (!string.IsNullOrWhiteSpace(inputMode))
             query = query.Where(c => c.InputMode == inputMode);
 
+        var totalCount = await query.CountAsync();
         var cases = await query
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        return cases.Select(MapToDto).ToList();
+        return (cases.Select(MapToDto).ToList(), totalCount);
     }
 
     public async Task<AuditDashboardDto> GetDashboard()
@@ -232,13 +233,14 @@ public class AuditService : IAuditService
         };
     }
 
-    public async Task<List<AuditBatchDto>> GetBatches(string? auditType, int page, int pageSize)
+    public async Task<(List<AuditBatchDto> Data, int TotalCount)> GetBatches(string? auditType, int page, int pageSize)
     {
         var query = _db.AuditBatches.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(auditType))
             query = query.Where(b => b.AuditType == auditType);
 
+        var totalCount = await query.CountAsync();
         var batches = await query
             .OrderByDescending(b => b.UploadDate)
             .Skip((page - 1) * pageSize)
@@ -246,7 +248,7 @@ public class AuditService : IAuditService
             .Include(b => b.Cases)
             .ToListAsync();
 
-        return batches.Select(b => new AuditBatchDto
+        return (batches.Select(b => new AuditBatchDto
         {
             Id = b.Id,
             UploadDate = b.UploadDate,
@@ -257,7 +259,7 @@ public class AuditService : IAuditService
             PendingCount = b.TotalCount - b.ProcessedCount,
             Status = b.Status,
             UploadedBy = b.UploadedBy
-        }).ToList();
+        }).ToList(), totalCount);
     }
 
     public async Task<List<AuditCaseResultDto>> GetBatchCases(int batchId)

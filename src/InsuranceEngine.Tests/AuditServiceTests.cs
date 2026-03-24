@@ -117,11 +117,11 @@ public class AuditServiceTests
         await _auditService.ProcessSinglePolicy("POL012", "PayoutVerification", "user1");
 
         // Filter by audit type
-        var payoutCases = await _auditService.GetCases("PayoutVerification", null, null, 1, 50);
-        Assert.That(payoutCases.Count, Is.EqualTo(2));
+        var payoutResult = await _auditService.GetCases("PayoutVerification", null, null, 1, 50);
+        Assert.That(payoutResult.Data.Count, Is.EqualTo(2));
 
-        var bonusCases = await _auditService.GetCases("AdditionBonus", null, null, 1, 50);
-        Assert.That(bonusCases.Count, Is.EqualTo(1));
+        var bonusResult = await _auditService.GetCases("AdditionBonus", null, null, 1, 50);
+        Assert.That(bonusResult.Data.Count, Is.EqualTo(1));
     }
 
     [Test]
@@ -131,11 +131,11 @@ public class AuditServiceTests
         await _auditService.ProcessSinglePolicy("POL021", "PayoutVerification", "user1");
         await _auditService.ApproveCase(case1.Id, null, "approver");
 
-        var pendingCases = await _auditService.GetCases(null, "Pending", null, 1, 50);
-        Assert.That(pendingCases.Count, Is.EqualTo(1));
+        var pendingResult = await _auditService.GetCases(null, "Pending", null, 1, 50);
+        Assert.That(pendingResult.Data.Count, Is.EqualTo(1));
 
-        var approvedCases = await _auditService.GetCases(null, "Approved", null, 1, 50);
-        Assert.That(approvedCases.Count, Is.EqualTo(1));
+        var approvedResult = await _auditService.GetCases(null, "Approved", null, 1, 50);
+        Assert.That(approvedResult.Data.Count, Is.EqualTo(1));
     }
 
     [Test]
@@ -175,9 +175,9 @@ public class AuditServiceTests
         });
         await _db.SaveChangesAsync();
 
-        var batches = await _auditService.GetBatches(null, 1, 50);
-        Assert.That(batches.Count, Is.GreaterThanOrEqualTo(1));
-        Assert.That(batches[0].FileName, Is.EqualTo("test.csv"));
+        var batchResult = await _auditService.GetBatches(null, 1, 50);
+        Assert.That(batchResult.Data.Count, Is.GreaterThanOrEqualTo(1));
+        Assert.That(batchResult.Data[0].FileName, Is.EqualTo("test.csv"));
     }
 
     [Test]

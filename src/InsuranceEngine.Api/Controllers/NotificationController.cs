@@ -20,22 +20,33 @@ public class NotificationController : ControllerBase
 
     /// <summary>Get unread notifications for the current user.</summary>
     [HttpGet]
-    public async Task<IActionResult> GetUnread()
+    public async Task<IActionResult> GetUnread(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = User.Identity?.Name ?? string.Empty;
         if (string.IsNullOrEmpty(userId))
-            return Ok(Array.Empty<object>());
+            return Ok(new { data = Array.Empty<object>(), totalCount = 0, page, pageSize });
 
-        var notifications = await _notificationService.GetUnread(userId);
-        return Ok(notifications.Select(n => new
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
+        var (notifications, totalCount) = await _notificationService.GetUnread(userId, page, pageSize);
+        return Ok(new
         {
-            n.Id,
-            n.Message,
-            n.RelatedModule,
-            n.RelatedId,
-            n.IsRead,
-            n.CreatedAt
-        }));
+            data = notifications.Select(n => new
+            {
+                n.Id,
+                n.Message,
+                n.RelatedModule,
+                n.RelatedId,
+                n.IsRead,
+                n.CreatedAt
+            }),
+            totalCount,
+            page,
+            pageSize
+        });
     }
 
     /// <summary>Mark a specific notification as read.</summary>

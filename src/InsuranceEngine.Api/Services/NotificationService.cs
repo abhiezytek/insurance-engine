@@ -15,13 +15,17 @@ public class NotificationService : INotificationService
         _logger = logger;
     }
 
-    public async Task<List<Notification>> GetUnread(string userId)
+    public async Task<(List<Notification> Data, int TotalCount)> GetUnread(string userId, int page = 1, int pageSize = 20)
     {
-        return await _db.Notifications.AsNoTracking()
+        var query = _db.Notifications.AsNoTracking()
             .Where(n => n.UserId == userId && !n.IsRead)
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(50)
+            .OrderByDescending(n => n.CreatedAt);
+        var totalCount = await query.CountAsync();
+        var data = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+        return (data, totalCount);
     }
 
     public async Task MarkAsRead(int notificationId, string userId)

@@ -66,12 +66,17 @@ public class UserMgmtController : ControllerBase
 
     /// <summary>List users with optional search, status, and role filters.</summary>
     [HttpGet("users")]
-    [ProducesResponseType(typeof(IEnumerable<UserMaster>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsers(
         [FromQuery] string? search,
         [FromQuery] string? status,
-        [FromQuery] int? roleId)
+        [FromQuery] int? roleId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
         var query = _db.UserMasters
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .AsNoTracking().AsQueryable();
@@ -91,8 +96,11 @@ public class UserMgmtController : ControllerBase
         if (roleId.HasValue)
             query = query.Where(u => u.UserRoles.Any(ur => ur.RoleId == roleId.Value));
 
-        var users = await query.OrderBy(u => u.FullName).ToListAsync();
-        return Ok(users);
+        var totalCount = await query.CountAsync();
+        var users = await query.OrderBy(u => u.FullName)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync();
+        return Ok(new { data = users, totalCount, page, pageSize });
     }
 
     /// <summary>Get a single user by ID.</summary>
@@ -195,14 +203,25 @@ public class UserMgmtController : ControllerBase
 
     /// <summary>List all roles with their module access.</summary>
     [HttpGet("roles")]
-    [ProducesResponseType(typeof(IEnumerable<RoleMaster>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetRoles() =>
-        Ok(await _db.RoleMasters
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRoles(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
+        var query = _db.RoleMasters
             .Include(r => r.ModuleAccess).ThenInclude(ma => ma.Module)
             .Include(r => r.ModuleAccess).ThenInclude(ma => ma.SubModule)
-            .AsNoTracking()
+            .AsNoTracking();
+        var totalCount = await query.CountAsync();
+        var roles = await query
             .OrderBy(r => r.RoleName)
-            .ToListAsync());
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync();
+        return Ok(new { data = roles, totalCount, page, pageSize });
+    }
 
     /// <summary>Update an existing role.</summary>
     [HttpPut("roles/{id:int}")]
@@ -241,18 +260,26 @@ public class UserMgmtController : ControllerBase
 
     /// <summary>Get the full role × module permission matrix.</summary>
     [HttpGet("access-matrix")]
-    [ProducesResponseType(typeof(IEnumerable<RoleModuleAccess>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAccessMatrix()
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAccessMatrix(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
     {
-        var matrix = await _db.RoleModuleAccesses
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
+        var query = _db.RoleModuleAccesses
             .Include(r => r.Role)
             .Include(r => r.Module)
             .Include(r => r.SubModule)
-            .AsNoTracking()
+            .AsNoTracking();
+        var totalCount = await query.CountAsync();
+        var matrix = await query
             .OrderBy(r => r.Role.RoleName)
             .ThenBy(r => r.Module.ModuleName)
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync();
-        return Ok(matrix);
+        return Ok(new { data = matrix, totalCount, page, pageSize });
     }
 
     /// <summary>Batch-update access matrix permissions.</summary>
