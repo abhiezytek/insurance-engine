@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { PermissionProvider, usePermission } from './context/PermissionContext';
 import { api } from './api';
 import LoginPage from './components/LoginPage';
+import ForcePasswordChange from './components/ForcePasswordChange';
 import Dashboard from './components/Dashboard';
 import BenefitIllustration from './components/BenefitIllustration';
 import UlipIllustration from './components/UlipIllustration';
@@ -424,7 +425,8 @@ function AppInner() {
 // Root — login gate
 // ---------------------------------------------------------------------------
 function AppWithAuth() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, forcePasswordChange } = useAuth();
+  if (forcePasswordChange) return <ForcePasswordChange />;
   return isAuthenticated ? <AppInner /> : <LoginPage />;
 }
 

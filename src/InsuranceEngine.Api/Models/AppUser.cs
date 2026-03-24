@@ -8,4 +8,6 @@ public class AppUser
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = "User";
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+    public bool ForceChangePassword { get; set; }
+    public DateTime? PasswordChangedOn { get; set; }
 }
