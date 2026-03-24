@@ -195,6 +195,13 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     }
 });
 
+app.MapGet("/api/health", () => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    version = "1.0.0"
+}));
+
 // Apply migrations and seed data on startup
 using (var scope = app.Services.CreateScope())
 {
