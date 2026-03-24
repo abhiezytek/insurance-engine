@@ -6,9 +6,9 @@ using Microsoft.Extensions.Logging;
 namespace InsuranceEngine.Api.Security;
 
 /// <summary>
-/// RBAC guard that checks the user's role from JWT claims first,
-/// falling back to the X-Role header for backward compatibility.
-/// JWT claims are the preferred and secure source of role information.
+/// RBAC guard that checks the user's role from JWT claims.
+/// The X-Role header fallback has been removed for production security.
+/// All role information must come from the signed JWT token.
 /// </summary>
 public sealed class RequireRoleHeaderAttribute : ActionFilterAttribute
 {
@@ -29,7 +29,16 @@ public sealed class RequireRoleHeaderAttribute : ActionFilterAttribute
 
         var logger = context.HttpContext.RequestServices.GetService(typeof(ILogger<RequireRoleHeaderAttribute>)) as ILogger;
 
-        // 1. Prefer role from JWT claims (secure — cannot be spoofed)
+        // Log deprecation warning if any client still sends X-Role header
+        if (context.HttpContext.Request.Headers.ContainsKey("X-Role"))
+        {
+            logger?.LogWarning(
+                "Deprecated X-Role header used by {IP} on {Path}. Migrate to JWT Bearer token.",
+                context.HttpContext.Connection.RemoteIpAddress,
+                context.HttpContext.Request.Path);
+        }
+
+        // Check role from JWT claims only (secure — cannot be spoofed)
         var jwtRoles = context.HttpContext.User?.Claims
             .Where(c => c.Type == ClaimTypes.Role || c.Type == "role")
             .Select(c => c.Value.ToLowerInvariant())
@@ -43,20 +52,9 @@ public sealed class RequireRoleHeaderAttribute : ActionFilterAttribute
             return;
         }
 
-        // 2. Fall back to X-Role header for backward compatibility with legacy clients
-        var headerRole = context.HttpContext.Request.Headers["X-Role"].FirstOrDefault();
-        if (headerRole != null && _roles.Contains(headerRole.ToLowerInvariant()))
-        {
-            logger?.LogInformation("RequireRole allow (header): path={Path} role={Role}",
-                context.HttpContext.Request.Path, headerRole);
-            base.OnActionExecuting(context);
-            return;
-        }
-
-        logger?.LogWarning("RequireRole forbid: path={Path} required={Required} jwt={JwtRoles} header={Header}",
+        logger?.LogWarning("RequireRole forbid: path={Path} required={Required} jwt={JwtRoles}",
             context.HttpContext.Request.Path, string.Join(",", _roles),
-            jwtRoles.Count > 0 ? string.Join(",", jwtRoles) : "<none>",
-            headerRole ?? "<missing>");
+            jwtRoles.Count > 0 ? string.Join(",", jwtRoles) : "<none>");
         context.Result = new ForbidResult();
     }
 }

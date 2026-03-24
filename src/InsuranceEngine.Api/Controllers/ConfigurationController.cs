@@ -1,6 +1,7 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Security;
+using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,16 +20,19 @@ public class ConfigurationController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
     private readonly ILogger<ConfigurationController> _logger;
+    private readonly IActivityAuditService _audit;
 
-    public ConfigurationController(InsuranceDbContext db, ILogger<ConfigurationController> logger)
+    public ConfigurationController(InsuranceDbContext db, ILogger<ConfigurationController> logger, IActivityAuditService audit)
     {
         _db = db;
         _logger = logger;
+        _audit = audit;
     }
 
     private void LogRequest(string path, int status, int? count = null)
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims
+            .FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         _logger.LogInformation("Configuration request {Path} status={Status} role={Role} count={Count}",
             path, status, role ?? "<none>", count);
     }
@@ -143,6 +147,13 @@ public class ConfigurationController : ControllerBase
 
         _logger.LogInformation("Formula saved: ProductCode={ProductCode} UIN={Uin} Key={Key} by {User}",
             dto.ProductCode, dto.Uin, dto.FormulaKey, dto.ChangedBy);
+
+        var previousExpression = previousActive.FirstOrDefault()?.FormulaRuleJson;
+        await _audit.LogAsync("Configuration", "FormulaUpdated",
+            recordId: $"{dto.ProductCode}/{dto.Uin}/{dto.FormulaKey}",
+            oldValue: previousExpression,
+            newValue: dto.FormulaExpression);
+
         return CreatedAtAction(nameof(GetFormulaHistory), new { productCode = dto.ProductCode, uin = dto.Uin, formulaKey = dto.FormulaKey }, formula);
     }
 
@@ -197,6 +208,13 @@ public class ConfigurationController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Formula restored from id={SourceId} to new id={NewId}", source.Id, restored.Id);
+
+        var previousExpression = currentActive.FirstOrDefault()?.FormulaRuleJson;
+        await _audit.LogAsync("Configuration", "FormulaRestored",
+            recordId: $"{source.ProductName}/{source.Uin}/{source.FormulaType}",
+            oldValue: previousExpression,
+            newValue: source.FormulaRuleJson);
+
         return CreatedAtAction(nameof(GetFormulaHistory),
             new { productCode = string.Empty, uin = source.Uin, formulaKey = source.FormulaType }, restored);
     }
@@ -523,6 +541,11 @@ public class ConfigurationController : ControllerBase
         await _db.SaveChangesAsync();
         _logger.LogInformation("Bulk factor update: type={FactorType} productCode={ProductCode} uin={Uin} updated={Count} errors={Errors}",
             dto.FactorType, dto.ProductCode, dto.Uin, updatedCount, errors.Count);
+
+        await _audit.LogAsync("Configuration", "FactorUpdated",
+            recordId: $"{dto.FactorType}/{dto.ProductCode}/{dto.Uin}",
+            newValue: $"Updated {updatedCount} rows");
+
         return Ok(new BulkFactorUpdateResult(updatedCount, errors));
     }
 
@@ -559,6 +582,11 @@ public class ConfigurationController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Integration config updated: id={Id} name={Name}", id, dto.ConfigName);
+
+        await _audit.LogAsync("Configuration", "IntegrationConfigUpdated",
+            recordId: id.ToString(),
+            newValue: dto.ConfigName);
+
         return Ok(config);
     }
 

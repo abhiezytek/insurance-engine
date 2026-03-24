@@ -1,6 +1,7 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Security;
+using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,11 +18,13 @@ public class UserMgmtController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
     private readonly ILogger<UserMgmtController> _logger;
+    private readonly IActivityAuditService _audit;
 
-    public UserMgmtController(InsuranceDbContext db, ILogger<UserMgmtController> logger)
+    public UserMgmtController(InsuranceDbContext db, ILogger<UserMgmtController> logger, IActivityAuditService audit)
     {
         _db = db;
         _logger = logger;
+        _audit = audit;
     }
 
     // -------------------------------------------------------------------------
@@ -57,6 +60,7 @@ public class UserMgmtController : ControllerBase
         }
 
         _logger.LogInformation("User created Id={UserId} Email={Email}", user.Id, user.Email);
+        await _audit.LogAsync("UserMgmt", "UserCreated", recordId: user.Id.ToString(), newValue: user.Email);
         return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
     }
 
@@ -132,6 +136,7 @@ public class UserMgmtController : ControllerBase
 
         await _db.SaveChangesAsync();
         _logger.LogInformation("User updated Id={UserId}", user.Id);
+        await _audit.LogAsync("UserMgmt", "UserUpdated", recordId: user.Id.ToString());
         return Ok(user);
     }
 
@@ -146,6 +151,7 @@ public class UserMgmtController : ControllerBase
         user.Status = "Inactive";
         await _db.SaveChangesAsync();
         _logger.LogInformation("User deactivated Id={UserId}", user.Id);
+        await _audit.LogAsync("UserMgmt", "UserDeactivated", recordId: user.Id.ToString());
         return Ok(user);
     }
 
@@ -161,6 +167,7 @@ public class UserMgmtController : ControllerBase
         user.ForceChangePassword = true;
         await _db.SaveChangesAsync();
         _logger.LogInformation("Password reset for UserId={UserId}", user.Id);
+        await _audit.LogAsync("Auth", "PasswordReset", recordId: user.Id.ToString());
         return Ok(new { message = "Password has been reset." });
     }
 
@@ -182,6 +189,7 @@ public class UserMgmtController : ControllerBase
         _db.RoleMasters.Add(role);
         await _db.SaveChangesAsync();
         _logger.LogInformation("Role created Id={RoleId} Name={RoleName}", role.Id, role.RoleName);
+        await _audit.LogAsync("UserMgmt", "RoleCreated", recordId: role.Id.ToString(), newValue: role.RoleName);
         return CreatedAtAction(nameof(GetRoles), null, role);
     }
 
@@ -207,6 +215,7 @@ public class UserMgmtController : ControllerBase
         role.Description = dto.Description;
         await _db.SaveChangesAsync();
         _logger.LogInformation("Role updated Id={RoleId}", role.Id);
+        await _audit.LogAsync("UserMgmt", "RoleUpdated", recordId: role.Id.ToString(), newValue: dto.RoleName);
         return Ok(role);
     }
 
@@ -221,6 +230,7 @@ public class UserMgmtController : ControllerBase
         role.IsActive = false;
         await _db.SaveChangesAsync();
         _logger.LogInformation("Role deactivated Id={RoleId}", role.Id);
+        await _audit.LogAsync("UserMgmt", "RoleDeactivated", recordId: role.Id.ToString());
         return Ok(role);
     }
 
@@ -282,6 +292,7 @@ public class UserMgmtController : ControllerBase
 
         await _db.SaveChangesAsync();
         _logger.LogInformation("Access matrix updated, {Count} entries", saved.Count);
+        await _audit.LogAsync("UserMgmt", "PermissionsUpdated", newValue: $"{saved.Count} entries updated");
         return Ok(saved);
     }
 

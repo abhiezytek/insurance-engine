@@ -11,8 +11,13 @@ namespace InsuranceEngine.Api.Controllers;
 public class BenefitIllustrationController : ControllerBase
 {
     private readonly IBenefitCalculationService _svc;
+    private readonly IActivityAuditService _audit;
 
-    public BenefitIllustrationController(IBenefitCalculationService svc) => _svc = svc;
+    public BenefitIllustrationController(IBenefitCalculationService svc, IActivityAuditService audit)
+    {
+        _svc = svc;
+        _audit = audit;
+    }
 
     /// <summary>
     /// Returns product configuration: allowed PPT values, PT options per PPT,
@@ -63,6 +68,8 @@ public class BenefitIllustrationController : ControllerBase
         if (request.EntryAge < 0 || request.EntryAge > 65) return BadRequest("Entry age must be between 0 and 65.");
 
         var result = await _svc.CalculateAsync(request);
+        await _audit.LogAsync("BI", "GenerateIllustration",
+            recordId: $"{request.Option ?? "Default"}/PPT{request.Ppt}/PT{request.PolicyTerm}");
         return Ok(result);
     }
 

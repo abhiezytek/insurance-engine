@@ -16,12 +16,14 @@ public class YpygController : ControllerBase
     private readonly InsuranceDbContext _db;
     private readonly IBenefitCalculationService _calcService;
     private readonly IUlipCalculationService _ulipService;
+    private readonly IActivityAuditService _audit;
 
-    public YpygController(InsuranceDbContext db, IBenefitCalculationService calcService, IUlipCalculationService ulipService)
+    public YpygController(InsuranceDbContext db, IBenefitCalculationService calcService, IUlipCalculationService ulipService, IActivityAuditService audit)
     {
         _db = db;
         _calcService = calcService;
         _ulipService = ulipService;
+        _audit = audit;
     }
 
     /// <summary>
@@ -199,6 +201,7 @@ public class YpygController : ControllerBase
         };
 
         await LogCalculation("YPYG-Endowment", req, response);
+        await _audit.LogAsync("YPYG", "Calculate", recordId: req.PolicyNumber ?? req.ProductCode);
         return Ok(response);
     }
 
@@ -303,6 +306,7 @@ public class YpygController : ControllerBase
         };
 
         await LogCalculation("YPYG-ULIP", req, response);
+        await _audit.LogAsync("YPYG", "Calculate", recordId: req.PolicyNumber ?? req.ProductCode);
         return Ok(response);
     }
 

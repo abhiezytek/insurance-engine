@@ -53,6 +53,8 @@ builder.Services.AddScoped<IBenefitCalculationService, BenefitCalculationService
 builder.Services.AddScoped<IUlipCalculationService, UlipCalculationService>();
 builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IActivityAuditService, ActivityAuditService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<InsuranceDbContext>("database");

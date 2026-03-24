@@ -216,6 +216,11 @@ public class InsuranceDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.EventType).HasMaxLength(100);
+            e.Property(x => x.Module).HasMaxLength(50);
+            e.Property(x => x.Action).HasMaxLength(100);
+            e.Property(x => x.RecordId).HasMaxLength(100);
+            e.Property(x => x.IpAddress).HasMaxLength(50);
+            e.Property(x => x.Status).HasMaxLength(20);
         });
 
         // ── Module access control ──
