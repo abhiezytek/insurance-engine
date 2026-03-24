@@ -588,7 +588,10 @@ public class PayoutService : IPayoutService
     private static string CsvEscape(string value)
     {
         if (string.IsNullOrEmpty(value)) return string.Empty;
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+        // Prevent CSV formula injection
+        if (value.Length > 0 && (value[0] == '=' || value[0] == '+' || value[0] == '-' || value[0] == '@'))
+            value = "'" + value;
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
     }

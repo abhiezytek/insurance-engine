@@ -84,6 +84,9 @@ public class PayoutController : ControllerBase
     [ProducesResponseType(typeof(List<PayoutCaseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> BulkCheckerApprove([FromBody] PayoutBulkDecisionRequest req)
     {
+        if (req.CaseIds.Count > 100)
+            return BadRequest(new { error = "Maximum 100 cases per bulk request." });
+
         var userId = User.Identity?.Name ?? "Anonymous";
         var results = new List<PayoutCaseDto>();
         foreach (var caseId in req.CaseIds)
@@ -99,6 +102,9 @@ public class PayoutController : ControllerBase
     [ProducesResponseType(typeof(List<PayoutCaseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> BulkAuthorizerApprove([FromBody] PayoutBulkDecisionRequest req)
     {
+        if (req.CaseIds.Count > 100)
+            return BadRequest(new { error = "Maximum 100 cases per bulk request." });
+
         var userId = User.Identity?.Name ?? "Anonymous";
         var results = new List<PayoutCaseDto>();
         foreach (var caseId in req.CaseIds)
@@ -121,6 +127,8 @@ public class PayoutController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
         var result = await _payoutService.GetCases(payoutType, status, inputMode, page, pageSize);
         return Ok(result);
     }
@@ -178,6 +186,15 @@ public class PayoutController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "No file uploaded." });
 
+        var allowedExtensions = new[] { ".csv", ".xlsx", ".xls" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(extension))
+            return BadRequest(new { error = "Only .csv and .xlsx files are supported." });
+
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+        if (file.Length > maxFileSize)
+            return BadRequest(new { error = "File exceeds 10 MB limit." });
+
         var userId = User.Identity?.Name ?? "Anonymous";
         var result = await _payoutService.ProcessUploadedFile(
             file.OpenReadStream(), file.FileName, payoutType, userId);
@@ -201,6 +218,10 @@ public class PayoutController : ControllerBase
         [FromQuery] int? batchId,
         [FromQuery] string format = "CSV")
     {
+        if (!format.Equals("CSV", StringComparison.OrdinalIgnoreCase) &&
+            !format.Equals("JSON", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Invalid format. Use CSV or JSON." });
+
         var userId = User.Identity?.Name ?? "Anonymous";
         var (content, fileName, contentType) = await _payoutService.ExportCases(batchId, format, userId);
         return File(content, contentType, fileName);
