@@ -40,6 +40,12 @@ public class InsuranceDbContext : DbContext
     public DbSet<AuditBatch> AuditBatches => Set<AuditBatch>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
+    // Payout verification module
+    public DbSet<PayoutCase> PayoutCases => Set<PayoutCase>();
+    public DbSet<PayoutBatch> PayoutBatches => Set<PayoutBatch>();
+    public DbSet<PayoutFile> PayoutFiles => Set<PayoutFile>();
+    public DbSet<PayoutWorkflowHistory> PayoutWorkflowHistories => Set<PayoutWorkflowHistory>();
+
     // Module access control
     public DbSet<ModuleMaster> ModuleMasters => Set<ModuleMaster>();
     public DbSet<SubModuleMaster> SubModuleMasters => Set<SubModuleMaster>();
@@ -221,6 +227,54 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.RecordId).HasMaxLength(100);
             e.Property(x => x.IpAddress).HasMaxLength(50);
             e.Property(x => x.Status).HasMaxLength(20);
+        });
+
+        // ── Payout verification module ──
+        modelBuilder.Entity<PayoutCase>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PolicyNumber).HasMaxLength(100).IsRequired();
+            e.Property(x => x.PayoutType).HasMaxLength(50);
+            e.Property(x => x.InputMode).HasMaxLength(30);
+            e.Property(x => x.Status).HasMaxLength(30);
+            e.Property(x => x.CoreSystemAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.PrecisionProAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Variance).HasColumnType("decimal(18,2)");
+            e.Property(x => x.VariancePct).HasColumnType("decimal(18,4)");
+            e.Property(x => x.SumAssured).HasColumnType("decimal(18,2)");
+            e.Property(x => x.AnnualPremium).HasColumnType("decimal(18,2)");
+            e.HasOne(x => x.Batch).WithMany(x => x.Cases).HasForeignKey(x => x.BatchId).IsRequired(false);
+            e.HasIndex(x => x.PolicyNumber).HasDatabaseName("IX_PayoutCases_PolicyNumber");
+        });
+
+        modelBuilder.Entity<PayoutBatch>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BatchType).HasMaxLength(30);
+            e.Property(x => x.FileName).HasMaxLength(500);
+            e.Property(x => x.PayoutType).HasMaxLength(50);
+            e.Property(x => x.Status).HasMaxLength(30);
+        });
+
+        modelBuilder.Entity<PayoutFile>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FileName).HasMaxLength(500).IsRequired();
+            e.Property(x => x.FileFormat).HasMaxLength(20);
+            e.Property(x => x.FileType).HasMaxLength(20);
+            e.Property(x => x.StoragePath).HasMaxLength(1000);
+            e.HasOne(x => x.Batch).WithMany().HasForeignKey(x => x.BatchId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<PayoutWorkflowHistory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Action).HasMaxLength(50);
+            e.Property(x => x.FromStatus).HasMaxLength(30);
+            e.Property(x => x.ToStatus).HasMaxLength(30);
+            e.Property(x => x.PushStatus).HasMaxLength(20);
+            e.Property(x => x.PushReferenceNumber).HasMaxLength(200);
+            e.HasOne(x => x.PayoutCase).WithMany(x => x.WorkflowHistory).HasForeignKey(x => x.PayoutCaseId);
         });
 
         // ── Module access control ──

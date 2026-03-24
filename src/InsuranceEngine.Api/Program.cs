@@ -53,6 +53,7 @@ builder.Services.AddScoped<IBenefitCalculationService, BenefitCalculationService
 builder.Services.AddScoped<IUlipCalculationService, UlipCalculationService>();
 builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IPayoutService, PayoutService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActivityAuditService, ActivityAuditService>();
 
