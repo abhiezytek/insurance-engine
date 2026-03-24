@@ -103,7 +103,8 @@ export default function YpygModule({ mode }: { mode: YpygMode }) {
   const [productMap, setProductMap] = useState<YpygProductMap>(DEFAULT_YPYG_PRODUCTS);
   const [form, setForm] = useState<YpygFormState>(buildDefaultForm(DEFAULT_YPYG_PRODUCTS));
   const [policyLookup, setPolicyLookup] = useState<PolicyLookupModel | null>(null);
-  const [parameters, setParameters] = useState<ProductParameter[]>([]);
+  // Parameters are fetched for API use but not rendered on screen
+  const [, setParameters] = useState<ProductParameter[]>([]);
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<YpygResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -348,22 +349,7 @@ export default function YpygModule({ mode }: { mode: YpygMode }) {
               </Field>
             ))}
 
-            {parameters.length > 0 && (
-              <div className="md:col-span-2 border border-slate-100 rounded-lg p-3 bg-slate-50/60 space-y-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase">Config driven inputs</p>
-                {parameters.map(p => (
-                  <Field key={p.id} label={`${p.name}${p.isRequired ? ' *' : ''}`}>
-                    <input
-                      type={p.dataType === 'number' ? 'number' : p.dataType === 'date' ? 'date' : 'text'}
-                      value={paramValues[p.name] ?? ''}
-                      onChange={e => setParamValues(v => ({ ...v, [p.name]: e.target.value }))}
-                      className={INPUT_CLS}
-                      placeholder={p.description}
-                    />
-                  </Field>
-                ))}
-              </div>
-            )}
+            {/* Config driven inputs — hidden from screen per requirements; state and API logic retained */}
           </div>
 
           <div className="flex flex-wrap gap-3 justify-end border-t border-slate-100 pt-3">
@@ -423,7 +409,6 @@ function PolicyAtGlance({
   onDownload: () => void;
 }) {
   const isUlip = product.category === 'ULIP';
-  const policyStatus = result?.policyStatus || form.policyStatus || 'In-Force';
   const premiumPaid = form.policyYear * form.annualPremium;
   const balancePayable = Math.max(form.ppt - form.policyYear, 0) * form.annualPremium;
   const valueTillDate = result?.currentMaturityBenefit ?? 0;
@@ -431,15 +416,6 @@ function PolicyAtGlance({
   const fundValueCurrent = result?.currentFundValue8 ?? result?.currentFundValue4 ?? result?.fundValue8 ?? 0;
   const fundValueProjected = result?.maturityFundValue8 ?? 0;
   const survivalBenefitInstalment = result?.yearlyTable?.[0]?.guaranteedIncome ?? 0;
-  const summaryItems = [
-    ['Policy Number', result?.policyNumber || form.policyNumber || '—'],
-    ['Customer Name', result?.customerName || form.customerName || policy?.customerName || '—'],
-    ['Product', product.displayName],
-    ['UIN', form.uin || '—'],
-    ['Premium Frequency', form.premiumFrequency],
-    ['Premium Status', policy?.premiumStatus || 'Paid'],
-    ['Policy Status', policyStatus],
-  ];
 
   return (
     <div className="bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden">
@@ -464,17 +440,7 @@ function PolicyAtGlance({
       </div>
 
       <div className="p-6 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3">
-          {summaryItems.map(([label, value]) => (
-            <SummaryCell key={label} label={label} value={value} />
-          ))}
-          <SummaryCell label="Premium Payment Term" value={`${result?.premiumPayingTerm ?? form.ppt} yrs`} />
-          <SummaryCell label="Policy Term" value={`${result?.policyTerm ?? form.pt} yrs`} />
-          <SummaryCell label="Risk Cover" value={`₹ ${INR(result?.sumAssuredOnDeath ?? form.sumAssured)}`} />
-          {isUlip && (
-            <SummaryCell label="Fund Option" value={form.fundOption || policy?.investmentStrategy || '—'} />
-          )}
-        </div>
+        {/* Policy detail cards hidden from screen; retained for PDF export and component state */}
 
         <div className="grid sm:grid-cols-2 gap-3">
           <ValueBlock title="Till Date" rows={[
@@ -712,15 +678,6 @@ function Field({ label, helper, span, children }: { label: string; helper?: stri
       <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
       {children}
       {helper && <p className="mt-1 text-[11px] text-slate-400">{helper}</p>}
-    </div>
-  );
-}
-
-function SummaryCell({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-sm font-semibold text-slate-800 mt-1 break-words">{value}</p>
     </div>
   );
 }
