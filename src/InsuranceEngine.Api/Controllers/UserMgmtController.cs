@@ -5,6 +5,7 @@ using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace InsuranceEngine.Api.Controllers;
 
@@ -19,12 +20,14 @@ public class UserMgmtController : ControllerBase
     private readonly InsuranceDbContext _db;
     private readonly ILogger<UserMgmtController> _logger;
     private readonly IActivityAuditService _audit;
+    private readonly IMemoryCache _cache;
 
-    public UserMgmtController(InsuranceDbContext db, ILogger<UserMgmtController> logger, IActivityAuditService audit)
+    public UserMgmtController(InsuranceDbContext db, ILogger<UserMgmtController> logger, IActivityAuditService audit, IMemoryCache cache)
     {
         _db = db;
         _logger = logger;
         _audit = audit;
+        _cache = cache;
     }
 
     // -------------------------------------------------------------------------
@@ -66,15 +69,20 @@ public class UserMgmtController : ControllerBase
 
     /// <summary>List users with optional search, status, and role filters.</summary>
     [HttpGet("users")]
-    [ProducesResponseType(typeof(IEnumerable<UserMaster>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsers(
         [FromQuery] string? search,
         [FromQuery] string? status,
-        [FromQuery] int? roleId)
+        [FromQuery] int? roleId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
         var query = _db.UserMasters
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .AsQueryable();
+            .AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -91,8 +99,11 @@ public class UserMgmtController : ControllerBase
         if (roleId.HasValue)
             query = query.Where(u => u.UserRoles.Any(ur => ur.RoleId == roleId.Value));
 
-        var users = await query.OrderBy(u => u.FullName).ToListAsync();
-        return Ok(users);
+        var totalCount = await query.CountAsync();
+        var users = await query.OrderBy(u => u.FullName)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync();
+        return Ok(new { data = users, totalCount, page, pageSize });
     }
 
     /// <summary>Get a single user by ID.</summary>
@@ -188,6 +199,7 @@ public class UserMgmtController : ControllerBase
         };
         _db.RoleMasters.Add(role);
         await _db.SaveChangesAsync();
+        _cache.Remove("roles_active");
         _logger.LogInformation("Role created Id={RoleId} Name={RoleName}", role.Id, role.RoleName);
         await _audit.LogAsync("UserMgmt", "RoleCreated", recordId: role.Id.ToString(), newValue: role.RoleName);
         return CreatedAtAction(nameof(GetRoles), null, role);
@@ -195,13 +207,29 @@ public class UserMgmtController : ControllerBase
 
     /// <summary>List all roles with their module access.</summary>
     [HttpGet("roles")]
-    [ProducesResponseType(typeof(IEnumerable<RoleMaster>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetRoles() =>
-        Ok(await _db.RoleMasters
-            .Include(r => r.ModuleAccess).ThenInclude(ma => ma.Module)
-            .Include(r => r.ModuleAccess).ThenInclude(ma => ma.SubModule)
-            .OrderBy(r => r.RoleName)
-            .ToListAsync());
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRoles(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
+        if (!_cache.TryGetValue("roles_active", out List<RoleMaster>? allRoles) || allRoles is null)
+        {
+            allRoles = await _db.RoleMasters
+                .Include(r => r.ModuleAccess).ThenInclude(ma => ma.Module)
+                .Include(r => r.ModuleAccess).ThenInclude(ma => ma.SubModule)
+                .AsNoTracking()
+                .OrderBy(r => r.RoleName)
+                .ToListAsync();
+            _cache.Set("roles_active", allRoles, TimeSpan.FromMinutes(30));
+        }
+
+        var totalCount = allRoles.Count;
+        var roles = allRoles.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        return Ok(new { data = roles, totalCount, page, pageSize });
+    }
 
     /// <summary>Update an existing role.</summary>
     [HttpPut("roles/{id:int}")]
@@ -214,6 +242,7 @@ public class UserMgmtController : ControllerBase
         role.RoleName = dto.RoleName;
         role.Description = dto.Description;
         await _db.SaveChangesAsync();
+        _cache.Remove("roles_active");
         _logger.LogInformation("Role updated Id={RoleId}", role.Id);
         await _audit.LogAsync("UserMgmt", "RoleUpdated", recordId: role.Id.ToString(), newValue: dto.RoleName);
         return Ok(role);
@@ -229,6 +258,7 @@ public class UserMgmtController : ControllerBase
         if (role is null) return NotFound();
         role.IsActive = false;
         await _db.SaveChangesAsync();
+        _cache.Remove("roles_active");
         _logger.LogInformation("Role deactivated Id={RoleId}", role.Id);
         await _audit.LogAsync("UserMgmt", "RoleDeactivated", recordId: role.Id.ToString());
         return Ok(role);
@@ -240,17 +270,26 @@ public class UserMgmtController : ControllerBase
 
     /// <summary>Get the full role × module permission matrix.</summary>
     [HttpGet("access-matrix")]
-    [ProducesResponseType(typeof(IEnumerable<RoleModuleAccess>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAccessMatrix()
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAccessMatrix(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
     {
-        var matrix = await _db.RoleModuleAccesses
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
+        var query = _db.RoleModuleAccesses
             .Include(r => r.Role)
             .Include(r => r.Module)
             .Include(r => r.SubModule)
+            .AsNoTracking();
+        var totalCount = await query.CountAsync();
+        var matrix = await query
             .OrderBy(r => r.Role.RoleName)
             .ThenBy(r => r.Module.ModuleName)
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync();
-        return Ok(matrix);
+        return Ok(new { data = matrix, totalCount, page, pageSize });
     }
 
     /// <summary>Batch-update access matrix permissions.</summary>
@@ -313,6 +352,7 @@ public class UserMgmtController : ControllerBase
             .Include(r => r.Role)
             .Include(r => r.Module)
             .Include(r => r.SubModule)
+            .AsNoTracking()
             .Where(r => roleIds.Contains(r.RoleId))
             .ToListAsync();
 

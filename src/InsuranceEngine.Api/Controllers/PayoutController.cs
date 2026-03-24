@@ -126,7 +126,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Get payout cases with optional filters.</summary>
     [HttpGet("cases")]
-    [ProducesResponseType(typeof(List<PayoutCaseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCases(
         [FromQuery] string? payoutType,
         [FromQuery] string? status,
@@ -136,8 +136,8 @@ public class PayoutController : ControllerBase
     {
         pageSize = Math.Min(Math.Max(pageSize, 1), 100);
         page = Math.Max(page, 1);
-        var result = await _payoutService.GetCases(payoutType, status, inputMode, page, pageSize);
-        return Ok(result);
+        var (data, totalCount) = await _payoutService.GetCases(payoutType, status, inputMode, page, pageSize);
+        return Ok(new { data, totalCount, page, pageSize });
     }
 
     /// <summary>Payout dashboard summary statistics.</summary>
@@ -151,14 +151,16 @@ public class PayoutController : ControllerBase
 
     /// <summary>Get payout batches.</summary>
     [HttpGet("batches")]
-    [ProducesResponseType(typeof(List<PayoutBatchDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBatches(
         [FromQuery] string? payoutType,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var result = await _payoutService.GetBatches(payoutType, page, pageSize);
-        return Ok(result);
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+        var (data, totalCount) = await _payoutService.GetBatches(payoutType, page, pageSize);
+        return Ok(new { data, totalCount, page, pageSize });
     }
 
     /// <summary>Get cases for a specific batch.</summary>

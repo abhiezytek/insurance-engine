@@ -138,6 +138,7 @@ public class InsuranceDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Factor).HasColumnType("decimal(18,4)");
+            e.HasIndex(x => new { x.Ppt, x.Pt, x.Option }).HasDatabaseName("IX_GmbFactors_Ppt_Pt_Option");
         });
         modelBuilder.Entity<GsvFactor>(e =>
         {
@@ -153,7 +154,11 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.Factor2).HasColumnType("decimal(18,4)");
             e.HasIndex(x => new { x.Ppt, x.Pt, x.Option, x.PolicyYear }).HasDatabaseName("IX_SsvFactors_Ppt_Pt_Option_PolicyYear");
         });
-        modelBuilder.Entity<LoyaltyFactor>(e => e.HasKey(x => x.Id));
+        modelBuilder.Entity<LoyaltyFactor>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Ppt).HasDatabaseName("IX_LoyaltyFactors_Ppt");
+        });
         modelBuilder.Entity<DeferredIncomeFactor>(e => e.HasKey(x => x.Id));
 
         modelBuilder.Entity<MortalityRate>(e =>
@@ -203,6 +208,9 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.InputMode).HasMaxLength(20);
             e.Property(x => x.Status).HasMaxLength(20);
             e.HasOne(x => x.Batch).WithMany(x => x.Cases).HasForeignKey(x => x.BatchId).IsRequired(false);
+            e.HasIndex(x => x.Status).HasDatabaseName("IX_AuditCases_Status");
+            e.HasIndex(x => x.AuditType).HasDatabaseName("IX_AuditCases_AuditType");
+            e.HasIndex(x => x.CreatedAt).HasDatabaseName("IX_AuditCases_CreatedAt");
         });
 
         modelBuilder.Entity<AuditDecision>(e =>
@@ -230,6 +238,10 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.RecordId).HasMaxLength(100);
             e.Property(x => x.IpAddress).HasMaxLength(50);
             e.Property(x => x.Status).HasMaxLength(20);
+            e.HasIndex(x => new { x.Module, x.Action }).HasDatabaseName("IX_AuditLogEntries_Module_Action");
+            e.HasIndex(x => x.DoneBy).HasDatabaseName("IX_AuditLogEntries_DoneBy");
+            e.HasIndex(x => x.DoneAt).HasDatabaseName("IX_AuditLogEntries_DoneAt");
+            e.HasIndex(x => x.Status).HasDatabaseName("IX_AuditLogEntries_Status");
         });
 
         // ── Payout verification module ──
@@ -248,6 +260,10 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.AnnualPremium).HasColumnType("decimal(18,2)");
             e.HasOne(x => x.Batch).WithMany(x => x.Cases).HasForeignKey(x => x.BatchId).IsRequired(false);
             e.HasIndex(x => x.PolicyNumber).HasDatabaseName("IX_PayoutCases_PolicyNumber");
+            e.HasIndex(x => x.Status).HasDatabaseName("IX_PayoutCases_Status");
+            e.HasIndex(x => x.PayoutType).HasDatabaseName("IX_PayoutCases_PayoutType");
+            e.HasIndex(x => x.CreatedAt).HasDatabaseName("IX_PayoutCases_CreatedAt");
+            e.HasIndex(x => x.CreatedBy).HasDatabaseName("IX_PayoutCases_CreatedBy");
         });
 
         modelBuilder.Entity<PayoutBatch>(e =>
@@ -257,6 +273,8 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.FileName).HasMaxLength(500);
             e.Property(x => x.PayoutType).HasMaxLength(50);
             e.Property(x => x.Status).HasMaxLength(30);
+            e.HasIndex(x => x.Status).HasDatabaseName("IX_PayoutBatches_Status");
+            e.HasIndex(x => x.CreatedAt).HasDatabaseName("IX_PayoutBatches_CreatedAt");
         });
 
         modelBuilder.Entity<PayoutFile>(e =>
@@ -289,6 +307,7 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.RelatedModule).HasMaxLength(50);
             e.Property(x => x.RelatedId).HasMaxLength(50);
             e.HasIndex(x => new { x.UserId, x.IsRead });
+            e.HasIndex(x => x.CreatedAt).HasDatabaseName("IX_Notifications_CreatedAt");
         });
 
         // ── Module access control ──
@@ -335,6 +354,7 @@ public class InsuranceDbContext : DbContext
             e.HasKey(x => x.Id);
             e.HasOne(x => x.User).WithMany(x => x.UserRoles).HasForeignKey(x => x.UserId);
             e.HasOne(x => x.Role).WithMany().HasForeignKey(x => x.RoleId);
+            e.HasIndex(x => x.RoleId).HasDatabaseName("IX_UserRoles_RoleId");
         });
 
         modelBuilder.Entity<ClientMaster>(e =>
@@ -355,6 +375,8 @@ public class InsuranceDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Uin).HasMaxLength(100);
             e.Property(x => x.FormulaType).HasMaxLength(100);
+            e.HasIndex(x => new { x.ProductName, x.Uin, x.FormulaType, x.IsActive })
+                .HasDatabaseName("IX_FormulaMasters_Product_Uin_Type_Active");
         });
 
         modelBuilder.Entity<IntegrationConfig>(e =>

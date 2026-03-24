@@ -227,7 +227,7 @@ public class AuditController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<Models.CalculationLog>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent([FromQuery] int top = 10)
     {
-        var logs = await _db.CalculationLogs
+        var logs = await _db.CalculationLogs.AsNoTracking()
             .OrderByDescending(l => l.CreatedDate)
             .Take(top)
             .ToListAsync();
@@ -287,7 +287,7 @@ public class AuditController : ControllerBase
 
     /// <summary>Get audit cases with filters.</summary>
     [HttpGet("cases")]
-    [ProducesResponseType(typeof(List<AuditCaseResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCases(
         [FromQuery] string? auditType,
         [FromQuery] string? status,
@@ -295,8 +295,10 @@ public class AuditController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var result = await _auditService.GetCases(auditType, status, inputMode, page, pageSize);
-        return Ok(result);
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+        var (data, totalCount) = await _auditService.GetCases(auditType, status, inputMode, page, pageSize);
+        return Ok(new { data, totalCount, page, pageSize });
     }
 
     /// <summary>Get audit dashboard summary stats.</summary>
@@ -310,14 +312,16 @@ public class AuditController : ControllerBase
 
     /// <summary>Get audit batches.</summary>
     [HttpGet("batches")]
-    [ProducesResponseType(typeof(List<AuditBatchDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBatches(
         [FromQuery] string? auditType,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var result = await _auditService.GetBatches(auditType, page, pageSize);
-        return Ok(result);
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+        var (data, totalCount) = await _auditService.GetBatches(auditType, page, pageSize);
+        return Ok(new { data, totalCount, page, pageSize });
     }
 
     /// <summary>Get cases for a specific batch.</summary>
@@ -420,17 +424,21 @@ public class AuditController : ControllerBase
 
     /// <summary>Get audit log entries.</summary>
     [HttpGet("logs")]
-    [ProducesResponseType(typeof(List<AuditLogDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLogs(
         [FromQuery] string? module,
         [FromQuery] string? policyNumber,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var query = _db.AuditLogEntries.AsQueryable();
+        pageSize = Math.Min(Math.Max(pageSize, 1), 100);
+        page = Math.Max(page, 1);
+
+        var query = _db.AuditLogEntries.AsNoTracking().AsQueryable();
         if (!string.IsNullOrEmpty(module))
             query = query.Where(l => l.EventType.Contains(module));
 
+        var totalCount = await query.CountAsync();
         var logs = await query
             .OrderByDescending(l => l.DoneAt)
             .Skip((page - 1) * pageSize)
@@ -446,7 +454,7 @@ public class AuditController : ControllerBase
                 DoneAt = l.DoneAt
             })
             .ToListAsync();
-        return Ok(logs);
+        return Ok(new { data = logs, totalCount, page, pageSize });
     }
 
     private static decimal Round(decimal v) =>

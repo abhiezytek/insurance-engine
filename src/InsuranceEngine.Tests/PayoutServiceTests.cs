@@ -197,11 +197,11 @@ public class PayoutServiceTests
         await _payoutService.SearchAndVerify("POL021", "Maturity", "user1");
         await _payoutService.CheckerApprove(case1.Id, null, "checker");
 
-        var pending = await _payoutService.GetCases(null, "Pending", null, 1, 50);
-        Assert.That(pending.Count, Is.EqualTo(1));
+        var pendingResult = await _payoutService.GetCases(null, "Pending", null, 1, 50);
+        Assert.That(pendingResult.Data.Count, Is.EqualTo(1));
 
-        var checkerApproved = await _payoutService.GetCases(null, "CheckerApproved", null, 1, 50);
-        Assert.That(checkerApproved.Count, Is.EqualTo(1));
+        var checkerApprovedResult = await _payoutService.GetCases(null, "CheckerApproved", null, 1, 50);
+        Assert.That(checkerApprovedResult.Data.Count, Is.EqualTo(1));
     }
 
     [Test]
@@ -240,8 +240,8 @@ public class PayoutServiceTests
         });
         await _db.SaveChangesAsync();
 
-        var batches = await _payoutService.GetBatches(null, 1, 50);
-        Assert.That(batches.Count, Is.GreaterThanOrEqualTo(1));
+        var batchResult = await _payoutService.GetBatches(null, 1, 50);
+        Assert.That(batchResult.Data.Count, Is.GreaterThanOrEqualTo(1));
     }
 
     // ─── Batch Generation ────────────────────────────────────────────────────
@@ -455,9 +455,9 @@ public class PayoutServiceTests
         await svc.CreateAsync("user_a", "Test message", "TestModule", "123");
 
         var unread = await svc.GetUnread("user_a");
-        Assert.That(unread.Count, Is.EqualTo(1));
-        Assert.That(unread[0].Message, Is.EqualTo("Test message"));
-        Assert.That(unread[0].IsRead, Is.False);
+        Assert.That(unread.Data.Count, Is.EqualTo(1));
+        Assert.That(unread.Data[0].Message, Is.EqualTo("Test message"));
+        Assert.That(unread.Data[0].IsRead, Is.False);
     }
 
     [Test]
@@ -468,12 +468,12 @@ public class PayoutServiceTests
 
         await svc.CreateAsync("user_b", "To be read");
         var unread = await svc.GetUnread("user_b");
-        Assert.That(unread.Count, Is.EqualTo(1));
+        Assert.That(unread.Data.Count, Is.EqualTo(1));
 
-        await svc.MarkAsRead(unread[0].Id, "user_b");
+        await svc.MarkAsRead(unread.Data[0].Id, "user_b");
 
         var unreadAfter = await svc.GetUnread("user_b");
-        Assert.That(unreadAfter.Count, Is.EqualTo(0));
+        Assert.That(unreadAfter.Data.Count, Is.EqualTo(0));
     }
 
     [Test]
@@ -487,12 +487,12 @@ public class PayoutServiceTests
         await svc.CreateAsync("user_c", "Msg 3");
 
         var unread = await svc.GetUnread("user_c");
-        Assert.That(unread.Count, Is.EqualTo(3));
+        Assert.That(unread.Data.Count, Is.EqualTo(3));
 
         await svc.MarkAllAsRead("user_c");
 
         var unreadAfter = await svc.GetUnread("user_c");
-        Assert.That(unreadAfter.Count, Is.EqualTo(0));
+        Assert.That(unreadAfter.Data.Count, Is.EqualTo(0));
     }
 
     [Test]
@@ -505,11 +505,11 @@ public class PayoutServiceTests
         var unread = await svc.GetUnread("user_d");
 
         // Wrong user tries to mark as read
-        await svc.MarkAsRead(unread[0].Id, "user_e");
+        await svc.MarkAsRead(unread.Data[0].Id, "user_e");
 
         // Still unread for original user
         var stillUnread = await svc.GetUnread("user_d");
-        Assert.That(stillUnread.Count, Is.EqualTo(1));
+        Assert.That(stillUnread.Data.Count, Is.EqualTo(1));
     }
 
     // ─── Seed ────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace InsuranceEngine.Api.Services;
 
@@ -23,6 +24,9 @@ public class BenefitCalculationService : IBenefitCalculationService
     private readonly IBenefitFormulaStrategy _strategy;
 
     public BenefitCalculationService(InsuranceDbContext db) : this(db, new DefaultBenefitFormulaStrategy(db)) { }
+
+    public BenefitCalculationService(InsuranceDbContext db, IMemoryCache cache)
+        : this(db, new DefaultBenefitFormulaStrategy(db, cache)) { }
 
     public BenefitCalculationService(InsuranceDbContext db, IBenefitFormulaStrategy strategy)
     {
@@ -188,8 +192,13 @@ public class BenefitCalculationService : IBenefitCalculationService
 public class DefaultBenefitFormulaStrategy : IBenefitFormulaStrategy
 {
     private readonly InsuranceDbContext _db;
+    private readonly IMemoryCache _cache;
 
-    public DefaultBenefitFormulaStrategy(InsuranceDbContext db) => _db = db;
+    public DefaultBenefitFormulaStrategy(InsuranceDbContext db, IMemoryCache? cache = null)
+    {
+        _db = db;
+        _cache = cache ?? new MemoryCache(new MemoryCacheOptions());
+    }
 
     public async Task<BenefitIllustrationResponse> CalculateAsync(BenefitIllustrationRequest request, FormulaExecutionContext ctx)
     {
@@ -218,12 +227,23 @@ public class DefaultBenefitFormulaStrategy : IBenefitFormulaStrategy
         // SA on death = 10 × annualised premium (derived, override ignored per product rules)
         var sad = BenefitCalculationService.Round(10m * annualisedPremium);
 
-        // Load factor tables up front
-        var gsvFactors = await _db.GsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync();
-        var ssvFactors = await _db.SsvFactors.Where(x => x.Ppt == ppt && x.Pt == pt && x.Option == option).ToListAsync();
-        var loyaltyFactors = await _db.LoyaltyFactors.Where(x => x.Ppt == ppt).ToListAsync();
+        // Load factor tables up front (cached for 15 minutes)
+        var gsvFactors = await GetCachedAsync(
+            $"gsv_factors_{ppt}_{pt}",
+            () => _db.GsvFactors.AsNoTracking().Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync());
+
+        var ssvFactors = await GetCachedAsync(
+            $"ssv_factors_{ppt}_{pt}_{option}",
+            () => _db.SsvFactors.AsNoTracking().Where(x => x.Ppt == ppt && x.Pt == pt && x.Option == option).ToListAsync());
+
+        var loyaltyFactors = await GetCachedAsync(
+            $"loyalty_factors_{ppt}",
+            () => _db.LoyaltyFactors.AsNoTracking().Where(x => x.Ppt == ppt).ToListAsync());
+
         var deferredFactors = option == "Deferred"
-            ? await _db.DeferredIncomeFactors.Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync()
+            ? await GetCachedAsync(
+                $"deferred_factors_{ppt}_{pt}",
+                () => _db.DeferredIncomeFactors.AsNoTracking().Where(x => x.Ppt == ppt && x.Pt == pt).ToListAsync())
             : new List<Models.DeferredIncomeFactor>();
 
         // Twin years
@@ -350,5 +370,15 @@ public class DefaultBenefitFormulaStrategy : IBenefitFormulaStrategy
         if (fallback != null) return fallback.Factor;
 
         throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
+    }
+
+    private async Task<T> GetCachedAsync<T>(string cacheKey, Func<Task<T>> factory)
+    {
+        if (_cache.TryGetValue(cacheKey, out T? cached) && cached is not null)
+            return cached;
+
+        var result = await factory();
+        _cache.Set(cacheKey, result, TimeSpan.FromMinutes(15));
+        return result;
     }
 }

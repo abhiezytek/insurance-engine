@@ -15,13 +15,17 @@ public class NotificationService : INotificationService
         _logger = logger;
     }
 
-    public async Task<List<Notification>> GetUnread(string userId)
+    public async Task<(List<Notification> Data, int TotalCount)> GetUnread(string userId, int page = 1, int pageSize = 20)
     {
-        return await _db.Notifications
+        var query = _db.Notifications.AsNoTracking()
             .Where(n => n.UserId == userId && !n.IsRead)
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(50)
+            .OrderByDescending(n => n.CreatedAt);
+        var totalCount = await query.CountAsync();
+        var data = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+        return (data, totalCount);
     }
 
     public async Task MarkAsRead(int notificationId, string userId)
@@ -65,7 +69,7 @@ public class NotificationService : INotificationService
     public async Task NotifyRoleAsync(string roleName, string message, string? relatedModule = null, string? relatedId = null)
     {
         // Find all users with the specified role
-        var usersInRole = await _db.UserRoles
+        var usersInRole = await _db.UserRoles.AsNoTracking()
             .Where(ur => ur.Role != null && ur.Role.RoleName == roleName)
             .Select(ur => ur.User != null ? ur.User.Email : null)
             .Where(u => u != null)

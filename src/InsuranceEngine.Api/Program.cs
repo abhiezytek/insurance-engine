@@ -14,6 +14,7 @@ builder.Services.AddControllers().AddJsonOptions(opts =>
 {
     opts.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
+builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -118,6 +119,24 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+
+    // Restrict temp (password-change-only) tokens to the change-password endpoint
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnTokenValidated = context =>
+        {
+            var scopeClaim = context.Principal?.FindFirst("scope")?.Value;
+            if (scopeClaim == "password-change-only")
+            {
+                var path = context.HttpContext.Request.Path.Value ?? "";
+                if (!path.Equals("/api/auth/change-password", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Fail("Temporary token can only be used for password change.");
+                }
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
