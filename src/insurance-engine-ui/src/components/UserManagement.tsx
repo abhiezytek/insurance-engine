@@ -18,7 +18,7 @@ import { apiClient } from '../utils/apiClient';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface User {
+interface UserApi {
   id: number;
   fullName: string;
   email: string;
@@ -26,6 +26,18 @@ interface User {
   employeeId?: string;
   department?: string;
   role?: string;
+  status: string;
+}
+
+// Normalised form — optional API fields are coerced to empty strings for controlled inputs
+interface User {
+  id: number;
+  fullName: string;
+  email: string;
+  mobile: string;
+  employeeId: string;
+  department: string;
+  role: string;
   status: string;
 }
 
@@ -187,9 +199,9 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
   const startEdit = (u: User) => {
     setEditingId(u.id);
     setForm({
-      fullName: u.fullName, email: u.email, mobile: u.mobile ?? '',
-      employeeId: u.employeeId ?? '', department: u.department ?? '',
-      role: u.role ?? '', status: u.status,
+      fullName: u.fullName, email: u.email, mobile: u.mobile,
+      employeeId: u.employeeId, department: u.department,
+      role: u.role, status: u.status,
     });
     setCreating(true);
   };
@@ -200,8 +212,8 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
     return (
       u.fullName.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
-      (u.department ?? '').toLowerCase().includes(q) ||
-      (u.role ?? '').toLowerCase().includes(q)
+      u.department.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q)
     );
   });
 
@@ -231,13 +243,13 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
             className="rounded border border-blue-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#007bff]" />
           <input placeholder="Email *" type="email" value={form.email} onChange={e => set('email', e.target.value)}
             className="rounded border border-blue-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#007bff]" />
-          <input placeholder="Mobile" value={form.mobile ?? ''} onChange={e => set('mobile', e.target.value)}
+          <input placeholder="Mobile" value={form.mobile} onChange={e => set('mobile', e.target.value)}
             className="rounded border border-blue-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#007bff]" />
-          <input placeholder="Employee ID" value={form.employeeId ?? ''} onChange={e => set('employeeId', e.target.value)}
+          <input placeholder="Employee ID" value={form.employeeId} onChange={e => set('employeeId', e.target.value)}
             className="rounded border border-blue-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#007bff]" />
-          <input placeholder="Department" value={form.department ?? ''} onChange={e => set('department', e.target.value)}
+          <input placeholder="Department" value={form.department} onChange={e => set('department', e.target.value)}
             className="rounded border border-blue-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#007bff]" />
-          <select value={form.role ?? ''} onChange={e => set('role', e.target.value)}
+          <select value={form.role} onChange={e => set('role', e.target.value)}
             className="rounded border border-blue-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-[#007bff]">
             <option value="">— Select Role —</option>
             {roles.map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
@@ -262,8 +274,8 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
                 <td className="px-3 py-2 text-center font-semibold text-[#004282]">{u.id}</td>
                 <td className="px-3 py-2 text-center">{u.fullName}</td>
                 <td className="px-3 py-2 text-center">{u.email}</td>
-                <td className="px-3 py-2 text-center">{u.department ?? '—'}</td>
-                <td className="px-3 py-2 text-center">{u.role ?? '—'}</td>
+                <td className="px-3 py-2 text-center">{u.department || '—'}</td>
+                <td className="px-3 py-2 text-center">{u.role || '—'}</td>
                 <td className="px-3 py-2 text-center">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold
                     ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{u.status}</span>
@@ -600,7 +612,14 @@ export default function UserManagement() {
 
   // --- data loaders ---
   const loadUsers = useCallback(async () => {
-    setUsers(await safeFetch<User[]>('/api/usermgmt/users', []));
+    const raw = await safeFetch<UserApi[]>('/api/usermgmt/users', []);
+    setUsers(raw.map(u => ({
+      ...u,
+      mobile: u.mobile ?? '',
+      employeeId: u.employeeId ?? '',
+      department: u.department ?? '',
+      role: u.role ?? '',
+    })));
   }, []);
 
   const loadRoles = useCallback(async () => {
