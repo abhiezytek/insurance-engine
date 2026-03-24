@@ -641,10 +641,8 @@ public class AdminController : ControllerBase
 
     private static string BCryptHash(string password)
     {
-        // Simple hash for now — in production use BCrypt.Net
-        using var sha = System.Security.Cryptography.SHA256.Create();
-        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
+        // Delegate to AuthController's PBKDF2 implementation
+        return AuthController.HashPassword(password);
     }
 }
 

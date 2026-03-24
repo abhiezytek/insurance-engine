@@ -1,6 +1,7 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,8 @@ namespace InsuranceEngine.Api.Controllers;
 [ApiController]
 [Route("api/usermgmt")]
 [Produces("application/json")]
-[RequireRoleHeader("Admin")]
+[Authorize(Policy = "CanManageUsers")]
+[RequireRoleHeader("Admin", "SuperAdmin")]
 public class UserMgmtController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
@@ -317,12 +319,9 @@ public class UserMgmtController : ControllerBase
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static string HashPassword(string password)
-    {
-        using var sha = System.Security.Cryptography.SHA256.Create();
-        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
-    }
+    /// <summary>Hash a password using PBKDF2 (same algorithm as AuthController).</summary>
+    private static string HashPassword(string password) =>
+        AuthController.HashPassword(password);
 }
 
 // DTO records for UserMgmt endpoints

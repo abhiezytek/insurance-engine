@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
@@ -5,8 +6,9 @@ using Microsoft.Extensions.Logging;
 namespace InsuranceEngine.Api.Security;
 
 /// <summary>
-/// Lightweight RBAC guard that checks the X-Role header for allowed roles.
-/// This is intentionally header-driven to work with the existing mock auth setup.
+/// RBAC guard that checks the user's role from JWT claims first,
+/// falling back to the X-Role header for backward compatibility.
+/// JWT claims are the preferred and secure source of role information.
 /// </summary>
 public sealed class RequireRoleHeaderAttribute : ActionFilterAttribute
 {
@@ -25,19 +27,36 @@ public sealed class RequireRoleHeaderAttribute : ActionFilterAttribute
             return;
         }
 
-        var headerRole = context.HttpContext.Request.Headers["X-Role"].FirstOrDefault();
-        if (headerRole == null || !_roles.Contains(headerRole.ToLowerInvariant()))
+        var logger = context.HttpContext.RequestServices.GetService(typeof(ILogger<RequireRoleHeaderAttribute>)) as ILogger;
+
+        // 1. Prefer role from JWT claims (secure — cannot be spoofed)
+        var jwtRoles = context.HttpContext.User?.Claims
+            .Where(c => c.Type == ClaimTypes.Role || c.Type == "role")
+            .Select(c => c.Value.ToLowerInvariant())
+            .ToList() ?? new List<string>();
+
+        if (jwtRoles.Any(r => _roles.Contains(r)))
         {
-            var logger = context.HttpContext.RequestServices.GetService(typeof(ILogger<RequireRoleHeaderAttribute>)) as ILogger;
-            logger?.LogWarning("RequireRoleHeader forbid: path={Path} required={Required} provided={Provided}",
-                context.HttpContext.Request.Path, string.Join(",", _roles), headerRole ?? "<missing>");
-            context.Result = new ForbidResult();
+            logger?.LogInformation("RequireRole allow (JWT): path={Path} role={Role}",
+                context.HttpContext.Request.Path, string.Join(",", jwtRoles));
+            base.OnActionExecuting(context);
             return;
         }
 
-        var allowLogger = context.HttpContext.RequestServices.GetService(typeof(ILogger<RequireRoleHeaderAttribute>)) as ILogger;
-        allowLogger?.LogInformation("RequireRoleHeader allow: path={Path} role={Role}", context.HttpContext.Request.Path, headerRole);
+        // 2. Fall back to X-Role header for backward compatibility with legacy clients
+        var headerRole = context.HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        if (headerRole != null && _roles.Contains(headerRole.ToLowerInvariant()))
+        {
+            logger?.LogInformation("RequireRole allow (header): path={Path} role={Role}",
+                context.HttpContext.Request.Path, headerRole);
+            base.OnActionExecuting(context);
+            return;
+        }
 
-        base.OnActionExecuting(context);
+        logger?.LogWarning("RequireRole forbid: path={Path} required={Required} jwt={JwtRoles} header={Header}",
+            context.HttpContext.Request.Path, string.Join(",", _roles),
+            jwtRoles.Count > 0 ? string.Join(",", jwtRoles) : "<none>",
+            headerRole ?? "<missing>");
+        context.Result = new ForbidResult();
     }
 }

@@ -1,6 +1,7 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,7 +13,8 @@ namespace InsuranceEngine.Api.Controllers;
 [ApiController]
 [Route("api/configuration")]
 [Produces("application/json")]
-[RequireRoleHeader("Admin")]
+[Authorize(Policy = "CanEditConfiguration")]
+[RequireRoleHeader("Admin", "SuperAdmin", "Actuary")]
 public class ConfigurationController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
