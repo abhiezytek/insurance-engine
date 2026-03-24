@@ -735,6 +735,10 @@ function FormulaEditor({
           rows={6} spellCheck={false}
           className="w-full font-mono text-xs rounded-lg border border-blue-300 px-3 py-2 focus:ring-2 focus:ring-[#007bff] focus:border-transparent resize-y"
           placeholder="Enter formula expression…" />
+        <div className="flex justify-between text-xs text-slate-400 mt-1">
+          <span>{expression.split('\n').length} line(s)</span>
+          <span>{expression.length} character(s)</span>
+        </div>
       </div>
 
       {/* Operator buttons */}

@@ -87,6 +87,30 @@ const PREDEFINED_ROLES = [
 const MODULES = ['BI', 'YPYG', 'Audit', 'Config', 'UserMgmt', 'Reports'] as const;
 const PERMISSION_KEYS = ['View', 'Execute', 'Approve', 'Download', 'Upload', 'Admin'] as const;
 
+// Role badge color mapping
+const ROLE_COLORS: Record<string, string> = {
+  'super admin':               'bg-purple-100 text-purple-700',
+  'admin':                     'bg-blue-100 text-blue-700',
+  'actuary / product manager': 'bg-green-100 text-green-700',
+  'actuary':                   'bg-green-100 text-green-700',
+  'operations user':           'bg-amber-100 text-amber-700',
+  'operations':                'bg-amber-100 text-amber-700',
+  'read only / viewer':        'bg-slate-100 text-slate-600',
+  'readonly':                  'bg-slate-100 text-slate-600',
+  'audit user':                'bg-cyan-100 text-cyan-700',
+  'auditor':                   'bg-cyan-100 text-cyan-700',
+};
+
+function RoleBadge({ role }: { role: string }) {
+  if (!role) return <span className="text-slate-400">—</span>;
+  const cls = ROLE_COLORS[role.toLowerCase()] ?? 'bg-slate-100 text-slate-600';
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+      {role}
+    </span>
+  );
+}
+
 const EMPTY_USER: Omit<User, 'id'> = {
   fullName: '', email: '', mobile: '', employeeId: '',
   department: '', role: '', status: 'Active',
@@ -267,15 +291,24 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
 
       {filtered.length === 0 ? <EmptyState message="No users available." /> : (
         <table className="w-full text-xs">
-          <THead cols={['ID', 'Full Name', 'Email', 'Department', 'Role', 'Status', 'Actions']} />
+          <THead cols={['', 'Full Name', 'Email', 'Department', 'Role', 'Status', 'Actions']} />
           <tbody className="divide-y divide-slate-100">
-            {filtered.map(u => (
-              <tr key={u.id} className="hover:bg-blue-50/20 text-slate-700">
-                <td className="px-3 py-2 text-center font-semibold text-[#004282]">{u.id}</td>
-                <td className="px-3 py-2 text-center">{u.fullName}</td>
+            {filtered.map(u => {
+              const initials = u.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              const isInactive = u.status !== 'Active';
+              return (
+              <tr key={u.id} className={`hover:bg-blue-50/20 ${isInactive ? 'opacity-60' : ''} text-slate-700`}>
+                <td className="px-3 py-2 text-center">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#004282] text-white text-xs font-bold">
+                    {initials}
+                  </span>
+                </td>
+                <td className={`px-3 py-2 text-center ${isInactive ? 'line-through text-slate-400' : ''}`}>{u.fullName}</td>
                 <td className="px-3 py-2 text-center">{u.email}</td>
                 <td className="px-3 py-2 text-center">{u.department || '—'}</td>
-                <td className="px-3 py-2 text-center">{u.role || '—'}</td>
+                <td className="px-3 py-2 text-center">
+                  <RoleBadge role={u.role} />
+                </td>
                 <td className="px-3 py-2 text-center">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold
                     ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{u.status}</span>
@@ -295,7 +328,8 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}
