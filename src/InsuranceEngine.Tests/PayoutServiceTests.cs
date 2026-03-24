@@ -314,6 +314,92 @@ public class PayoutServiceTests
         Assert.That(jsonText, Does.Contain("POLEXP2"));
     }
 
+    // ─── Maker-Checker Separation (GAP 1.3) ────────────────────────────────────
+
+    [Test]
+    public void CheckerApprove_ThrowsIfSameUserAsMaker()
+    {
+        var caseResult = _payoutService.SearchAndVerify("POLMC01", "Maturity", "maker1").Result;
+
+        // maker1 submitted → maker1 tries to approve → blocked
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _payoutService.CheckerApprove(caseResult.Id, null, "maker1"));
+    }
+
+    [Test]
+    public void CheckerReject_ThrowsIfSameUserAsMaker()
+    {
+        var caseResult = _payoutService.SearchAndVerify("POLMC02", "Maturity", "maker1").Result;
+
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _payoutService.CheckerReject(caseResult.Id, null, "maker1"));
+    }
+
+    [Test]
+    public void AuthorizerApprove_ThrowsIfSameUserAsChecker()
+    {
+        var caseResult = _payoutService.SearchAndVerify("POLMC03", "Maturity", "maker1").Result;
+        _payoutService.CheckerApprove(caseResult.Id, null, "checker1").Wait();
+
+        // checker1 approved at L1 → checker1 tries to authorize → blocked
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _payoutService.AuthorizerApprove(caseResult.Id, null, "checker1"));
+    }
+
+    [Test]
+    public void AuthorizerReject_ThrowsIfSameUserAsChecker()
+    {
+        var caseResult = _payoutService.SearchAndVerify("POLMC04", "Maturity", "maker1").Result;
+        _payoutService.CheckerApprove(caseResult.Id, null, "checker1").Wait();
+
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _payoutService.AuthorizerReject(caseResult.Id, null, "checker1"));
+    }
+
+    [Test]
+    public async Task MakerCheckerAuthorizer_ThreeDistinctUsers_Succeeds()
+    {
+        var created = await _payoutService.SearchAndVerify("POLMC05", "Maturity", "maker1");
+        var checked_ = await _payoutService.CheckerApprove(created.Id, "OK", "checker1");
+        var authorized = await _payoutService.AuthorizerApprove(created.Id, "Final OK", "authorizer1");
+
+        Assert.That(authorized.Status, Is.EqualTo("Authorized"));
+    }
+
+    // ─── File Integrity (GAP 1.5) ────────────────────────────────────────────
+
+    [Test]
+    public async Task ExportCases_CsvFormat_StoresFileHash()
+    {
+        await _payoutService.SearchAndVerify("POLHASH1", "Maturity", "user1");
+
+        var (content, fileName, _) = await _payoutService.ExportCases(null, "CSV", "exporter");
+
+        var exportFiles = await _db.PayoutFiles.Where(f => f.FileType == "Export").ToListAsync();
+        Assert.That(exportFiles.Count, Is.GreaterThanOrEqualTo(1));
+
+        var file = exportFiles.Last();
+        Assert.That(file.FileHash, Is.Not.Null.And.Not.Empty);
+        Assert.That(file.FileHash!.Length, Is.EqualTo(64)); // SHA256 hex = 64 chars
+
+        // Verify hash matches content
+        var expectedHash = System.Security.Cryptography.SHA256.HashData(content);
+        var expectedHex = Convert.ToHexString(expectedHash).ToLowerInvariant();
+        Assert.That(file.FileHash, Is.EqualTo(expectedHex));
+    }
+
+    [Test]
+    public async Task ExportCases_JsonFormat_StoresFileHash()
+    {
+        await _payoutService.SearchAndVerify("POLHASH2", "Maturity", "user1");
+
+        var (content, _, _) = await _payoutService.ExportCases(null, "JSON", "exporter");
+
+        var exportFiles = await _db.PayoutFiles.Where(f => f.FileType == "Export" && f.FileFormat == "JSON").ToListAsync();
+        Assert.That(exportFiles.Count, Is.GreaterThanOrEqualTo(1));
+        Assert.That(exportFiles.Last().FileHash, Is.Not.Null.And.Not.Empty);
+    }
+
     // ─── Seed ────────────────────────────────────────────────────────────────
 
     private void SeedFactorData(InsuranceDbContext db)

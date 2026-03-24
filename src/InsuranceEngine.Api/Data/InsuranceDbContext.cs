@@ -263,6 +263,7 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.FileFormat).HasMaxLength(20);
             e.Property(x => x.FileType).HasMaxLength(20);
             e.Property(x => x.StoragePath).HasMaxLength(1000);
+            e.Property(x => x.FileHash).HasMaxLength(128);
             e.HasOne(x => x.Batch).WithMany().HasForeignKey(x => x.BatchId).IsRequired(false);
         });
 

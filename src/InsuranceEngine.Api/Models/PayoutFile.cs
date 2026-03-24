@@ -12,6 +12,7 @@ public class PayoutFile
     public string GeneratedBy { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
     public string? StoragePath { get; set; }
+    public string? FileHash { get; set; }                             // SHA256 hash for integrity
 
     public PayoutBatch? Batch { get; set; }
 }

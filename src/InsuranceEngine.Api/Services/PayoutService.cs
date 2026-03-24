@@ -1,6 +1,9 @@
+using System.Data;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Dapper;
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
@@ -119,6 +122,10 @@ public class PayoutService : IPayoutService
         if (payoutCase.Status != "Pending")
             throw new InvalidOperationException($"Case {caseId} is not in Pending status (current: {payoutCase.Status}).");
 
+        // GAP 1.3: Maker cannot be checker
+        if (payoutCase.CreatedBy == userId)
+            throw new InvalidOperationException("Maker cannot approve their own submission.");
+
         var fromStatus = payoutCase.Status;
         payoutCase.Status = "CheckerApproved";
         payoutCase.Remarks = remarks;
@@ -146,6 +153,10 @@ public class PayoutService : IPayoutService
 
         if (payoutCase.Status != "Pending")
             throw new InvalidOperationException($"Case {caseId} is not in Pending status (current: {payoutCase.Status}).");
+
+        // GAP 1.3: Maker cannot be checker
+        if (payoutCase.CreatedBy == userId)
+            throw new InvalidOperationException("Maker cannot reject their own submission.");
 
         var fromStatus = payoutCase.Status;
         payoutCase.Status = "CheckerRejected";
@@ -176,6 +187,14 @@ public class PayoutService : IPayoutService
 
         if (payoutCase.Status != "CheckerApproved")
             throw new InvalidOperationException($"Case {caseId} is not in CheckerApproved status (current: {payoutCase.Status}).");
+
+        // GAP 1.3: Checker cannot be authorizer
+        var checkerStep = await _db.PayoutWorkflowHistories
+            .Where(h => h.PayoutCaseId == caseId && h.Action == "CheckerApproved")
+            .OrderByDescending(h => h.PerformedAt)
+            .FirstOrDefaultAsync();
+        if (checkerStep != null && checkerStep.PerformedBy == userId)
+            throw new InvalidOperationException("L1 Checker cannot be L2 Authorizer for the same case.");
 
         var fromStatus = payoutCase.Status;
         payoutCase.Status = "Authorized";
@@ -216,6 +235,14 @@ public class PayoutService : IPayoutService
         if (payoutCase.Status != "CheckerApproved")
             throw new InvalidOperationException($"Case {caseId} is not in CheckerApproved status (current: {payoutCase.Status}).");
 
+        // GAP 1.3: Checker cannot be authorizer
+        var checkerStep = await _db.PayoutWorkflowHistories
+            .Where(h => h.PayoutCaseId == caseId && h.Action == "CheckerApproved")
+            .OrderByDescending(h => h.PerformedAt)
+            .FirstOrDefaultAsync();
+        if (checkerStep != null && checkerStep.PerformedBy == userId)
+            throw new InvalidOperationException("L1 Checker cannot be L2 Authorizer for the same case.");
+
         var fromStatus = payoutCase.Status;
         payoutCase.Status = "Rejected";
         payoutCase.Remarks = remarks;
@@ -236,9 +263,95 @@ public class PayoutService : IPayoutService
         return MapToDto(payoutCase);
     }
 
-    // ─── Queries ─────────────────────────────────────────────────────────────
+    // ─── Queries (using Dapper for read-heavy paths — GAP 1.1) ────────────────
+
+    private IDbConnection? TryGetDbConnection()
+    {
+        try { return _db.Database.GetDbConnection(); }
+        catch { return null; }
+    }
 
     public async Task<List<PayoutCaseDto>> GetCases(string? payoutType, string? status, string? inputMode, int page, int pageSize)
+    {
+        try
+        {
+            return await GetCasesDapper(payoutType, status, inputMode, page, pageSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Dapper cases query failed, falling back to EF Core");
+            return await GetCasesFallback(payoutType, status, inputMode, page, pageSize);
+        }
+    }
+
+    private async Task<List<PayoutCaseDto>> GetCasesDapper(string? payoutType, string? status, string? inputMode, int page, int pageSize)
+    {
+        var conn = TryGetDbConnection();
+        if (conn == null) return await GetCasesFallback(payoutType, status, inputMode, page, pageSize);
+        var sql = new StringBuilder(@"
+            SELECT c.*, w.Id AS WId, w.PayoutCaseId, w.Action, w.FromStatus, w.ToStatus,
+                   w.Remarks AS WRemarks, w.PerformedBy, w.PerformedAt
+            FROM PayoutCases c
+            LEFT JOIN PayoutWorkflowHistories w ON w.PayoutCaseId = c.Id
+            WHERE 1=1");
+
+        var parameters = new DynamicParameters();
+
+        if (!string.IsNullOrWhiteSpace(payoutType))
+        {
+            sql.Append(" AND c.PayoutType = @PayoutType");
+            parameters.Add("PayoutType", payoutType);
+        }
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            sql.Append(" AND c.Status = @Status");
+            parameters.Add("Status", status);
+        }
+        if (!string.IsNullOrWhiteSpace(inputMode))
+        {
+            sql.Append(" AND c.InputMode = @InputMode");
+            parameters.Add("InputMode", inputMode);
+        }
+
+        sql.Append(" ORDER BY c.CreatedAt DESC");
+
+        var caseDict = new Dictionary<int, PayoutCaseDto>();
+
+        await conn.QueryAsync<PayoutCase, PayoutWorkflowHistory?, PayoutCaseDto>(
+            sql.ToString(),
+            (c, w) =>
+            {
+                if (!caseDict.TryGetValue(c.Id, out var dto))
+                {
+                    dto = MapToDto(c);
+                    dto.WorkflowHistory = new List<PayoutWorkflowStepDto>();
+                    caseDict[c.Id] = dto;
+                }
+                if (w != null)
+                {
+                    dto.WorkflowHistory.Add(new PayoutWorkflowStepDto
+                    {
+                        Id = w.Id,
+                        Action = w.Action,
+                        FromStatus = w.FromStatus,
+                        ToStatus = w.ToStatus,
+                        Remarks = w.Remarks,
+                        PerformedBy = w.PerformedBy,
+                        PerformedAt = w.PerformedAt
+                    });
+                }
+                return dto;
+            },
+            parameters,
+            splitOn: "WId");
+
+        return caseDict.Values
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private async Task<List<PayoutCaseDto>> GetCasesFallback(string? payoutType, string? status, string? inputMode, int page, int pageSize)
     {
         var query = _db.PayoutCases.Include(c => c.WorkflowHistory).AsQueryable();
 
@@ -261,7 +374,37 @@ public class PayoutService : IPayoutService
     public async Task<PayoutDashboardDto> GetDashboard()
     {
         var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var conn = TryGetDbConnection();
+        if (conn == null) return await GetDashboardFallback(startOfMonth);
 
+        const string sql = @"
+            SELECT
+                COUNT(*)                                                           AS TotalThisMonth,
+                SUM(CASE WHEN Status = 'Pending'           THEN 1 ELSE 0 END)     AS PendingCount,
+                SUM(CASE WHEN Status = 'CheckerApproved'   THEN 1 ELSE 0 END)     AS CheckerApprovedCount,
+                SUM(CASE WHEN Status = 'Authorized'        THEN 1 ELSE 0 END)     AS AuthorizedCount,
+                SUM(CASE WHEN Status IN ('CheckerRejected','Rejected') THEN 1 ELSE 0 END) AS RejectedCount,
+                SUM(CASE WHEN ABS(VariancePct) <= 1        THEN 1 ELSE 0 END)     AS MatchCount,
+                SUM(CASE WHEN ABS(VariancePct) > 1         THEN 1 ELSE 0 END)     AS MismatchCount,
+                ISNULL(SUM(ABS(Variance)), 0)                                      AS TotalVariance
+            FROM PayoutCases
+            WHERE CreatedAt >= @StartOfMonth";
+
+        try
+        {
+            var result = await conn.QueryFirstOrDefaultAsync<PayoutDashboardDto>(sql, new { StartOfMonth = startOfMonth });
+            return result ?? new PayoutDashboardDto();
+        }
+        catch (Exception ex)
+        {
+            // Fallback for InMemory DB in tests (no SQL Server available)
+            _logger.LogDebug(ex, "Dapper dashboard query failed, falling back to EF Core");
+            return await GetDashboardFallback(startOfMonth);
+        }
+    }
+
+    private async Task<PayoutDashboardDto> GetDashboardFallback(DateTime startOfMonth)
+    {
         var monthCases = await _db.PayoutCases
             .Where(c => c.CreatedAt >= startOfMonth)
             .ToListAsync();
@@ -280,6 +423,35 @@ public class PayoutService : IPayoutService
     }
 
     public async Task<List<PayoutBatchDto>> GetBatches(string? payoutType, int page, int pageSize)
+    {
+        var conn = TryGetDbConnection();
+        if (conn == null) return await GetBatchesFallback(payoutType, page, pageSize);
+        var sql = new StringBuilder("SELECT * FROM PayoutBatches WHERE 1=1");
+        var parameters = new DynamicParameters();
+
+        if (!string.IsNullOrWhiteSpace(payoutType))
+        {
+            sql.Append(" AND PayoutType = @PayoutType");
+            parameters.Add("PayoutType", payoutType);
+        }
+
+        sql.Append(" ORDER BY CreatedAt DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY");
+        parameters.Add("Offset", (page - 1) * pageSize);
+        parameters.Add("PageSize", pageSize);
+
+        try
+        {
+            var batches = await conn.QueryAsync<PayoutBatch>(sql.ToString(), parameters);
+            return batches.Select(MapBatchToDto).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Dapper batches query failed, falling back to EF Core");
+            return await GetBatchesFallback(payoutType, page, pageSize);
+        }
+    }
+
+    private async Task<List<PayoutBatchDto>> GetBatchesFallback(string? payoutType, int page, int pageSize)
     {
         var query = _db.PayoutBatches.AsQueryable();
 
@@ -380,6 +552,13 @@ public class PayoutService : IPayoutService
         _db.PayoutBatches.Add(batch);
         await _db.SaveChangesAsync();
 
+        // Compute SHA256 hash of uploaded file for integrity (GAP 1.5)
+        var uploadBytes = new byte[fileStream.Length];
+        fileStream.Position = 0;
+        await fileStream.ReadExactlyAsync(uploadBytes.AsMemory(0, (int)fileStream.Length));
+        fileStream.Position = 0;
+        var uploadHash = ComputeSha256Hash(uploadBytes);
+
         // Record the uploaded file
         _db.PayoutFiles.Add(new PayoutFile
         {
@@ -389,7 +568,8 @@ public class PayoutService : IPayoutService
             FileType = "Upload",
             FileSizeBytes = fileStream.Length,
             GeneratedBy = userId,
-            GeneratedAt = DateTime.UtcNow
+            GeneratedAt = DateTime.UtcNow,
+            FileHash = uploadHash
         });
         await _db.SaveChangesAsync();
 
@@ -502,7 +682,9 @@ public class PayoutService : IPayoutService
             contentType = "text/csv";
         }
 
-        // Record the exported file
+        // Record the exported file with SHA256 hash for integrity (GAP 1.5)
+        var fileHash = ComputeSha256Hash(content);
+
         _db.PayoutFiles.Add(new PayoutFile
         {
             BatchId = batchId,
@@ -512,7 +694,8 @@ public class PayoutService : IPayoutService
             FileSizeBytes = content.Length,
             RecordCount = cases.Count,
             GeneratedBy = userId,
-            GeneratedAt = DateTime.UtcNow
+            GeneratedAt = DateTime.UtcNow,
+            FileHash = fileHash
         });
         await _db.SaveChangesAsync();
 
@@ -594,5 +777,11 @@ public class PayoutService : IPayoutService
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
+    }
+
+    private static string ComputeSha256Hash(byte[] data)
+    {
+        var hashBytes = SHA256.HashData(data);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 }

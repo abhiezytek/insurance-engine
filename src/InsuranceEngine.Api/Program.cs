@@ -51,7 +51,20 @@ builder.Services.AddScoped<FormulaEngine>();
 builder.Services.AddScoped<ConditionEvaluator>();
 builder.Services.AddScoped<IBenefitCalculationService, BenefitCalculationService>();
 builder.Services.AddScoped<IUlipCalculationService, UlipCalculationService>();
-builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
+
+// Core system gateway: conditional registration (mock vs HTTP)
+var coreSystemConfig = builder.Configuration.GetSection("CoreSystem");
+builder.Services.Configure<CoreSystemConfig>(coreSystemConfig);
+
+if (coreSystemConfig.GetValue<bool>("IsEnabled") && !coreSystemConfig.GetValue<bool>("UseMock"))
+{
+    builder.Services.AddHttpClient<ICoreSystemGateway, CoreSystemHttpGateway>();
+}
+else
+{
+    builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
+}
+
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IPayoutService, PayoutService>();
 builder.Services.AddHttpContextAccessor();
