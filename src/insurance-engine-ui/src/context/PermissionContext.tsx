@@ -30,9 +30,9 @@ function getStoredUserId(): string | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { userId?: number; username?: string };
-    // Prefer numeric userId if stored; fall back to username for older auth payloads.
-    if (parsed.userId != null) return String(parsed.userId);
-    return parsed.username ?? null;
+    // Only return numeric userId — the backend route expects an integer.
+    if (parsed.userId != null && !isNaN(Number(parsed.userId))) return String(parsed.userId);
+    return null;
   } catch {
     return null;
   }

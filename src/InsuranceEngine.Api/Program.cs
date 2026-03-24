@@ -78,6 +78,10 @@ builder.Services.AddCors(options =>
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT key is not configured. Set Jwt:Key in appsettings or environment variables.");
+
+if (jwtKey.Length < 32)
+    throw new InvalidOperationException("JWT key must be at least 32 characters for HMAC-SHA256 security.");
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "PrecisionPro";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "PrecisionProUsers";
 
