@@ -3,6 +3,7 @@ using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Services;
 using InsuranceEngine.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,8 @@ namespace InsuranceEngine.Api.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Produces("application/json")]
-[RequireRoleHeader("Admin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
+[RequireRoleHeader("Admin", "SuperAdmin")]
 public class AdminController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
@@ -292,7 +294,7 @@ public class AdminController : ControllerBase
     [HttpGet("factors/gmb")]
     public async Task<IActionResult> GetGmbFactors()
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         var rows = await _db.GmbFactors.OrderBy(x => x.Ppt).ThenBy(x => x.Pt).ThenBy(x => x.EntryAgeMin).ToListAsync();
         LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
         return Ok(rows);
@@ -311,7 +313,7 @@ public class AdminController : ControllerBase
     [HttpGet("factors/gsv")]
     public async Task<IActionResult> GetGsvFactors()
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         var rows = await _db.GsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
         LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
         return Ok(rows);
@@ -330,7 +332,7 @@ public class AdminController : ControllerBase
     [HttpGet("factors/ssv")]
     public async Task<IActionResult> GetSsvFactors()
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         var rows = await _db.SsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
         LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
         return Ok(rows);
@@ -350,7 +352,7 @@ public class AdminController : ControllerBase
     [HttpGet("factors/ulip-charges")]
     public async Task<IActionResult> GetUlipCharges()
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         var rows = await _db.UlipCharges.OrderBy(x => x.ProductId).ThenBy(x => x.ChargeType).ToListAsync();
         LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
         return Ok(rows);
@@ -369,7 +371,7 @@ public class AdminController : ControllerBase
     [HttpGet("factors/mortality")]
     public async Task<IActionResult> GetMortalityRates()
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         var rows = await _db.MortalityRates.OrderBy(x => x.Gender).ThenBy(x => x.Age).ToListAsync();
         LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
         return Ok(rows);
@@ -388,7 +390,7 @@ public class AdminController : ControllerBase
     [HttpGet("factors/loyalty")]
     public async Task<IActionResult> GetLoyaltyFactors()
     {
-        var role = HttpContext.Request.Headers["X-Role"].FirstOrDefault();
+        var role = HttpContext.User?.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
         var rows = await _db.LoyaltyFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYearFrom).ToListAsync();
         LogFactorRequest(HttpContext.Request.Path, StatusCodes.Status200OK, role, rows.Count);
         return Ok(rows);
@@ -641,10 +643,8 @@ public class AdminController : ControllerBase
 
     private static string BCryptHash(string password)
     {
-        // Simple hash for now — in production use BCrypt.Net
-        using var sha = System.Security.Cryptography.SHA256.Create();
-        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
+        // Delegate to AuthController's PBKDF2 implementation
+        return AuthController.HashPassword(password);
     }
 }
 

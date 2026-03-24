@@ -3,6 +3,7 @@ using InsuranceEngine.Api.DTOs;
 using InsuranceEngine.Api.Models;
 using InsuranceEngine.Api.Services;
 using InsuranceEngine.Api.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,8 @@ namespace InsuranceEngine.Api.Controllers;
 [ApiController]
 [Route("api/audit")]
 [Produces("application/json")]
-[RequireRoleHeader("Admin", "Auditor")]
+[Authorize(Policy = "CanViewAudit")]
+[RequireRoleHeader("Admin", "SuperAdmin", "Auditor", "AuditUser")]
 public class AuditController : ControllerBase
 {
     private readonly InsuranceDbContext _db;

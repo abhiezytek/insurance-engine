@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using InsuranceEngine.Api.Data;
+using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -17,11 +18,13 @@ public class AuthController : ControllerBase
 {
     private readonly InsuranceDbContext _db;
     private readonly IConfiguration _config;
+    private readonly IActivityAuditService _audit;
 
-    public AuthController(InsuranceDbContext db, IConfiguration config)
+    public AuthController(InsuranceDbContext db, IConfiguration config, IActivityAuditService audit)
     {
         _db = db;
         _config = config;
+        _audit = audit;
     }
 
     /// <summary>Login and receive a JWT token.</summary>
@@ -33,6 +36,7 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
         {
             await LogLoginAttempt(req.Username ?? "", false, "Empty credentials");
+            await _audit.LogAsync("Auth", "LoginFailed", recordId: req.Username, status: "Failure", errorMessage: "Empty credentials");
             return Unauthorized(new { error = "Username and password are required." });
         }
 
@@ -42,10 +46,12 @@ public class AuthController : ControllerBase
         if (user == null || !VerifyPassword(req.Password, user.PasswordHash))
         {
             await LogLoginAttempt(req.Username, false, "Invalid credentials");
+            await _audit.LogAsync("Auth", "LoginFailed", recordId: req.Username, status: "Failure", errorMessage: "Invalid credentials");
             return Unauthorized(new { error = "Invalid username or password." });
         }
 
         await LogLoginAttempt(user.Username, true, null);
+        await _audit.LogAsync("Auth", "Login", recordId: user.Username);
 
         var token = GenerateJwtToken(user.Username, user.Role);
         return Ok(new LoginResponse

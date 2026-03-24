@@ -22,17 +22,9 @@ apiClient.interceptors.request.use(config => {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // Attach role header for Admin APIs (header-driven mock RBAC).
-  if (parsedAuth?.role) {
-    headers['X-Role'] = parsedAuth.role;
-  }
-  const legacyRole = localStorage.getItem('auth_role');
-  if (!headers['X-Role'] && legacyRole) headers['X-Role'] = legacyRole;
-
-  // Ensure Admin screens still work during investigation
-  if (!headers['X-Role'] && (config.url?.startsWith('/api/admin') || config.url?.includes('/api/admin'))) {
-    headers['X-Role'] = 'Admin';
-  }
+  // Role is now securely embedded in the JWT token claims.
+  // The X-Role header is no longer sent — all role-based authorization
+  // is handled server-side via JWT claim extraction.
 
   config.headers = headers;
   return config;

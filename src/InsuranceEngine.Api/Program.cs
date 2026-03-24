@@ -1,8 +1,11 @@
 using System.Reflection;
+using System.Text;
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +53,8 @@ builder.Services.AddScoped<IBenefitCalculationService, BenefitCalculationService
 builder.Services.AddScoped<IUlipCalculationService, UlipCalculationService>();
 builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IActivityAuditService, ActivityAuditService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<InsuranceDbContext>("database");
@@ -70,6 +75,51 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
+});
+
+// JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("JWT key is not configured. Set Jwt:Key in appsettings or environment variables.");
+
+if (jwtKey.Length < 32)
+    throw new InvalidOperationException("JWT key must be at least 32 characters for HMAC-SHA256 security.");
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "PrecisionPro";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "PrecisionProUsers";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+});
+
+// Authorization policies based on JWT role claims
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CanEditConfiguration", policy =>
+        policy.RequireRole("Admin", "SuperAdmin", "Actuary"));
+
+    options.AddPolicy("CanManageUsers", policy =>
+        policy.RequireRole("Admin", "SuperAdmin"));
+
+    options.AddPolicy("CanViewAudit", policy =>
+        policy.RequireRole("Admin", "SuperAdmin", "Actuary", "AuditUser", "Auditor"));
+
+    options.AddPolicy("CanViewBI", policy =>
+        policy.RequireRole("Admin", "SuperAdmin", "Actuary", "Operations", "ReadOnly"));
 });
 
 var app = builder.Build();
@@ -115,6 +165,8 @@ app.UseSwaggerUI(c =>
 app.UseCors("AllowFrontend");
 
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.MapHealthChecks("/health");

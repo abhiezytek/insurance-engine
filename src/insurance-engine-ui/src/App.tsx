@@ -5,18 +5,22 @@ import {
   BarChart3,
   ClipboardCheck,
   Settings,
+  Users,
   LogOut,
   ShieldCheck,
   ChevronDown,
+  ShieldOff,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PermissionProvider, usePermission } from './context/PermissionContext';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import BenefitIllustration from './components/BenefitIllustration';
 import UlipIllustration from './components/UlipIllustration';
 import YpygModule from './components/YpygModule';
 import AuditModule from './components/AuditModule';
-import AdminMaster from './components/AdminMaster';
+import Configuration from './components/Configuration';
+import UserManagement from './components/UserManagement';
 
 // ---------------------------------------------------------------------------
 // View IDs
@@ -29,7 +33,25 @@ type ViewId =
   | 'ypyg-input'
   | 'audit-payout'
   | 'audit-bonus'
-  | 'admin-master';
+  | 'configuration'
+  | 'user-mgmt';
+
+// ---------------------------------------------------------------------------
+// Map view IDs to permission module codes
+// ---------------------------------------------------------------------------
+const VIEW_MODULE_MAP: Record<string, string> = {
+  'bi': 'BI',
+  'bi-endowment': 'BI',
+  'bi-ulip': 'BI',
+  'ypyg': 'YPYG',
+  'ypyg-policy': 'YPYG',
+  'ypyg-input': 'YPYG',
+  'audit': 'AUDIT',
+  'audit-payout': 'AUDIT',
+  'audit-bonus': 'AUDIT',
+  'configuration': 'CONFIG',
+  'user-mgmt': 'USERMGMT',
+};
 
 // ---------------------------------------------------------------------------
 // Dropdown nav item
@@ -75,7 +97,8 @@ const NAV_ITEMS: NavItem[] = [
       { id: 'audit-bonus',  label: 'Bonus' },
     ],
   },
-  { id: 'admin-master', label: 'Admin Master', icon: <Settings size={15} /> },
+  { id: 'configuration', label: 'Configuration', icon: <Settings size={15} /> },
+  { id: 'user-mgmt', label: 'User Mgmt', icon: <Users size={15} /> },
 ];
 
 // ---------------------------------------------------------------------------
@@ -177,11 +200,40 @@ function NavDropdown({
 }
 
 // ---------------------------------------------------------------------------
+// Access Denied component
+// ---------------------------------------------------------------------------
+function AccessDenied() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <ShieldOff size={48} className="text-red-400 mb-4" />
+      <h2 className="text-xl font-bold text-slate-700 mb-2">Access Denied</h2>
+      <p className="text-slate-500 text-sm max-w-md">
+        You do not have permission to access this module. Please contact your administrator
+        to request access.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main app (requires auth)
 // ---------------------------------------------------------------------------
 function AppInner() {
   const { user, logout } = useAuth();
+  const { hasAccess } = usePermission();
   const [activeView, setActiveView] = useState<ViewId>('dashboard');
+
+  // Filter nav items based on permissions
+  const visibleNavItems = NAV_ITEMS.filter(item => {
+    const moduleCode = VIEW_MODULE_MAP[item.id];
+    // Dashboard is always visible; for items with module codes, check permission
+    if (!moduleCode) return true;
+    return hasAccess(moduleCode);
+  });
+
+  // Check if active view is allowed — show access denied if not
+  const activeModuleCode = VIEW_MODULE_MAP[activeView];
+  const isAllowed = !activeModuleCode || hasAccess(activeModuleCode);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -221,7 +273,7 @@ function AppInner() {
       <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-2 py-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {NAV_ITEMS.map(item => {
+            {visibleNavItems.map(item => {
               if (item.children) {
                 return (
                   <NavDropdown
@@ -256,14 +308,16 @@ function AppInner() {
 
       {/* ── Page content ── */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {activeView === 'dashboard'     && <Dashboard />}
-        {activeView === 'bi-endowment'  && <BenefitIllustration />}
-        {activeView === 'bi-ulip'       && <UlipIllustration />}
-        {activeView === 'ypyg-policy'   && <YpygModule mode="policy-number" />}
-        {activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
-        {activeView === 'audit-payout'    && <AuditModule sub="payout-verification" subOption="single" />}
-        {activeView === 'audit-bonus'     && <AuditModule sub="addition-bonus" subOption="single" />}
-        {activeView === 'admin-master'  && <AdminMaster />}
+        {!isAllowed && <AccessDenied />}
+        {isAllowed && activeView === 'dashboard'     && <Dashboard />}
+        {isAllowed && activeView === 'bi-endowment'  && <BenefitIllustration />}
+        {isAllowed && activeView === 'bi-ulip'       && <UlipIllustration />}
+        {isAllowed && activeView === 'ypyg-policy'   && <YpygModule mode="policy-number" />}
+        {isAllowed && activeView === 'ypyg-input'    && <YpygModule mode="input-value" />}
+        {isAllowed && activeView === 'audit-payout'    && <AuditModule sub="payout-verification" subOption="single" />}
+        {isAllowed && activeView === 'audit-bonus'     && <AuditModule sub="addition-bonus" subOption="single" />}
+        {isAllowed && activeView === 'configuration'   && <Configuration />}
+        {isAllowed && activeView === 'user-mgmt'       && <UserManagement />}
       </main>
 
       <footer className="border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">
@@ -284,7 +338,9 @@ function AppWithAuth() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppWithAuth />
+      <PermissionProvider>
+        <AppWithAuth />
+      </PermissionProvider>
     </AuthProvider>
   );
 }

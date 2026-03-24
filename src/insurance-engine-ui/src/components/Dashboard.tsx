@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   TrendingUp, BarChart3, ClipboardCheck, CheckCircle2,
-  ShieldCheck, PlusCircle, Settings,
+  ShieldCheck, PlusCircle, Settings, Users,
   AlertCircle, Clock, Download,
 } from 'lucide-react';
 import axios from 'axios';
@@ -77,7 +77,8 @@ const MODULE_CARDS = [
   { icon: BarChart3,   label: 'YPYG',                       desc: 'You Pay You Get calculations' },
   { icon: ShieldCheck, label: 'Audit — Payout Verification', desc: 'Verify payout amounts against core system' },
   { icon: PlusCircle,  label: 'Audit — Addition / Bonus',    desc: 'Verify additions and bonus calculations' },
-  { icon: Settings,    label: 'Admin Master',                desc: 'Manage products, formulas, users, and system configuration' },
+  { icon: Settings,    label: 'Configuration',               desc: 'Manage products, formulas, factors, and system configuration' },
+  { icon: Users,       label: 'User Mgmt',                   desc: 'Manage users, roles, and module access control' },
 ] as const;
 
 // ─── Main component ─────────────────────────────────────────────────────────
