@@ -38,6 +38,9 @@ interface PayoutCase {
   formulaVersion?: string | null;
   calculationSource?: string | null;
   calculatedAt?: string;
+  annualPremium?: number;
+  policyTerm?: number;
+  premiumPayingTerm?: number;
   createdBy: string;
   createdAt: string;
   workflowHistory: WorkflowStep[];
@@ -122,6 +125,93 @@ function varianceRowColor(variancePct: number) {
   return 'bg-red-50/60';
 }
 
+// ─── Workflow Stepper ────────────────────────────────────────────────────────
+
+const EXPECTED_FLOW = ['Submitted', 'L1 Approved', 'L2 Authorized', 'Complete'] as const;
+
+function WorkflowStepper({ history, status }: { history: WorkflowStep[]; status: string }) {
+  const getStepState = (stepLabel: string): 'completed' | 'current' | 'pending' => {
+    const s = status.toLowerCase();
+    switch (stepLabel) {
+      case 'Submitted':
+        return 'completed';
+      case 'L1 Approved':
+        if (history.some(h => h.action.toLowerCase().includes('checkerapprove') || h.toStatus === 'CheckerApproved'))
+          return 'completed';
+        if (s === 'pending') return 'current';
+        return 'pending';
+      case 'L2 Authorized':
+        if (history.some(h => h.action.toLowerCase().includes('authorizerapprove') || h.toStatus === 'Authorized'))
+          return 'completed';
+        if (s === 'checkerapproved') return 'current';
+        return 'pending';
+      case 'Complete':
+        if (s === 'authorized') return 'completed';
+        return 'pending';
+      default:
+        return 'pending';
+    }
+  };
+
+  const getStepMeta = (stepLabel: string) => {
+    let matched: WorkflowStep | undefined;
+    switch (stepLabel) {
+      case 'Submitted':
+        matched = history.find(h => h.action.toLowerCase().includes('submit') || h.toStatus === 'Pending');
+        break;
+      case 'L1 Approved':
+        matched = history.find(h => h.toStatus === 'CheckerApproved');
+        break;
+      case 'L2 Authorized':
+        matched = history.find(h => h.toStatus === 'Authorized');
+        break;
+      case 'Complete':
+        matched = history.find(h => h.toStatus === 'Authorized');
+        break;
+    }
+    return matched;
+  };
+
+  return (
+    <div>
+      <h4 className="text-xs font-bold text-slate-600 mb-3">Approval Workflow</h4>
+      <div className="flex items-start">
+        {EXPECTED_FLOW.map((step, idx) => {
+          const state = getStepState(step);
+          const meta = getStepMeta(step);
+          return (
+            <div key={step} className="flex items-start flex-1">
+              <div className="flex flex-col items-center text-center flex-1">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                    ${state === 'completed' ? 'bg-green-100 text-green-700' :
+                      state === 'current' ? 'bg-amber-100 text-amber-700' :
+                      'bg-slate-100 text-slate-400'}`}
+                >
+                  {state === 'completed' ? '✅' : state === 'current' ? '⏳' : '○'}
+                </div>
+                <p className="text-xs font-semibold text-slate-700 mt-1">{step}</p>
+                {meta && (
+                  <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                    <span>{meta.performedBy}</span>
+                    <br />
+                    <span>{fmtDate(meta.performedAt)}</span>
+                  </div>
+                )}
+              </div>
+              {idx < EXPECTED_FLOW.length - 1 && (
+                <div className="flex-shrink-0 mt-4 w-8">
+                  <div className={`h-0.5 w-full ${state === 'completed' ? 'bg-green-300' : 'bg-slate-200'}`} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab Switcher ────────────────────────────────────────────────────────────
 
 type TabKey = 'single' | 'batch' | 'cases' | 'dashboard';
@@ -166,6 +256,7 @@ function SinglePolicyTab() {
   const [remarks, setRemarks] = useState('');
   const [deciding, setDeciding] = useState(false);
   const [decisionMsg, setDecisionMsg] = useState<string | null>(null);
+  const [calcDetailsOpen, setCalcDetailsOpen] = useState(false);
 
   const handleSearch = async () => {
     if (!policyNumber.trim()) return;
@@ -286,32 +377,80 @@ function SinglePolicyTab() {
             </div>
           </div>
 
-          {/* Version info */}
-          {result.productVersion && (
-            <div className="flex flex-wrap gap-3 text-xs text-slate-500">
-              <span>Product: {result.productVersion}</span>
-              <span>Factor: {result.factorVersion}</span>
-              <span>Formula: {result.formulaVersion}</span>
-              <span>Source: {result.calculationSource}</span>
-            </div>
-          )}
-
-          {/* Workflow timeline */}
-          {result.workflowHistory.length > 0 && (
-            <div>
-              <h4 className="text-xs font-bold text-slate-600 mb-2">Approval Workflow</h4>
-              <div className="flex items-center gap-2 text-xs">
-                {result.workflowHistory.map((step, idx) => (
-                  <div key={step.id} className="flex items-center gap-2">
-                    {idx > 0 && <ArrowRight size={12} className="text-slate-400" />}
-                    <span className="px-2 py-1 rounded-lg bg-slate-100 font-medium">
-                      {step.action} <span className="text-slate-400">by {step.performedBy}</span>
-                    </span>
+          {/* Calculation Details (collapsible) */}
+          <div className="border border-slate-200 rounded-xl">
+            <button
+              onClick={() => setCalcDetailsOpen(!calcDetailsOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold text-[#004282] hover:bg-slate-50 transition rounded-xl"
+            >
+              <span>Calculation Details</span>
+              <ChevronDown size={14} className={`transition ${calcDetailsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {calcDetailsOpen && (
+              <div className="px-4 pb-4 space-y-3 text-xs">
+                {/* Formula versions */}
+                <div>
+                  <h5 className="font-semibold text-slate-600 mb-1">Formula Info</h5>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-slate-50 rounded-lg p-2">
+                      <span className="text-slate-400 block">Product Version</span>
+                      <strong>{result.productVersion ?? '—'}</strong>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-2">
+                      <span className="text-slate-400 block">Factor Version</span>
+                      <strong>{result.factorVersion ?? '—'}</strong>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-2">
+                      <span className="text-slate-400 block">Formula Version</span>
+                      <strong>{result.formulaVersion ?? '—'}</strong>
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Parameters table */}
+                <div>
+                  <h5 className="font-semibold text-slate-600 mb-1">Parameters</h5>
+                  <table className="w-full text-xs border border-slate-100 rounded-lg overflow-hidden">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-1.5 text-left text-slate-600">Parameter</th>
+                        <th className="px-3 py-1.5 text-right text-slate-600">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-3 py-1.5">Annual Premium</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{result.annualPremium != null ? `₹${INR(result.annualPremium)}` : '—'}</td>
+                      </tr>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-3 py-1.5">Policy Term</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{result.policyTerm != null ? `${result.policyTerm} years` : '—'}</td>
+                      </tr>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-3 py-1.5">Premium Paying Term</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{result.premiumPayingTerm != null ? `${result.premiumPayingTerm} years` : '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Calculated result */}
+                <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
+                  <span className="font-semibold text-blue-700">Calculated PrecisionPro Amount</span>
+                  <span className="text-lg font-bold text-blue-800">₹{INR(result.precisionProAmount)}</span>
+                </div>
+
+                {/* Source & timestamp */}
+                <div className="flex gap-4 text-slate-500">
+                  <span>Source: <strong className="text-slate-700">{result.calculationSource ?? '—'}</strong></span>
+                  {result.calculatedAt && <span>Calculated At: <strong className="text-slate-700">{fmtDate(result.calculatedAt)}</strong></span>}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Workflow stepper */}
+          <WorkflowStepper history={result.workflowHistory} status={result.status} />
 
           {/* Decision actions */}
           {(result.status === 'Pending' || result.status === 'CheckerApproved') && (
@@ -369,6 +508,7 @@ function BatchTab() {
   const [batchResult, setBatchResult] = useState<PayoutBatch | null>(null);
   const [batchCases, setBatchCases] = useState<PayoutCase[]>([]);
   const [batches, setBatches] = useState<PayoutBatch[]>([]);
+  const [showMismatchOnly, setShowMismatchOnly] = useState(false);
 
   const loadBatches = useCallback(async () => {
     try {
@@ -525,12 +665,58 @@ function BatchTab() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs text-center">
-            <div className="bg-slate-50 rounded-lg p-2"><span className="text-slate-500 block">Total</span><strong>{batchResult.totalCount}</strong></div>
-            <div className="bg-slate-50 rounded-lg p-2"><span className="text-slate-500 block">Processed</span><strong>{batchResult.processedCount}</strong></div>
-            <div className="bg-green-50 rounded-lg p-2"><span className="text-green-600 block">Match</span><strong>{batchResult.matchCount}</strong></div>
-            <div className="bg-red-50 rounded-lg p-2"><span className="text-red-600 block">Mismatch</span><strong>{batchResult.mismatchCount}</strong></div>
-            <div className="bg-slate-50 rounded-lg p-2"><span className="text-slate-500 block">Status</span><strong>{batchResult.status}</strong></div>
+          {/* Summary stat cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-center">
+            <div className="bg-slate-100 border border-slate-200 rounded-xl p-3">
+              <span className="text-slate-500 block mb-1">Total</span>
+              <strong className="text-lg text-slate-800">{batchResult.totalCount}</strong>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+              <span className="text-green-600 block mb-1">Match</span>
+              <strong className="text-lg text-green-700">{batchResult.matchCount}</strong>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <span className="text-red-600 block mb-1">Mismatch</span>
+              <strong className="text-lg text-red-700">{batchResult.mismatchCount}</strong>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <span className="text-slate-500 block mb-1">Processed</span>
+              <strong className="text-lg text-slate-800">{batchResult.processedCount}</strong>
+            </div>
+          </div>
+
+          {/* Filter & Mismatch download */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowMismatchOnly(!showMismatchOnly)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                showMismatchOnly ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Filter size={12} />
+              {showMismatchOnly ? 'Show All Cases' : 'Show Mismatches Only'}
+            </button>
+            {batchResult.mismatchCount > 0 && (
+              <button
+                onClick={() => {
+                  const mismatched = batchCases.filter(c => Math.abs(c.variancePct) > 1);
+                  const header = 'Policy,Product,Core Amount,PP Amount,Variance,Variance %,Status\n';
+                  const rows = mismatched.map(c =>
+                    `${c.policyNumber},${c.productName},${c.coreSystemAmount},${c.precisionProAmount},${c.variance},${c.variancePct}%,${c.status}`
+                  ).join('\n');
+                  const blob = new Blob([header + rows], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `mismatch_report_batch_${batchResult.id}.csv`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition"
+              >
+                <Download size={12} /> Download Mismatch Report
+              </button>
+            )}
           </div>
 
           {/* Batch cases table */}
@@ -548,7 +734,7 @@ function BatchTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {batchCases.map(c => (
+                  {(showMismatchOnly ? batchCases.filter(c => Math.abs(c.variancePct) > 1) : batchCases).map(c => (
                     <tr key={c.id} className={`border-t border-slate-50 ${varianceRowColor(c.variancePct)}`}>
                       <td className="px-3 py-2 font-mono">{c.policyNumber}</td>
                       <td className="px-3 py-2">{c.productName}</td>
@@ -558,6 +744,9 @@ function BatchTab() {
                       <td className="px-3 py-2 text-center"><StatusBadge status={c.status} /></td>
                     </tr>
                   ))}
+                  {showMismatchOnly && batchCases.filter(c => Math.abs(c.variancePct) > 1).length === 0 && (
+                    <tr><td colSpan={6} className="text-center py-6 text-slate-400">No mismatched cases found.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -747,15 +936,30 @@ function DashboardTab() {
   ];
 
   return (
-    <div className={`${CARD_CLS} p-5`}>
-      <h3 className="text-sm font-bold text-[#004282] mb-4">Payout Dashboard — This Month</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {cards.map(c => (
-          <div key={c.label} className={`${c.bg} rounded-xl p-4 text-center`}>
-            <p className="text-xs text-slate-500 mb-1">{c.label}</p>
-            <p className={`text-xl font-bold ${c.fg}`}>{c.value}</p>
+    <div className="space-y-4">
+      {/* Pending Approvals Alert */}
+      {(dashboard.pendingCount > 0 || dashboard.checkerApprovedCount > 0) && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle size={18} className="text-amber-600" />
+            <p className="text-sm font-semibold text-amber-800">
+              {dashboard.pendingCount + dashboard.checkerApprovedCount} cases pending your approval
+            </p>
           </div>
-        ))}
+          <button className={`${BTN_PRIMARY} px-4 py-2`}>Review Now</button>
+        </div>
+      )}
+
+      <div className={`${CARD_CLS} p-5`}>
+        <h3 className="text-sm font-bold text-[#004282] mb-4">Payout Dashboard — This Month</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {cards.map(c => (
+            <div key={c.label} className={`${c.bg} rounded-xl p-4 text-center`}>
+              <p className="text-xs text-slate-500 mb-1">{c.label}</p>
+              <p className={`text-xl font-bold ${c.fg}`}>{c.value}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
