@@ -51,8 +51,23 @@ builder.Services.AddScoped<FormulaEngine>();
 builder.Services.AddScoped<ConditionEvaluator>();
 builder.Services.AddScoped<IBenefitCalculationService, BenefitCalculationService>();
 builder.Services.AddScoped<IUlipCalculationService, UlipCalculationService>();
-builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
+
+// Core system gateway: conditional registration (mock vs HTTP)
+var coreSystemConfig = builder.Configuration.GetSection("CoreSystem");
+builder.Services.Configure<CoreSystemConfig>(coreSystemConfig);
+
+if (coreSystemConfig.GetValue<bool>("IsEnabled") && !coreSystemConfig.GetValue<bool>("UseMock"))
+{
+    builder.Services.AddHttpClient<ICoreSystemGateway, CoreSystemHttpGateway>();
+}
+else
+{
+    builder.Services.AddScoped<ICoreSystemGateway, MockCoreSystemGateway>();
+}
+
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IPayoutService, PayoutService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActivityAuditService, ActivityAuditService>();
 
@@ -116,7 +131,8 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("Admin", "SuperAdmin"));
 
     options.AddPolicy("CanViewAudit", policy =>
-        policy.RequireRole("Admin", "SuperAdmin", "Actuary", "AuditUser", "Auditor"));
+        policy.RequireRole("Admin", "SuperAdmin", "Actuary", "AuditUser", "Auditor",
+                           "Operations", "Checker", "Authorizer"));
 
     options.AddPolicy("CanViewBI", policy =>
         policy.RequireRole("Admin", "SuperAdmin", "Actuary", "Operations", "ReadOnly"));
@@ -178,6 +194,13 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
         [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
     }
 });
+
+app.MapGet("/api/health", () => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    version = "1.0.0"
+}));
 
 // Apply migrations and seed data on startup
 using (var scope = app.Services.CreateScope())

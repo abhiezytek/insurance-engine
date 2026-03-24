@@ -17,6 +17,23 @@ export const AUDIT_ROUTE = {
   logs: '/api/audit/logs',
 } as const;
 
+export const PAYOUT_ROUTE = {
+  search: '/api/payout/search',
+  checkerApprove: '/api/payout/checker/approve',
+  checkerReject: '/api/payout/checker/reject',
+  authorizerApprove: '/api/payout/authorizer/approve',
+  authorizerReject: '/api/payout/authorizer/reject',
+  bulkCheckerApprove: '/api/payout/checker/bulk-approve',
+  bulkAuthorizerApprove: '/api/payout/authorizer/bulk-approve',
+  cases: '/api/payout/cases',
+  batches: '/api/payout/batches',
+  dashboard: '/api/payout/dashboard',
+  batchGenerate: '/api/payout/batch/generate',
+  upload: '/api/payout/upload',
+  template: '/api/payout/template',
+  export: '/api/payout/export',
+} as const;
+
 export const AUDIT_LABEL = {
   payoutVerification: 'Payout Verification',
   additionBonus: 'Addition / Bonus',
