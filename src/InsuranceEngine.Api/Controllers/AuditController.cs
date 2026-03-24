@@ -227,7 +227,7 @@ public class AuditController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<Models.CalculationLog>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent([FromQuery] int top = 10)
     {
-        var logs = await _db.CalculationLogs
+        var logs = await _db.CalculationLogs.AsNoTracking()
             .OrderByDescending(l => l.CreatedDate)
             .Take(top)
             .ToListAsync();
@@ -427,7 +427,7 @@ public class AuditController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var query = _db.AuditLogEntries.AsQueryable();
+        var query = _db.AuditLogEntries.AsNoTracking().AsQueryable();
         if (!string.IsNullOrEmpty(module))
             query = query.Where(l => l.EventType.Contains(module));
 

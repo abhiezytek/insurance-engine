@@ -191,7 +191,7 @@ public class AuditService : IAuditService
 
     public async Task<List<AuditCaseResultDto>> GetCases(string? auditType, string? status, string? inputMode, int page, int pageSize)
     {
-        var query = _db.AuditCases.AsQueryable();
+        var query = _db.AuditCases.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(auditType))
             query = query.Where(c => c.AuditType == auditType);
@@ -215,7 +215,7 @@ public class AuditService : IAuditService
     {
         var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var monthCases = await _db.AuditCases
+        var monthCases = await _db.AuditCases.AsNoTracking()
             .Where(c => c.CreatedAt >= startOfMonth)
             .ToListAsync();
 
@@ -234,7 +234,7 @@ public class AuditService : IAuditService
 
     public async Task<List<AuditBatchDto>> GetBatches(string? auditType, int page, int pageSize)
     {
-        var query = _db.AuditBatches.AsQueryable();
+        var query = _db.AuditBatches.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(auditType))
             query = query.Where(b => b.AuditType == auditType);
@@ -262,7 +262,7 @@ public class AuditService : IAuditService
 
     public async Task<List<AuditCaseResultDto>> GetBatchCases(int batchId)
     {
-        var cases = await _db.AuditCases
+        var cases = await _db.AuditCases.AsNoTracking()
             .Where(c => c.BatchId == batchId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();

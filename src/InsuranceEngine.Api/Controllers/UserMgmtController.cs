@@ -74,7 +74,7 @@ public class UserMgmtController : ControllerBase
     {
         var query = _db.UserMasters
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .AsQueryable();
+            .AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -200,6 +200,7 @@ public class UserMgmtController : ControllerBase
         Ok(await _db.RoleMasters
             .Include(r => r.ModuleAccess).ThenInclude(ma => ma.Module)
             .Include(r => r.ModuleAccess).ThenInclude(ma => ma.SubModule)
+            .AsNoTracking()
             .OrderBy(r => r.RoleName)
             .ToListAsync());
 
@@ -247,6 +248,7 @@ public class UserMgmtController : ControllerBase
             .Include(r => r.Role)
             .Include(r => r.Module)
             .Include(r => r.SubModule)
+            .AsNoTracking()
             .OrderBy(r => r.Role.RoleName)
             .ThenBy(r => r.Module.ModuleName)
             .ToListAsync();
@@ -313,6 +315,7 @@ public class UserMgmtController : ControllerBase
             .Include(r => r.Role)
             .Include(r => r.Module)
             .Include(r => r.SubModule)
+            .AsNoTracking()
             .Where(r => roleIds.Contains(r.RoleId))
             .ToListAsync();
 

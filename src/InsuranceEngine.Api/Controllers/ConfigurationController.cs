@@ -46,7 +46,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ConfigProductDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetProducts()
     {
-        var products = await _db.Products
+        var products = await _db.Products.AsNoTracking()
             .Select(p => new ConfigProductDto(p.Code, p.Name, p.ProductType))
             .ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, products.Count);
@@ -60,7 +60,7 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetUins([FromQuery] string productCode)
     {
         var product = await _db.Products
-            .Include(p => p.Versions)
+            .Include(p => p.Versions).AsNoTracking()
             .FirstOrDefaultAsync(p => p.Code == productCode);
         if (product is null) return NotFound(new { error = $"Product '{productCode}' not found." });
 
@@ -84,7 +84,7 @@ public class ConfigurationController : ControllerBase
         var versionId = await ResolveVersionIdAsync(productCode, uin);
         if (versionId is null) return NotFound(new { error = $"Product version not found for code='{productCode}', uin='{uin}'." });
 
-        var parameters = await _db.ProductParameters
+        var parameters = await _db.ProductParameters.AsNoTracking()
             .Where(p => p.ProductVersionId == versionId.Value)
             .Select(p => new ConfigParameterDto(p.Id, p.Name, p.DataType, p.IsRequired, p.DefaultValue, p.Description))
             .ToListAsync();
@@ -101,10 +101,10 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<FormulaMaster>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFormulas([FromQuery] string productCode, [FromQuery] string uin)
     {
-        var product = await _db.Products.FirstOrDefaultAsync(p => p.Code == productCode);
+        var product = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Code == productCode);
         if (product is null) return NotFound(new { error = $"Product '{productCode}' not found." });
 
-        var formulas = await _db.FormulaMasters
+        var formulas = await _db.FormulaMasters.AsNoTracking()
             .Where(f => f.ProductName == product.Name && f.Uin == uin)
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync();
@@ -163,10 +163,10 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetFormulaHistory([FromQuery] string productCode, [FromQuery] string uin, [FromQuery] string formulaKey)
     {
-        var product = await _db.Products.FirstOrDefaultAsync(p => p.Code == productCode);
+        var product = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Code == productCode);
         if (product is null) return NotFound(new { error = $"Product '{productCode}' not found." });
 
-        var history = await _db.FormulaMasters
+        var history = await _db.FormulaMasters.AsNoTracking()
             .Where(f => f.ProductName == product.Name && f.Uin == uin && f.FormulaType == formulaKey)
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync();
@@ -378,7 +378,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<GmbFactor>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGmbFactors([FromQuery] string? productCode)
     {
-        var rows = await _db.GmbFactors.OrderBy(x => x.Ppt).ThenBy(x => x.Pt).ThenBy(x => x.EntryAgeMin).ToListAsync();
+        var rows = await _db.GmbFactors.AsNoTracking().OrderBy(x => x.Ppt).ThenBy(x => x.Pt).ThenBy(x => x.EntryAgeMin).ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, rows.Count);
         return Ok(rows);
     }
@@ -388,7 +388,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<GsvFactor>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGsvFactors([FromQuery] string? productCode)
     {
-        var rows = await _db.GsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
+        var rows = await _db.GsvFactors.AsNoTracking().OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, rows.Count);
         return Ok(rows);
     }
@@ -398,7 +398,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<SsvFactor>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSsvFactors([FromQuery] string? productCode)
     {
-        var rows = await _db.SsvFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
+        var rows = await _db.SsvFactors.AsNoTracking().OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYear).ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, rows.Count);
         return Ok(rows);
     }
@@ -408,7 +408,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<MortalityRate>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMortalityRates([FromQuery] string? productCode)
     {
-        var rows = await _db.MortalityRates.OrderBy(x => x.Gender).ThenBy(x => x.Age).ToListAsync();
+        var rows = await _db.MortalityRates.AsNoTracking().OrderBy(x => x.Gender).ThenBy(x => x.Age).ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, rows.Count);
         return Ok(rows);
     }
@@ -418,7 +418,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<LoyaltyFactor>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLoyaltyFactors([FromQuery] string? productCode)
     {
-        var rows = await _db.LoyaltyFactors.OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYearFrom).ToListAsync();
+        var rows = await _db.LoyaltyFactors.AsNoTracking().OrderBy(x => x.Ppt).ThenBy(x => x.PolicyYearFrom).ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, rows.Count);
         return Ok(rows);
     }
@@ -428,7 +428,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<UlipCharge>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUlipCharges([FromQuery] string? productCode)
     {
-        var query = _db.UlipCharges.AsQueryable();
+        var query = _db.UlipCharges.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(productCode))
         {
             var product = await _db.Products.FirstOrDefaultAsync(p => p.Code == productCode);
@@ -558,7 +558,7 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<IntegrationConfig>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetIntegrations()
     {
-        var configs = await _db.IntegrationConfigs.OrderBy(c => c.ConfigName).ToListAsync();
+        var configs = await _db.IntegrationConfigs.AsNoTracking().OrderBy(c => c.ConfigName).ToListAsync();
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, configs.Count);
         return Ok(configs);
     }
@@ -597,7 +597,7 @@ public class ConfigurationController : ControllerBase
     private async Task<int?> ResolveVersionIdAsync(string productCode, string uin)
     {
         var version = await _db.ProductVersions
-            .Include(v => v.Product)
+            .Include(v => v.Product).AsNoTracking()
             .FirstOrDefaultAsync(v => v.Product.Code == productCode && v.Version == uin);
         return version?.Id;
     }

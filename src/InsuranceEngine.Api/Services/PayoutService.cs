@@ -379,7 +379,7 @@ public class PayoutService : IPayoutService
 
     private async Task<List<PayoutCaseDto>> GetCasesFallback(string? payoutType, string? status, string? inputMode, int page, int pageSize)
     {
-        var query = _db.PayoutCases.Include(c => c.WorkflowHistory).AsQueryable();
+        var query = _db.PayoutCases.Include(c => c.WorkflowHistory).AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(payoutType))
             query = query.Where(c => c.PayoutType == payoutType);
@@ -431,7 +431,7 @@ public class PayoutService : IPayoutService
 
     private async Task<PayoutDashboardDto> GetDashboardFallback(DateTime startOfMonth)
     {
-        var monthCases = await _db.PayoutCases
+        var monthCases = await _db.PayoutCases.AsNoTracking()
             .Where(c => c.CreatedAt >= startOfMonth)
             .ToListAsync();
 
@@ -479,7 +479,7 @@ public class PayoutService : IPayoutService
 
     private async Task<List<PayoutBatchDto>> GetBatchesFallback(string? payoutType, int page, int pageSize)
     {
-        var query = _db.PayoutBatches.AsQueryable();
+        var query = _db.PayoutBatches.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(payoutType))
             query = query.Where(b => b.PayoutType == payoutType);
@@ -496,7 +496,7 @@ public class PayoutService : IPayoutService
     public async Task<List<PayoutCaseDto>> GetBatchCases(int batchId)
     {
         var cases = await _db.PayoutCases
-            .Include(c => c.WorkflowHistory)
+            .Include(c => c.WorkflowHistory).AsNoTracking()
             .Where(c => c.BatchId == batchId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
@@ -654,7 +654,7 @@ public class PayoutService : IPayoutService
 
     public async Task<(byte[] Content, string FileName, string ContentType)> ExportCases(int? batchId, string format, string userId)
     {
-        var query = _db.PayoutCases.AsQueryable();
+        var query = _db.PayoutCases.AsNoTracking().AsQueryable();
         if (batchId.HasValue)
             query = query.Where(c => c.BatchId == batchId.Value);
 

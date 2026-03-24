@@ -17,7 +17,7 @@ public class NotificationService : INotificationService
 
     public async Task<List<Notification>> GetUnread(string userId)
     {
-        return await _db.Notifications
+        return await _db.Notifications.AsNoTracking()
             .Where(n => n.UserId == userId && !n.IsRead)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)
@@ -65,7 +65,7 @@ public class NotificationService : INotificationService
     public async Task NotifyRoleAsync(string roleName, string message, string? relatedModule = null, string? relatedId = null)
     {
         // Find all users with the specified role
-        var usersInRole = await _db.UserRoles
+        var usersInRole = await _db.UserRoles.AsNoTracking()
             .Where(ur => ur.Role != null && ur.Role.RoleName == roleName)
             .Select(ur => ur.User != null ? ur.User.Email : null)
             .Where(u => u != null)
