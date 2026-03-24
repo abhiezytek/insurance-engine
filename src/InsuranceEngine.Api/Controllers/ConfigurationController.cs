@@ -5,6 +5,7 @@ using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
@@ -21,12 +22,14 @@ public class ConfigurationController : ControllerBase
     private readonly InsuranceDbContext _db;
     private readonly ILogger<ConfigurationController> _logger;
     private readonly IActivityAuditService _audit;
+    private readonly IMemoryCache _cache;
 
-    public ConfigurationController(InsuranceDbContext db, ILogger<ConfigurationController> logger, IActivityAuditService audit)
+    public ConfigurationController(InsuranceDbContext db, ILogger<ConfigurationController> logger, IActivityAuditService audit, IMemoryCache cache)
     {
         _db = db;
         _logger = logger;
         _audit = audit;
+        _cache = cache;
     }
 
     private void LogRequest(string path, int status, int? count = null)
@@ -46,9 +49,13 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ConfigProductDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetProducts()
     {
-        var products = await _db.Products.AsNoTracking()
-            .Select(p => new ConfigProductDto(p.Code, p.Name, p.ProductType))
-            .ToListAsync();
+        if (!_cache.TryGetValue("config_products_list", out List<ConfigProductDto>? products) || products is null)
+        {
+            products = await _db.Products.AsNoTracking()
+                .Select(p => new ConfigProductDto(p.Code, p.Name, p.ProductType))
+                .ToListAsync();
+            _cache.Set("config_products_list", products, TimeSpan.FromHours(1));
+        }
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, products.Count);
         return Ok(products);
     }
@@ -59,14 +66,19 @@ public class ConfigurationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUins([FromQuery] string productCode)
     {
-        var product = await _db.Products
-            .Include(p => p.Versions).AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Code == productCode);
-        if (product is null) return NotFound(new { error = $"Product '{productCode}' not found." });
+        var cacheKey = $"config_uins_{productCode}";
+        if (!_cache.TryGetValue(cacheKey, out List<ConfigUinDto>? uins) || uins is null)
+        {
+            var product = await _db.Products
+                .AsNoTracking().Include(p => p.Versions)
+                .FirstOrDefaultAsync(p => p.Code == productCode);
+            if (product is null) return NotFound(new { error = $"Product '{productCode}' not found." });
 
-        var uins = product.Versions
-            .Select(v => new ConfigUinDto(v.Id, v.Version, v.IsActive, v.EffectiveDate))
-            .ToList();
+            uins = product.Versions
+                .Select(v => new ConfigUinDto(v.Id, v.Version, v.IsActive, v.EffectiveDate))
+                .ToList();
+            _cache.Set(cacheKey, uins, TimeSpan.FromHours(1));
+        }
         LogRequest(HttpContext.Request.Path, StatusCodes.Status200OK, uins.Count);
         return Ok(uins);
     }

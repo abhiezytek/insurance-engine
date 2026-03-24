@@ -5,6 +5,7 @@ using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace InsuranceEngine.Api.Controllers;
 
@@ -19,12 +20,14 @@ public class UserMgmtController : ControllerBase
     private readonly InsuranceDbContext _db;
     private readonly ILogger<UserMgmtController> _logger;
     private readonly IActivityAuditService _audit;
+    private readonly IMemoryCache _cache;
 
-    public UserMgmtController(InsuranceDbContext db, ILogger<UserMgmtController> logger, IActivityAuditService audit)
+    public UserMgmtController(InsuranceDbContext db, ILogger<UserMgmtController> logger, IActivityAuditService audit, IMemoryCache cache)
     {
         _db = db;
         _logger = logger;
         _audit = audit;
+        _cache = cache;
     }
 
     // -------------------------------------------------------------------------
@@ -196,6 +199,7 @@ public class UserMgmtController : ControllerBase
         };
         _db.RoleMasters.Add(role);
         await _db.SaveChangesAsync();
+        _cache.Remove("roles_active");
         _logger.LogInformation("Role created Id={RoleId} Name={RoleName}", role.Id, role.RoleName);
         await _audit.LogAsync("UserMgmt", "RoleCreated", recordId: role.Id.ToString(), newValue: role.RoleName);
         return CreatedAtAction(nameof(GetRoles), null, role);
@@ -211,15 +215,19 @@ public class UserMgmtController : ControllerBase
         pageSize = Math.Min(Math.Max(pageSize, 1), 100);
         page = Math.Max(page, 1);
 
-        var query = _db.RoleMasters
-            .Include(r => r.ModuleAccess).ThenInclude(ma => ma.Module)
-            .Include(r => r.ModuleAccess).ThenInclude(ma => ma.SubModule)
-            .AsNoTracking();
-        var totalCount = await query.CountAsync();
-        var roles = await query
-            .OrderBy(r => r.RoleName)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .ToListAsync();
+        if (!_cache.TryGetValue("roles_active", out List<RoleMaster>? allRoles) || allRoles is null)
+        {
+            allRoles = await _db.RoleMasters
+                .Include(r => r.ModuleAccess).ThenInclude(ma => ma.Module)
+                .Include(r => r.ModuleAccess).ThenInclude(ma => ma.SubModule)
+                .AsNoTracking()
+                .OrderBy(r => r.RoleName)
+                .ToListAsync();
+            _cache.Set("roles_active", allRoles, TimeSpan.FromMinutes(30));
+        }
+
+        var totalCount = allRoles.Count;
+        var roles = allRoles.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         return Ok(new { data = roles, totalCount, page, pageSize });
     }
 
@@ -234,6 +242,7 @@ public class UserMgmtController : ControllerBase
         role.RoleName = dto.RoleName;
         role.Description = dto.Description;
         await _db.SaveChangesAsync();
+        _cache.Remove("roles_active");
         _logger.LogInformation("Role updated Id={RoleId}", role.Id);
         await _audit.LogAsync("UserMgmt", "RoleUpdated", recordId: role.Id.ToString(), newValue: dto.RoleName);
         return Ok(role);
@@ -249,6 +258,7 @@ public class UserMgmtController : ControllerBase
         if (role is null) return NotFound();
         role.IsActive = false;
         await _db.SaveChangesAsync();
+        _cache.Remove("roles_active");
         _logger.LogInformation("Role deactivated Id={RoleId}", role.Id);
         await _audit.LogAsync("UserMgmt", "RoleDeactivated", recordId: role.Id.ToString());
         return Ok(role);
