@@ -538,12 +538,14 @@ public class PayoutService : IPayoutService
 
     public async Task<PayoutBatchDto> ProcessUploadedFile(Stream fileStream, string fileName, string payoutType, string userId)
     {
-        _logger.LogInformation("Processing uploaded file {FileName}", fileName);
+        // Sanitize filename to prevent path traversal
+        var safeFileName = Path.GetFileName(fileName);
+        _logger.LogInformation("Processing uploaded file {FileName}", safeFileName);
 
         var batch = new PayoutBatch
         {
             BatchType = "FileUpload",
-            FileName = fileName,
+            FileName = safeFileName,
             PayoutType = payoutType,
             Status = "Processing",
             CreatedBy = userId,
@@ -563,8 +565,8 @@ public class PayoutService : IPayoutService
         _db.PayoutFiles.Add(new PayoutFile
         {
             BatchId = batch.Id,
-            FileName = fileName,
-            FileFormat = Path.GetExtension(fileName).TrimStart('.').ToUpperInvariant(),
+            FileName = safeFileName,
+            FileFormat = Path.GetExtension(safeFileName).TrimStart('.').ToUpperInvariant(),
             FileType = "Upload",
             FileSizeBytes = fileStream.Length,
             GeneratedBy = userId,
