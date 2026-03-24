@@ -11,7 +11,7 @@ namespace InsuranceEngine.Api.Controllers;
 [Route("api/payout")]
 [Produces("application/json")]
 [Authorize(Policy = "CanViewAudit")]
-[RequireRoleHeader("Admin", "SuperAdmin", "Auditor", "AuditUser")]
+[RequireRoleHeader("Admin", "SuperAdmin", "Auditor", "AuditUser", "Operations", "Checker", "Authorizer")]
 public class PayoutController : ControllerBase
 {
     private readonly IPayoutService _payoutService;
@@ -25,6 +25,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Search a single policy and create a payout verification case.</summary>
     [HttpPost("search")]
+    [Authorize(Roles = "Operations,Checker,Authorizer,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutCaseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchPolicy([FromBody] PayoutSearchRequest req)
     {
@@ -37,6 +38,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Checker approves a payout case (level 1).</summary>
     [HttpPost("checker/approve")]
+    [Authorize(Roles = "Checker,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutCaseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckerApprove([FromBody] PayoutDecisionRequest req)
     {
@@ -47,6 +49,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Checker rejects a payout case (level 1).</summary>
     [HttpPost("checker/reject")]
+    [Authorize(Roles = "Checker,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutCaseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckerReject([FromBody] PayoutDecisionRequest req)
     {
@@ -59,6 +62,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Authorizer approves a payout case (level 2) — pushes to core system.</summary>
     [HttpPost("authorizer/approve")]
+    [Authorize(Roles = "Authorizer,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutCaseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> AuthorizerApprove([FromBody] PayoutDecisionRequest req)
     {
@@ -69,6 +73,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Authorizer rejects a payout case (level 2).</summary>
     [HttpPost("authorizer/reject")]
+    [Authorize(Roles = "Authorizer,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutCaseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> AuthorizerReject([FromBody] PayoutDecisionRequest req)
     {
@@ -81,6 +86,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Bulk checker approve for multiple payout cases.</summary>
     [HttpPost("checker/bulk-approve")]
+    [Authorize(Roles = "Checker,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(List<PayoutCaseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> BulkCheckerApprove([FromBody] PayoutBulkDecisionRequest req)
     {
@@ -99,6 +105,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Bulk authorizer approve for multiple payout cases.</summary>
     [HttpPost("authorizer/bulk-approve")]
+    [Authorize(Roles = "Authorizer,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(List<PayoutCaseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> BulkAuthorizerApprove([FromBody] PayoutBulkDecisionRequest req)
     {
@@ -167,6 +174,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Generate a payout batch from system-detected due policies.</summary>
     [HttpPost("batch/generate")]
+    [Authorize(Roles = "Operations,Checker,Authorizer,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutBatchDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GenerateBatch([FromBody] PayoutBatchGenerateRequest req)
     {
@@ -180,6 +188,7 @@ public class PayoutController : ControllerBase
 
     /// <summary>Upload a CSV/Excel file for batch payout processing.</summary>
     [HttpPost("upload")]
+    [Authorize(Roles = "Operations,Checker,Authorizer,Admin,SuperAdmin")]
     [ProducesResponseType(typeof(PayoutBatchDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UploadFile(IFormFile file, [FromQuery] string payoutType = "Maturity")
     {

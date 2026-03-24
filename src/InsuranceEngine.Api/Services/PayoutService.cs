@@ -16,17 +16,20 @@ public class PayoutService : IPayoutService
     private readonly InsuranceDbContext _db;
     private readonly ICoreSystemGateway _gateway;
     private readonly IBenefitCalculationService _calcService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<PayoutService> _logger;
 
     public PayoutService(
         InsuranceDbContext db,
         ICoreSystemGateway gateway,
         IBenefitCalculationService calcService,
+        INotificationService notificationService,
         ILogger<PayoutService> logger)
     {
         _db = db;
         _gateway = gateway;
         _calcService = calcService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -109,6 +112,11 @@ public class PayoutService : IPayoutService
         _logger.LogInformation("PayoutCase {CaseId} created for {PolicyNumber}, variance {Variance}",
             payoutCase.Id, MaskPolicy(policyNumber), variance);
 
+        // Notify Checkers of new pending case
+        _ = _notificationService.NotifyRoleAsync("Checker",
+            $"New payout case {policyNumber} ({payoutType}) pending your approval.",
+            "PayoutVerification", payoutCase.Id.ToString());
+
         return MapToDto(payoutCase);
     }
 
@@ -143,6 +151,12 @@ public class PayoutService : IPayoutService
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("PayoutCase {CaseId} checker-approved by {UserId}", caseId, userId);
+
+        // Notify Authorizers that case is pending L2
+        _ = _notificationService.NotifyRoleAsync("Authorizer",
+            $"Case {payoutCase.PolicyNumber} approved by Checker, pending your authorization.",
+            "PayoutVerification", caseId.ToString());
+
         return MapToDto(payoutCase);
     }
 
@@ -175,6 +189,12 @@ public class PayoutService : IPayoutService
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("PayoutCase {CaseId} checker-rejected by {UserId}", caseId, userId);
+
+        // Notify the submitter of rejection
+        _ = _notificationService.CreateAsync(payoutCase.CreatedBy,
+            $"Your case {payoutCase.PolicyNumber} was rejected by Checker. Reason: {remarks ?? "No remarks"}",
+            "PayoutVerification", caseId.ToString());
+
         return MapToDto(payoutCase);
     }
 
@@ -260,6 +280,12 @@ public class PayoutService : IPayoutService
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("PayoutCase {CaseId} authorizer-rejected by {UserId}", caseId, userId);
+
+        // Notify the submitter of rejection
+        _ = _notificationService.CreateAsync(payoutCase.CreatedBy,
+            $"Your case {payoutCase.PolicyNumber} was rejected by Authorizer. Reason: {remarks ?? "No remarks"}",
+            "PayoutVerification", caseId.ToString());
+
         return MapToDto(payoutCase);
     }
 

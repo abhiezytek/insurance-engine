@@ -46,6 +46,9 @@ public class InsuranceDbContext : DbContext
     public DbSet<PayoutFile> PayoutFiles => Set<PayoutFile>();
     public DbSet<PayoutWorkflowHistory> PayoutWorkflowHistories => Set<PayoutWorkflowHistory>();
 
+    // Notifications
+    public DbSet<Notification> Notifications => Set<Notification>();
+
     // Module access control
     public DbSet<ModuleMaster> ModuleMasters => Set<ModuleMaster>();
     public DbSet<SubModuleMaster> SubModuleMasters => Set<SubModuleMaster>();
@@ -276,6 +279,16 @@ public class InsuranceDbContext : DbContext
             e.Property(x => x.PushStatus).HasMaxLength(20);
             e.Property(x => x.PushReferenceNumber).HasMaxLength(200);
             e.HasOne(x => x.PayoutCase).WithMany(x => x.WorkflowHistory).HasForeignKey(x => x.PayoutCaseId);
+        });
+
+        modelBuilder.Entity<Notification>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Message).HasMaxLength(500).IsRequired();
+            e.Property(x => x.RelatedModule).HasMaxLength(50);
+            e.Property(x => x.RelatedId).HasMaxLength(50);
+            e.HasIndex(x => new { x.UserId, x.IsRead });
         });
 
         // ── Module access control ──

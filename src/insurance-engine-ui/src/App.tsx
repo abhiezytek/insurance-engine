@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -10,9 +10,11 @@ import {
   ShieldCheck,
   ChevronDown,
   ShieldOff,
+  Bell,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PermissionProvider, usePermission } from './context/PermissionContext';
+import { api } from './api';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import BenefitIllustration from './components/BenefitIllustration';
@@ -104,6 +106,91 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'configuration', label: 'Configuration', icon: <Settings size={15} /> },
   { id: 'user-mgmt', label: 'User Mgmt', icon: <Users size={15} /> },
 ];
+
+// ---------------------------------------------------------------------------
+// Notification bell component
+// ---------------------------------------------------------------------------
+interface NotifItem { id: number; message: string; relatedModule?: string; relatedId?: string; createdAt: string }
+
+function NotificationBell({ onNavigate }: { onNavigate?: (view: ViewId) => void }) {
+  const [items, setItems] = useState<NotifItem[]>([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await api.get<NotifItem[]>('/notifications');
+      setItems(res.data ?? []);
+    } catch { /* ignore fetch errors */ }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const markRead = async (id: number) => {
+    try { await api.put(`/notifications/${id}/read`); } catch { /* ignore */ }
+    setItems(prev => prev.filter(n => n.id !== id));
+  };
+
+  const markAllRead = async () => {
+    try { await api.put('/notifications/read-all'); } catch { /* ignore */ }
+    setItems([]);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)} title="Notifications"
+        className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition">
+        <Bell size={16} />
+        {items.length > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center
+                           bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
+            {items.length > 99 ? '99+' : items.length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-10 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 max-h-96 overflow-y-auto">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+            <span className="text-sm font-semibold text-slate-700">Notifications</span>
+            {items.length > 0 && (
+              <button onClick={markAllRead} className="text-xs text-blue-600 hover:underline">Mark all read</button>
+            )}
+          </div>
+          {items.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-slate-400">No unread notifications</div>
+          ) : (
+            items.map(n => (
+              <div key={n.id}
+                className="px-4 py-3 border-b border-slate-50 hover:bg-blue-50 cursor-pointer text-sm text-slate-700"
+                onClick={() => {
+                  markRead(n.id);
+                  if (n.relatedModule === 'PayoutVerification' && onNavigate) onNavigate('payout-verify');
+                  setOpen(false);
+                }}>
+                <p className="text-slate-800 text-xs leading-relaxed">{n.message}</p>
+                <p className="text-slate-400 text-[10px] mt-1">
+                  {new Date(n.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Dropdown component
@@ -255,6 +342,7 @@ function AppInner() {
           </div>
 
           <div className="flex items-center gap-4">
+            <NotificationBell onNavigate={setActiveView} />
             <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-white/10
                              text-blue-100 text-xs font-medium border border-white/20">
               {user?.username} · {user?.role}

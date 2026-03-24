@@ -67,6 +67,7 @@ else
 
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IPayoutService, PayoutService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActivityAuditService, ActivityAuditService>();
 
@@ -130,7 +131,8 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("Admin", "SuperAdmin"));
 
     options.AddPolicy("CanViewAudit", policy =>
-        policy.RequireRole("Admin", "SuperAdmin", "Actuary", "AuditUser", "Auditor"));
+        policy.RequireRole("Admin", "SuperAdmin", "Actuary", "AuditUser", "Auditor",
+                           "Operations", "Checker", "Authorizer"));
 
     options.AddPolicy("CanViewBI", policy =>
         policy.RequireRole("Admin", "SuperAdmin", "Actuary", "Operations", "ReadOnly"));

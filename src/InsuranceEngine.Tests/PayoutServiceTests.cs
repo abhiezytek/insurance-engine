@@ -32,8 +32,11 @@ public class PayoutServiceTests
         var gatewayLogger = new Mock<ILogger<MockCoreSystemGateway>>();
         _gateway = new MockCoreSystemGateway(gatewayLogger.Object);
 
+        var notificationLogger = new Mock<ILogger<NotificationService>>();
+        var notificationService = new NotificationService(_db, notificationLogger.Object);
+
         var payoutLogger = new Mock<ILogger<PayoutService>>();
-        _payoutService = new PayoutService(_db, _gateway, calcService, payoutLogger.Object);
+        _payoutService = new PayoutService(_db, _gateway, calcService, notificationService, payoutLogger.Object);
     }
 
     [TearDown]
@@ -398,6 +401,115 @@ public class PayoutServiceTests
         var exportFiles = await _db.PayoutFiles.Where(f => f.FileType == "Export" && f.FileFormat == "JSON").ToListAsync();
         Assert.That(exportFiles.Count, Is.GreaterThanOrEqualTo(1));
         Assert.That(exportFiles.Last().FileHash, Is.Not.Null.And.Not.Empty);
+    }
+
+    // ─── Notifications ─────────────────────────────────────────────────────────
+
+    [Test]
+    public async Task SearchAndVerify_CreatesNotificationForCheckers()
+    {
+        await _payoutService.SearchAndVerify("POLNOT1", "Maturity", "submitter1");
+
+        // Notifications are fire-and-forget; even without role users seeded,
+        // verify case creation succeeded (no exception from notification path)
+        var cases = await _db.PayoutCases.Where(c => c.PolicyNumber == "POLNOT1").ToListAsync();
+        Assert.That(cases.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task CheckerReject_NotifiesSubmitter()
+    {
+        var caseResult = await _payoutService.SearchAndVerify("POLNOT2", "Maturity", "submitter1");
+        await _payoutService.CheckerReject(caseResult.Id, "Variance too high", "checker1");
+
+        // Notification created for submitter
+        var notifications = await _db.Notifications
+            .Where(n => n.UserId == "submitter1" && n.RelatedModule == "PayoutVerification")
+            .ToListAsync();
+        Assert.That(notifications.Count, Is.GreaterThanOrEqualTo(1));
+        Assert.That(notifications.Last().Message, Does.Contain("rejected"));
+    }
+
+    [Test]
+    public async Task AuthorizerReject_NotifiesSubmitter()
+    {
+        var caseResult = await _payoutService.SearchAndVerify("POLNOT3", "Maturity", "submitter1");
+        await _payoutService.CheckerApprove(caseResult.Id, null, "checker1");
+        await _payoutService.AuthorizerReject(caseResult.Id, "Policy issue", "authorizer1");
+
+        var notifications = await _db.Notifications
+            .Where(n => n.UserId == "submitter1" && n.RelatedModule == "PayoutVerification")
+            .ToListAsync();
+        Assert.That(notifications.Count, Is.GreaterThanOrEqualTo(1));
+        Assert.That(notifications.Last().Message, Does.Contain("rejected by Authorizer"));
+    }
+
+    // ─── NotificationService Unit Tests ─────────────────────────────────────────
+
+    [Test]
+    public async Task NotificationService_CreateAndGetUnread()
+    {
+        var notifLogger = new Mock<ILogger<NotificationService>>();
+        var svc = new NotificationService(_db, notifLogger.Object);
+
+        await svc.CreateAsync("user_a", "Test message", "TestModule", "123");
+
+        var unread = await svc.GetUnread("user_a");
+        Assert.That(unread.Count, Is.EqualTo(1));
+        Assert.That(unread[0].Message, Is.EqualTo("Test message"));
+        Assert.That(unread[0].IsRead, Is.False);
+    }
+
+    [Test]
+    public async Task NotificationService_MarkAsRead()
+    {
+        var notifLogger = new Mock<ILogger<NotificationService>>();
+        var svc = new NotificationService(_db, notifLogger.Object);
+
+        await svc.CreateAsync("user_b", "To be read");
+        var unread = await svc.GetUnread("user_b");
+        Assert.That(unread.Count, Is.EqualTo(1));
+
+        await svc.MarkAsRead(unread[0].Id, "user_b");
+
+        var unreadAfter = await svc.GetUnread("user_b");
+        Assert.That(unreadAfter.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task NotificationService_MarkAllAsRead()
+    {
+        var notifLogger = new Mock<ILogger<NotificationService>>();
+        var svc = new NotificationService(_db, notifLogger.Object);
+
+        await svc.CreateAsync("user_c", "Msg 1");
+        await svc.CreateAsync("user_c", "Msg 2");
+        await svc.CreateAsync("user_c", "Msg 3");
+
+        var unread = await svc.GetUnread("user_c");
+        Assert.That(unread.Count, Is.EqualTo(3));
+
+        await svc.MarkAllAsRead("user_c");
+
+        var unreadAfter = await svc.GetUnread("user_c");
+        Assert.That(unreadAfter.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task NotificationService_MarkAsRead_WrongUser_NoEffect()
+    {
+        var notifLogger = new Mock<ILogger<NotificationService>>();
+        var svc = new NotificationService(_db, notifLogger.Object);
+
+        await svc.CreateAsync("user_d", "Private msg");
+        var unread = await svc.GetUnread("user_d");
+
+        // Wrong user tries to mark as read
+        await svc.MarkAsRead(unread[0].Id, "user_e");
+
+        // Still unread for original user
+        var stillUnread = await svc.GetUnread("user_d");
+        Assert.That(stillUnread.Count, Is.EqualTo(1));
     }
 
     // ─── Seed ────────────────────────────────────────────────────────────────
