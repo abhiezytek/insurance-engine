@@ -294,7 +294,7 @@ function UsersTab({ users, roles, onReload }: { users: User[]; roles: Role[]; on
           <THead cols={['', 'Full Name', 'Email', 'Department', 'Role', 'Status', 'Actions']} />
           <tbody className="divide-y divide-slate-100">
             {filtered.map(u => {
-              const initials = u.fullName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              const initials = (u.fullName || '').split(' ').filter(w => w.length > 0).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
               const isInactive = u.status !== 'Active';
               return (
               <tr key={u.id} className={`hover:bg-blue-50/20 ${isInactive ? 'opacity-60' : ''} text-slate-700`}>
