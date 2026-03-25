@@ -267,10 +267,23 @@ app.MapGet("/api/health", async (IServiceProvider sp, IConfiguration config, IWe
     return overallHealthy ? Results.Ok(result) : Results.Json(result, statusCode: 503);
 });
 
-// Apply migrations and seed data on startup
+// Verify database connectivity and apply migrations on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<InsuranceDbContext>();
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync();
+        if (canConnect)
+            app.Logger.LogInformation("Database connection verified");
+        else
+            app.Logger.LogCritical("Database connection failed: CanConnectAsync returned false");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(ex, "Database connection failed: {Message}", ex.Message);
+    }
+
     try
     {
         db.Database.Migrate();

@@ -21,12 +21,17 @@ public class AuthController : ControllerBase
     private readonly InsuranceDbContext _db;
     private readonly IConfiguration _config;
     private readonly IActivityAuditService _audit;
+    private readonly ILogger<AuthController> _logger;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(InsuranceDbContext db, IConfiguration config, IActivityAuditService audit)
+    public AuthController(InsuranceDbContext db, IConfiguration config, IActivityAuditService audit,
+        ILogger<AuthController> logger, IWebHostEnvironment env)
     {
         _db = db;
         _config = config;
         _audit = audit;
+        _logger = logger;
+        _env = env;
     }
 
     /// <summary>Login and receive a JWT token.</summary>
@@ -35,47 +40,66 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
-        if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
+        try
         {
-            await LogLoginAttempt(req.Username ?? "", false, "Empty credentials");
-            await _audit.LogAsync("Auth", "LoginFailed", recordId: req.Username, status: "Failure", errorMessage: "Empty credentials");
-            return Unauthorized(new { error = "Username and password are required." });
-        }
+            if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
+            {
+                await LogLoginAttempt(req.Username ?? "", false, "Empty credentials");
+                await _audit.LogAsync("Auth", "LoginFailed", recordId: req.Username, status: "Failure", errorMessage: "Empty credentials");
+                return Unauthorized(new { error = "Username and password are required." });
+            }
 
-        var user = await _db.AppUsers
-            .FirstOrDefaultAsync(u => u.Username == req.Username);
+            var user = await _db.AppUsers
+                .FirstOrDefaultAsync(u => u.Username == req.Username);
 
-        if (user == null || !VerifyPassword(req.Password, user.PasswordHash))
-        {
-            await LogLoginAttempt(req.Username, false, "Invalid credentials");
-            await _audit.LogAsync("Auth", "LoginFailed", recordId: req.Username, status: "Failure", errorMessage: "Invalid credentials");
-            return Unauthorized(new { error = "Invalid username or password." });
-        }
+            if (user == null || !VerifyPassword(req.Password, user.PasswordHash))
+            {
+                await LogLoginAttempt(req.Username, false, "Invalid credentials");
+                await _audit.LogAsync("Auth", "LoginFailed", recordId: req.Username, status: "Failure", errorMessage: "Invalid credentials");
+                return Unauthorized(new { error = "Invalid username or password." });
+            }
 
-        await LogLoginAttempt(user.Username, true, null);
+            await LogLoginAttempt(user.Username, true, null);
 
-        // Check if user must change password before accessing the system
-        if (user.ForceChangePassword)
-        {
-            var tempToken = GenerateTempToken(user.Username, user.Role);
+            // Check if user must change password before accessing the system
+            if (user.ForceChangePassword)
+            {
+                var tempToken = GenerateTempToken(user.Username, user.Role);
+                return Ok(new LoginResponse
+                {
+                    RequiresPasswordChange = true,
+                    TempToken = tempToken,
+                    Message = "You must change your password before accessing the system."
+                });
+            }
+
+            await _audit.LogAsync("Auth", "Login", recordId: user.Username);
+
+            var token = GenerateJwtToken(user.Username, user.Role);
             return Ok(new LoginResponse
             {
-                RequiresPasswordChange = true,
-                TempToken = tempToken,
-                Message = "You must change your password before accessing the system."
+                Token = token,
+                Username = user.Username,
+                Role = user.Role,
+                ExpiresAt = DateTime.UtcNow.AddHours(8)
             });
         }
-
-        await _audit.LogAsync("Auth", "Login", recordId: user.Username);
-
-        var token = GenerateJwtToken(user.Username, user.Role);
-        return Ok(new LoginResponse
+        catch (Exception ex)
         {
-            Token = token,
-            Username = user.Username,
-            Role = user.Role,
-            ExpiresAt = DateTime.UtcNow.AddHours(8)
-        });
+            _logger.LogError(ex,
+                "Login failed for user {Username}. Error: {Message}",
+                req?.Username,
+                ex.Message);
+
+            var isDev = _env.IsDevelopment();
+            return StatusCode(500, new
+            {
+                message = isDev
+                    ? ex.Message
+                    : "Login failed. Check server logs.",
+                detail = isDev ? ex.StackTrace : null
+            });
+        }
     }
 
     /// <summary>Change password (supports both forced and voluntary changes).</summary>
