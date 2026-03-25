@@ -42,8 +42,17 @@ builder.Services.AddSwaggerGen(c =>
     c.OperationFilter<InsuranceEngine.Api.Swagger.FileUploadOperationFilter>();
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Database=InsuranceEngineDb;TrustServerCertificate=True;Integrated Security=True";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    if (builder.Environment.IsProduction())
+        throw new InvalidOperationException(
+            "ConnectionStrings:DefaultConnection is not configured. " +
+            "Set ConnectionStrings__DefaultConnection environment variable or use appsettings.Production.json.");
+
+    // Local dev fallback only
+    connectionString = "Server=localhost;Database=InsuranceEngineDb;TrustServerCertificate=True;Integrated Security=True";
+}
 
 builder.Services.AddDbContext<InsuranceDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -214,17 +223,67 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     }
 });
 
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", async (IServiceProvider sp, IConfiguration config, IWebHostEnvironment env, ILoggerFactory loggerFactory) =>
 {
-    status = "healthy",
-    timestamp = DateTime.UtcNow,
-    version = "1.0.0"
-}));
+    var logger = loggerFactory.CreateLogger("HealthCheck");
+    var dbHealthy = false;
+    var pendingMigrations = Array.Empty<string>();
+    try
+    {
+        using var scope = sp.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<InsuranceDbContext>();
+        dbHealthy = await db.Database.CanConnectAsync();
+        if (dbHealthy)
+            pendingMigrations = (await db.Database.GetPendingMigrationsAsync()).ToArray();
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Health check: database connectivity test failed");
+    }
 
-// Apply migrations and seed data on startup
+    var jwtConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Key"]) && config["Jwt:Key"]!.Length >= 32;
+    var dbConfigured = !string.IsNullOrWhiteSpace(config.GetConnectionString("DefaultConnection"));
+    var migrationsUpToDate = dbHealthy && pendingMigrations.Length == 0;
+    var overallHealthy = dbHealthy && migrationsUpToDate && jwtConfigured && dbConfigured;
+
+    var result = new
+    {
+        status = overallHealthy ? "healthy" : "unhealthy",
+        timestamp = DateTime.UtcNow,
+        version = "1.0.0",
+        environment = env.EnvironmentName,
+        checks = new
+        {
+            database = dbHealthy ? "connected" : "unreachable",
+            migrationsUpToDate,
+            pendingMigrationCount = pendingMigrations.Length,
+            connectionStringConfigured = dbConfigured,
+            jwtKeyConfigured = jwtConfigured,
+            jwtIssuerConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Issuer"]),
+            jwtAudienceConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Audience"])
+        }
+    };
+
+    return overallHealthy ? Results.Ok(result) : Results.Json(result, statusCode: 503);
+});
+
+// Verify database connectivity and apply migrations on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<InsuranceDbContext>();
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync();
+        if (canConnect)
+            app.Logger.LogInformation("Database connection verified");
+        else
+            app.Logger.LogCritical("Database connection failed: CanConnectAsync returned false");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(ex, "Database connection failed: {Message}", ex.Message);
+    }
+
     try
     {
         db.Database.Migrate();
@@ -233,7 +292,14 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning(ex, "Could not apply migrations/seed. Continuing startup.");
+
+        if (app.Environment.IsProduction())
+        {
+            logger.LogCritical(ex, "Database migration/seed failed. Aborting startup — tables (e.g. Users) may not exist.");
+            throw;
+        }
+
+        logger.LogWarning(ex, "Could not apply migrations/seed. Continuing startup (non-Production).");
     }
 }
 

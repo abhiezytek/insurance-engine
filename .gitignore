@@ -18,6 +18,10 @@ appsettings.*.json
 src/insurance-engine-ui/node_modules/
 src/insurance-engine-ui/dist/
 
+# Stdout logs (IIS / ASP.NET Core Module)
+src/InsuranceEngine.Api/logs/*
+!src/InsuranceEngine.Api/logs/.gitkeep
+
 # Old test folder artifacts
 InsuranceEngine.Tests/bin/
 InsuranceEngine.Tests/obj/
