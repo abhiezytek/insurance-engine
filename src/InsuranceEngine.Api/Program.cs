@@ -42,8 +42,17 @@ builder.Services.AddSwaggerGen(c =>
     c.OperationFilter<InsuranceEngine.Api.Swagger.FileUploadOperationFilter>();
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Database=InsuranceEngineDb;TrustServerCertificate=True;Integrated Security=True";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    if (builder.Environment.IsProduction())
+        throw new InvalidOperationException(
+            "ConnectionStrings:DefaultConnection is not configured. " +
+            "Set ConnectionStrings__DefaultConnection environment variable or use appsettings.Production.json.");
+
+    // Local dev fallback only
+    connectionString = "Server=localhost;Database=InsuranceEngineDb;TrustServerCertificate=True;Integrated Security=True";
+}
 
 builder.Services.AddDbContext<InsuranceDbContext>(options =>
     options.UseSqlServer(connectionString));
@@ -214,12 +223,43 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     }
 });
 
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", async (IServiceProvider sp, IConfiguration config, IWebHostEnvironment env, ILoggerFactory loggerFactory) =>
 {
-    status = "healthy",
-    timestamp = DateTime.UtcNow,
-    version = "1.0.0"
-}));
+    var logger = loggerFactory.CreateLogger("HealthCheck");
+    var dbHealthy = false;
+    try
+    {
+        using var scope = sp.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<InsuranceDbContext>();
+        dbHealthy = await db.Database.CanConnectAsync();
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Health check: database connectivity test failed");
+    }
+
+    var jwtConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Key"]) && config["Jwt:Key"]!.Length >= 32;
+    var dbConfigured = !string.IsNullOrWhiteSpace(config.GetConnectionString("DefaultConnection"));
+    var overallHealthy = dbHealthy && jwtConfigured && dbConfigured;
+
+    var result = new
+    {
+        status = overallHealthy ? "healthy" : "unhealthy",
+        timestamp = DateTime.UtcNow,
+        version = "1.0.0",
+        environment = env.EnvironmentName,
+        checks = new
+        {
+            database = dbHealthy ? "connected" : "unreachable",
+            connectionStringConfigured = dbConfigured,
+            jwtKeyConfigured = jwtConfigured,
+            jwtIssuerConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Issuer"]),
+            jwtAudienceConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Audience"])
+        }
+    };
+
+    return overallHealthy ? Results.Ok(result) : Results.Json(result, statusCode: 503);
+});
 
 // Apply migrations and seed data on startup
 using (var scope = app.Services.CreateScope())
