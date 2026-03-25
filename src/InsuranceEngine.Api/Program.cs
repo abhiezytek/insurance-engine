@@ -43,7 +43,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Database=InsuranceEngineDb;TrustServerCertificate=True;Integrated Security=True";
+    ?? "Data Source=SQL1001.site4now.net;Initial Catalog=db_abd5c4_insuranceenginedb;User Id=db_abd5c4_insuranceenginedb_admin;Password=Insurance@#123;Encrypt=True;TrustServerCertificate=True;";
 
 builder.Services.AddDbContext<InsuranceDbContext>(options =>
     options.UseSqlServer(connectionString));
