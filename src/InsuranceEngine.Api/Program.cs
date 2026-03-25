@@ -227,11 +227,14 @@ app.MapGet("/api/health", async (IServiceProvider sp, IConfiguration config, IWe
 {
     var logger = loggerFactory.CreateLogger("HealthCheck");
     var dbHealthy = false;
+    var pendingMigrations = Array.Empty<string>();
     try
     {
         using var scope = sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<InsuranceDbContext>();
         dbHealthy = await db.Database.CanConnectAsync();
+        if (dbHealthy)
+            pendingMigrations = (await db.Database.GetPendingMigrationsAsync()).ToArray();
     }
     catch (Exception ex)
     {
@@ -240,7 +243,8 @@ app.MapGet("/api/health", async (IServiceProvider sp, IConfiguration config, IWe
 
     var jwtConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Key"]) && config["Jwt:Key"]!.Length >= 32;
     var dbConfigured = !string.IsNullOrWhiteSpace(config.GetConnectionString("DefaultConnection"));
-    var overallHealthy = dbHealthy && jwtConfigured && dbConfigured;
+    var migrationsUpToDate = dbHealthy && pendingMigrations.Length == 0;
+    var overallHealthy = dbHealthy && migrationsUpToDate && jwtConfigured && dbConfigured;
 
     var result = new
     {
@@ -251,6 +255,8 @@ app.MapGet("/api/health", async (IServiceProvider sp, IConfiguration config, IWe
         checks = new
         {
             database = dbHealthy ? "connected" : "unreachable",
+            migrationsUpToDate,
+            pendingMigrationCount = pendingMigrations.Length,
             connectionStringConfigured = dbConfigured,
             jwtKeyConfigured = jwtConfigured,
             jwtIssuerConfigured = !string.IsNullOrWhiteSpace(config["Jwt:Issuer"]),
@@ -273,7 +279,14 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning(ex, "Could not apply migrations/seed. Continuing startup.");
+
+        if (app.Environment.IsProduction())
+        {
+            logger.LogCritical(ex, "Database migration/seed failed. Aborting startup — tables (e.g. Users) may not exist.");
+            throw;
+        }
+
+        logger.LogWarning(ex, "Could not apply migrations/seed. Continuing startup (non-Production).");
     }
 }
 
