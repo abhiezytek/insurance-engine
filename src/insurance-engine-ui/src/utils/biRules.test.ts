@@ -106,7 +106,7 @@ describe('biRules utilities', () => {
   it('validates ULIP PT options and fund visibility', () => {
     expect(getUlipPtOptions('Limited', 10)[0]).toBe(15);
     expect(shouldShowFundOption('Self-Managed Investment Strategy')).toBe(true);
-    expect(shouldShowFundOption('Age-Based Strategy')).toBe(false);
+    expect(shouldShowFundOption('Age-based Investment Strategy')).toBe(false);
   });
 
   it('validates ULIP minimum premium by frequency', () => {
