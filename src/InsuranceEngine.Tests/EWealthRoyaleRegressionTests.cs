@@ -103,7 +103,7 @@ public class EWealthRoyaleFmcRegressionTests
         var (fmcPa, fmcPm) = csv[fundName];
         Assert.AreEqual((decimal)expectedFmcPa, fmcPa,
             $"FMC p.a. mismatch for '{fundName}'");
-        // Monthly FMC is a precise calculation; use tolerance of 0.000001
+        // Monthly FMC is a precise calculation; use tolerance of 0.0001
         Assert.AreEqual((double)fmcPm, (double)expectedFmcPmApprox, 0.0001,
             $"FMC monthly mismatch for '{fundName}'");
     }
