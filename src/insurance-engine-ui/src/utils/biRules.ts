@@ -50,8 +50,7 @@ export type PptType = 'Single' | 'Limited' | 'Regular' | null;
 
 export type InvestmentStrategy =
   | 'Self-Managed Investment Strategy'
-  | 'Age-Based Strategy'
-  | 'System Managed'
+  | 'Age-based Investment Strategy'
   | null;
 
 export interface EwealthRoyaleForm {
@@ -75,6 +74,7 @@ export interface EwealthRoyaleForm {
   pt: number | null;
   sumAssured?: number | null;
   investmentStrategy: InvestmentStrategy;
+  riskPreference?: 'Aggressive' | 'Conservative' | null;
   fundOption?: string | null;
   standardAgeProof: boolean | null;
   salesChannel: SalesChannel | null;
@@ -207,10 +207,17 @@ export function shouldShowFundOption(strategy: InvestmentStrategy): boolean {
   return strategy === 'Self-Managed Investment Strategy';
 }
 
+export function shouldShowRiskPreference(strategy: InvestmentStrategy): boolean {
+  return strategy === 'Age-based Investment Strategy';
+}
+
 export function onInvestmentStrategyChange(strategy: InvestmentStrategy, form: EwealthRoyaleForm) {
   const nextForm = { ...form, investmentStrategy: strategy };
   if (!shouldShowFundOption(strategy)) {
     nextForm.fundOption = null;
+  }
+  if (!shouldShowRiskPreference(strategy)) {
+    nextForm.riskPreference = null;
   }
   return nextForm;
 }
@@ -227,6 +234,16 @@ export function validateUlip(form: EwealthRoyaleForm): string[] {
   if (!form.premium) errors.push('Premium is required');
   if (!form.pptType) errors.push('PPT Type is required');
   if (!form.pt) errors.push('Policy Term is required');
+
+  // Validate investment strategy
+  if (!form.investmentStrategy) {
+    errors.push('Investment Strategy is required');
+  } else if (
+    form.investmentStrategy !== 'Self-Managed Investment Strategy' &&
+    form.investmentStrategy !== 'Age-based Investment Strategy'
+  ) {
+    errors.push(`Unsupported Investment Strategy: ${form.investmentStrategy}. Allowed values: Self-Managed Investment Strategy, Age-based Investment Strategy`);
+  }
 
   const derived = deriveUlipValues(form);
 
@@ -252,6 +269,10 @@ export function validateUlip(form: EwealthRoyaleForm): string[] {
 
   if (!shouldShowFundOption(form.investmentStrategy) && form.fundOption) {
     errors.push('Fund Option must be empty unless Self-Managed Investment Strategy is selected');
+  }
+
+  if (shouldShowRiskPreference(form.investmentStrategy) && !form.riskPreference) {
+    errors.push('Risk Preference is required for Age-based Investment Strategy');
   }
 
   return errors;

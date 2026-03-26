@@ -67,10 +67,35 @@ public class BenefitIllustrationController : ControllerBase
         if (request.PolicyTerm < 5 || request.PolicyTerm > 40) return BadRequest("Policy Term must be between 5 and 40 years.");
         if (request.EntryAge < 0 || request.EntryAge > 65) return BadRequest("Entry age must be between 0 and 65.");
 
-        var result = await _svc.CalculateAsync(request);
-        await _audit.LogAsync("BI", "GenerateIllustration",
-            recordId: $"{request.Option ?? "Default"}/PPT{request.Ppt}/PT{request.PolicyTerm}");
-        return Ok(result);
+        // Option validation — accept both short ("Immediate") and product-file
+        // full names ("Immediate Income"); NormalizeOption() maps them all to
+        // canonical short names before factor lookup.
+        var allowedOptions = new[] { "Immediate", "Immediate Income", "Deferred", "Deferred Income", "Twin", "Twin Income" };
+        if (!string.IsNullOrWhiteSpace(request.Option) &&
+            !allowedOptions.Contains(request.Option, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Unsupported option '{request.Option}'. Allowed values: Immediate Income, Deferred Income, Twin Income.");
+        }
+
+        // Premium frequency validation
+        var allowedFrequencies = new[] { "Yearly", "Half Yearly", "HalfYearly", "Quarterly", "Monthly" };
+        if (!string.IsNullOrWhiteSpace(request.PremiumFrequency) &&
+            !allowedFrequencies.Contains(request.PremiumFrequency, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Unsupported premium frequency '{request.PremiumFrequency}'. Allowed values: Yearly, Half Yearly, Quarterly, Monthly.");
+        }
+
+        try
+        {
+            var result = await _svc.CalculateAsync(request);
+            await _audit.LogAsync("BI", "GenerateIllustration",
+                recordId: $"{request.Option ?? "Default"}/PPT{request.Ppt}/PT{request.PolicyTerm}");
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     private static int DeriveAge(DateTime dob, DateTime asOf)

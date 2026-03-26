@@ -16,8 +16,9 @@ public class BenefitIllustrationRequest
     public string? FormulaVersion { get; set; }
 
     /// <summary>
-    /// Annualised Premium — the base premium entered by the user.
-    /// When provided, AnnualPremium is computed as AnnualisedPremium × ModalFactor × PaymentsPerYear.
+    /// Annualised Premium — base premium payable in a year excluding taxes, rider premiums,
+    /// underwriting extra premiums, and modal/frequency loading.
+    /// When provided, InstallmentPremium and AnnualPremium are derived using modal factors.
     /// </summary>
     public decimal? AnnualisedPremium { get; set; }
 
@@ -78,7 +79,8 @@ public class BenefitIllustrationRequest
     /// </summary>
     public int? PremiumsPaid { get; set; }
     /// <summary>
-    /// Optional explicit Sum Assured override. When null, SA is derived as 10 × AnnualPremium.
+    /// Optional explicit Sum Assured override.
+    /// When null, SA on Death is derived as 10 × Annual Premium (per product wording).
     /// </summary>
     public decimal? SumAssured { get; set; }
 
@@ -110,10 +112,17 @@ public class BenefitIllustrationResponse
     /// <summary>Formula version tag (optional).</summary>
     public string? FormulaVersion { get; set; }
 
-    /// <summary>Annualised Premium (base premium entered by user).</summary>
+    /// <summary>
+    /// Annualised Premium — the base premium amount payable in a year excluding taxes,
+    /// rider premiums, underwriting extra premiums, and modal/frequency loading.
+    /// Used as basis for GI, GMB, and survival benefit calculations.
+    /// </summary>
     public decimal AnnualisedPremium { get; set; }
 
-    /// <summary>Annual Premium (Annualised Premium × Modal Factor × Payments/Year).</summary>
+    /// <summary>
+    /// Annual Premium — premium amount actually payable in a year (Installment Premium × Payments/Year).
+    /// Includes modal/frequency loading. Used as basis for Sum Assured on Death.
+    /// </summary>
     public decimal AnnualPremium { get; set; }
 
     /// <summary>Installment premium per payment event (shows modal factor impact).</summary>
@@ -131,10 +140,10 @@ public class BenefitIllustrationResponse
     /// <summary>Premium payment frequency used for this illustration.</summary>
     public string PremiumFrequency { get; set; } = string.Empty;
 
-    /// <summary>Sum Assured on Death (10 × Annual Premium).</summary>
+    /// <summary>Sum Assured on Death (10 × Annual Premium, per product wording).</summary>
     public decimal SumAssuredOnDeath { get; set; }
 
-    /// <summary>Sum Assured on Maturity (GMB after High Premium + Channel benefits). Not displayed on frontend.</summary>
+    /// <summary>Sum Assured on Maturity (GMB derived from Annualised Premium × GMB factor). Not displayed on frontend.</summary>
     public decimal SumAssuredOnMaturity { get; set; }
 
     /// <summary>Guaranteed Maturity Benefit (after High Premium + Channel benefits).</summary>

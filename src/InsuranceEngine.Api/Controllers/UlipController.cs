@@ -87,18 +87,49 @@ public class UlipController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UlipCalculationResponse>> Calculate([FromBody] UlipCalculationRequest request)
     {
+        // --- Basic input validation ---
         if (request.AnnualizedPremium <= 0)
             return BadRequest("AnnualizedPremium must be positive.");
-        if (request.SumAssured <= 0)
-            return BadRequest("SumAssured must be positive.");
+        if (request.SumAssured < 0)
+            return BadRequest("SumAssured must not be negative.");
         if (request.Ppt < 1 || request.Ppt > request.PolicyTerm)
             return BadRequest("PPT must be between 1 and PolicyTerm.");
-        if (request.PolicyTerm < 5 || request.PolicyTerm > 30)
-            return BadRequest("PolicyTerm must be between 5 and 30 years.");
+        if (request.PolicyTerm < 5 || request.PolicyTerm > 40)
+            return BadRequest("PolicyTerm must be between 5 and 40 years.");
         if (request.EntryAge <= 0 && request.DateOfBirth == default)
             return BadRequest("DateOfBirth is required.");
         if (request.EntryAge < 0 || request.EntryAge > 65)
             return BadRequest("EntryAge must be between 0 and 65 (or provide DateOfBirth).");
+
+        // --- Option validation ---
+        var allowedOptions = new[] { "Platinum", "Platinum Plus" };
+        if (!string.IsNullOrWhiteSpace(request.Option) &&
+            !allowedOptions.Contains(request.Option, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Unsupported option '{request.Option}'. Allowed values: {string.Join(", ", allowedOptions)}.");
+        }
+
+        // --- Investment strategy validation ---
+        var allowedStrategies = new[] { "Self-Managed Investment Strategy", "Age-based Investment Strategy" };
+        var strategy = request.InvestmentStrategy?.Trim();
+        // Legacy aliases ("Self-Managed", "Life-Stage Aggressive", "Life-Stage Conservative")
+        // are normalized to canonical values by RiskPreferenceRuleBook.NormalizeAliases
+        // before validation in UlipCalculationService.CalculateAsync.
+        if (!string.IsNullOrWhiteSpace(strategy) &&
+            !allowedStrategies.Contains(strategy, StringComparer.OrdinalIgnoreCase) &&
+            !new[] { "Self-Managed", "Life-Stage Aggressive", "Life-Stage Conservative" }
+                .Contains(strategy, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Unsupported investment strategy '{request.InvestmentStrategy}'. Allowed values: {string.Join(", ", allowedStrategies)}.");
+        }
+
+        // --- Premium frequency validation ---
+        var allowedFrequencies = new[] { "Yearly", "Half Yearly", "HalfYearly", "Quarterly", "Monthly" };
+        if (!string.IsNullOrWhiteSpace(request.PremiumFrequency) &&
+            !allowedFrequencies.Contains(request.PremiumFrequency, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Unsupported premium frequency '{request.PremiumFrequency}'. Allowed values: Yearly, Half Yearly, Quarterly, Monthly.");
+        }
 
         try
         {

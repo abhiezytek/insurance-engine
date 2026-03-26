@@ -18,6 +18,7 @@ import {
   getUlipPptYearOptions,
   getUlipPtOptions,
   shouldShowFundOption,
+  shouldShowRiskPreference,
   validateUlip,
   onInvestmentStrategyChange,
   type EwealthRoyaleForm,
@@ -71,6 +72,7 @@ export default function UlipIllustration() {
     pt: 20,
     policyEffectiveDate: '',
     investmentStrategy: 'Self-Managed Investment Strategy',
+    riskPreference: null,
     fundOption: null,
     standardAgeProof: true,
     salesChannel: 'Corporate Agency',
@@ -146,7 +148,7 @@ export default function UlipIllustration() {
         policyEffectiveDate: nextForm.policyEffectiveDate ?? '',
         fundOption: shouldShowFundOption(nextForm.investmentStrategy) ? nextForm.fundOption ?? '' : '',
         investmentStrategy: (nextForm.investmentStrategy ?? 'Self-Managed Investment Strategy') as any,
-        riskPreference: undefined,
+        riskPreference: shouldShowRiskPreference(nextForm.investmentStrategy) ? nextForm.riskPreference ?? undefined : undefined,
         fundAllocations: shouldShowFundOption(nextForm.investmentStrategy)
           ? [{ fundType: nextForm.fundOption ?? '', allocationPercent: 100 }]
           : [],
@@ -445,10 +447,23 @@ export default function UlipIllustration() {
                 onChange={e => handleStrategyChange(e.target.value as InvestmentStrategy)}
                 className={INPUT_CLS}>
                 <option value="Self-Managed Investment Strategy">Self-Managed Investment Strategy</option>
-                <option value="Age-Based Strategy">Age-Based Strategy</option>
-                <option value="System Managed">System Managed</option>
+                <option value="Age-based Investment Strategy">Age-based Investment Strategy</option>
               </select>
             </div>
+
+            {shouldShowRiskPreference(form.investmentStrategy) && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Risk Preference</label>
+                <select
+                  value={form.riskPreference ?? ''}
+                  onChange={e => set('riskPreference', (e.target.value || null) as any)}
+                  className={INPUT_CLS}>
+                  <option value="">Select Risk Preference</option>
+                  <option value="Aggressive">Aggressive</option>
+                  <option value="Conservative">Conservative</option>
+                </select>
+              </div>
+            )}
 
             {isSelfManaged && (
               <div>

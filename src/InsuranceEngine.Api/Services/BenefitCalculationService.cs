@@ -220,12 +220,14 @@ public class DefaultBenefitFormulaStrategy : IBenefitFormulaStrategy
         var option = ctx.Option;
         var lifeAssuredAge = request.EntryAge;
 
-        // GMB factor lookup (age-specific, option-specific)
+        // GMB factor lookup (age-specific, option-specific).
+        // Guaranteed Maturity Benefit is linked to Annualised Premium per product wording.
         var gmbFactor = await LookupGmbFactorAsync(ppt, pt, lifeAssuredAge, option);
         var maturityBenefit = BenefitCalculationService.Round(annualisedPremium * gmbFactor);
 
-        // SA on death = 10 × annualised premium (derived, override ignored per product rules)
-        var sad = BenefitCalculationService.Round(10m * annualisedPremium);
+        // SA on death = 10 × Annual Premium (per product wording: Sum Assured on Death
+        // is linked to Annual Premium, which includes modal/frequency loading).
+        var sad = BenefitCalculationService.Round(10m * annualPremiumPayable);
 
         // Load factor tables up front (cached for 15 minutes)
         var gsvFactors = await GetCachedAsync(
