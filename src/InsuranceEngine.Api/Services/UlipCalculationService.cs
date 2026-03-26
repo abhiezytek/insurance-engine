@@ -819,7 +819,10 @@ public class UlipCalculationService : IUlipCalculationService
                 decimal weighted = 0m;
                 foreach (var alloc in req.FundAllocations)
                 {
-                    if (!fmcTable.TryGetValue(alloc.FundType ?? string.Empty, out var fmc))
+                    // Normalize whitespace so "SUD Life Nifty Alpha 50 Index Fund"
+                    // matches the CSV key regardless of extra spaces in either side.
+                    var fundKey = NormalizeWhitespace(alloc.FundType ?? string.Empty);
+                    if (!fmcTable.TryGetValue(fundKey, out var fmc))
                         fmc = DefaultFmcMonthly;
                     weighted += (alloc.AllocationPercent / totalPct) * fmc;
                 }
@@ -909,7 +912,13 @@ public class UlipCalculationService : IUlipCalculationService
             var cols = line.Split(',', StringSplitOptions.TrimEntries);
             if (cols.Length < 3) continue;
             if (decimal.TryParse(cols[2], NumberStyles.Number, CultureInfo.InvariantCulture, out var fmcPm))
-                dict[cols[0]] = fmcPm;
+            {
+                // Normalize consecutive whitespace in fund names so that CSV
+                // entries like "SUD Life Nifty  Alpha 50 Index Fund" (double space)
+                // match the canonical single-space name from the UI/DTO layer.
+                var fundName = NormalizeWhitespace(cols[0]);
+                dict[fundName] = fmcPm;
+            }
         }
         return dict;
     }
@@ -946,6 +955,14 @@ public class UlipCalculationService : IUlipCalculationService
 
     private static string NormalizeGender(string gender) =>
         string.IsNullOrWhiteSpace(gender) ? "male" : gender.Trim().ToLowerInvariant();
+
+    /// <summary>
+    /// Collapse consecutive whitespace into a single space so that fund names
+    /// like "SUD Life Nifty  Alpha 50 Index Fund" (double space in CSV) match
+    /// the canonical "SUD Life Nifty Alpha 50 Index Fund" from the UI/DTO layer.
+    /// </summary>
+    private static string NormalizeWhitespace(string value) =>
+        System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
 
     private static string? FindDocFile(string fileName)
     {

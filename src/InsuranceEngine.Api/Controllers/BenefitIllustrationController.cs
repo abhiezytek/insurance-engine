@@ -67,12 +67,14 @@ public class BenefitIllustrationController : ControllerBase
         if (request.PolicyTerm < 5 || request.PolicyTerm > 40) return BadRequest("Policy Term must be between 5 and 40 years.");
         if (request.EntryAge < 0 || request.EntryAge > 65) return BadRequest("Entry age must be between 0 and 65.");
 
-        // Option validation
-        var allowedOptions = new[] { "Immediate", "Deferred", "Twin", "Twin Income" };
+        // Option validation — accept both short ("Immediate") and product-file
+        // full names ("Immediate Income"); NormalizeOption() maps them all to
+        // canonical short names before factor lookup.
+        var allowedOptions = new[] { "Immediate", "Immediate Income", "Deferred", "Deferred Income", "Twin", "Twin Income" };
         if (!string.IsNullOrWhiteSpace(request.Option) &&
             !allowedOptions.Contains(request.Option, StringComparer.OrdinalIgnoreCase))
         {
-            return BadRequest($"Unsupported option '{request.Option}'. Allowed values: {string.Join(", ", allowedOptions)}.");
+            return BadRequest($"Unsupported option '{request.Option}'. Allowed values: Immediate Income, Deferred Income, Twin Income.");
         }
 
         // Premium frequency validation

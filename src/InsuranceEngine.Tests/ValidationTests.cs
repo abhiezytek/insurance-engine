@@ -233,4 +233,21 @@ public class ValidationTests
         Assert.AreNotEqual(HttpStatusCode.InternalServerError, response.StatusCode,
             "Valid request must not produce a 500 Internal Server Error");
     }
+
+    [TestCase("Immediate Income")]
+    [TestCase("Deferred Income")]
+    [TestCase("Twin Income")]
+    [Test]
+    public async Task CenturyIncome_FullNameOptions_DoNotReturn400Validation(string optionFullName)
+    {
+        var req = ValidCenturyIncomeRequest();
+        req.Option = optionFullName;
+        var response = await _client.PostAsJsonAsync("/api/benefit-illustration/calculate", req);
+        // Full product-file names like "Immediate Income" must pass controller validation.
+        // The response may be 200 (if factors are seeded) or 400 with a factor-missing
+        // message, but never a 400 from option validation itself.
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.IsFalse(body.Contains("Unsupported option"),
+            $"Option '{optionFullName}' should be accepted by validation but got: {body}");
+    }
 }
