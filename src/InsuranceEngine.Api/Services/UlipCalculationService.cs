@@ -961,8 +961,11 @@ public class UlipCalculationService : IUlipCalculationService
     /// like "SUD Life Nifty  Alpha 50 Index Fund" (double space in CSV) match
     /// the canonical "SUD Life Nifty Alpha 50 Index Fund" from the UI/DTO layer.
     /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex WhitespaceRegex =
+        new(@"\s+", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private static string NormalizeWhitespace(string value) =>
-        System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
+        WhitespaceRegex.Replace(value.Trim(), " ");
 
     private static string? FindDocFile(string fileName)
     {
