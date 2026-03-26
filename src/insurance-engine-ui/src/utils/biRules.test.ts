@@ -7,6 +7,7 @@ import {
   getCenturyIncomePtOptions,
   getUlipPtOptions,
   shouldShowFundOption,
+  shouldShowRiskPreference,
   validateCenturyIncome,
   validateUlip,
 } from './biRules';
@@ -130,5 +131,54 @@ describe('biRules utilities', () => {
       staffPolicy: false,
     } as any);
     expect(errors.some(e => e.includes('below minimum'))).toBe(true);
+  });
+
+  it('rejects unsupported investment strategy values', () => {
+    const errors = validateUlip({
+      product: 'EWEALTH_ROYALE',
+      option: 'Platinum',
+      isProposerDifferent: false,
+      lifeAssuredName: '',
+      lifeAssuredDob: '1990-01-01',
+      lifeAssuredGender: 'Male',
+      premium: 60000,
+      premiumFrequency: 'Yearly',
+      pptType: 'Limited',
+      pptYears: 10,
+      pt: 15,
+      investmentStrategy: 'System Managed' as any,
+      policyEffectiveDate: '2024-01-01',
+      standardAgeProof: true,
+      salesChannel: 'Agency',
+      staffPolicy: false,
+    });
+    expect(errors.some(e => e.includes('Unsupported Investment Strategy'))).toBe(true);
+  });
+
+  it('requires risk preference for Age-based Investment Strategy', () => {
+    expect(shouldShowRiskPreference('Age-based Investment Strategy')).toBe(true);
+    expect(shouldShowRiskPreference('Self-Managed Investment Strategy')).toBe(false);
+    expect(shouldShowRiskPreference(null)).toBe(false);
+
+    const errors = validateUlip({
+      product: 'EWEALTH_ROYALE',
+      option: 'Platinum',
+      isProposerDifferent: false,
+      lifeAssuredName: '',
+      lifeAssuredDob: '1990-01-01',
+      lifeAssuredGender: 'Male',
+      premium: 60000,
+      premiumFrequency: 'Yearly',
+      pptType: 'Limited',
+      pptYears: 10,
+      pt: 15,
+      investmentStrategy: 'Age-based Investment Strategy',
+      riskPreference: null,
+      policyEffectiveDate: '2024-01-01',
+      standardAgeProof: true,
+      salesChannel: 'Agency',
+      staffPolicy: false,
+    });
+    expect(errors.some(e => e.includes('Risk Preference is required'))).toBe(true);
   });
 });
