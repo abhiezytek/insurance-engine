@@ -112,9 +112,11 @@ public class UlipController : ControllerBase
         // --- Investment strategy validation ---
         var allowedStrategies = new[] { "Self-Managed Investment Strategy", "Age-based Investment Strategy" };
         var strategy = request.InvestmentStrategy?.Trim();
+        // Legacy aliases ("Self-Managed", "Life-Stage Aggressive", "Life-Stage Conservative")
+        // are normalized to canonical values by RiskPreferenceRuleBook.NormalizeAliases
+        // before validation in UlipCalculationService.CalculateAsync.
         if (!string.IsNullOrWhiteSpace(strategy) &&
             !allowedStrategies.Contains(strategy, StringComparer.OrdinalIgnoreCase) &&
-            // Allow legacy aliases that are normalized downstream
             !new[] { "Self-Managed", "Life-Stage Aggressive", "Life-Stage Conservative" }
                 .Contains(strategy, StringComparer.OrdinalIgnoreCase))
         {
