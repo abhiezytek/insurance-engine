@@ -485,7 +485,7 @@ export default function UlipIllustration() {
                         onChange={e => {
                           const current = form.fundAllocations ?? [];
                           if (e.target.checked) {
-                            setForm(prev => ({ ...prev, fundAllocations: [...current, { fundType: f, allocationPercent: 0 }] }));
+                            setForm(prev => ({ ...prev, fundAllocations: [...current, { fundType: f, allocationPercent: 10 }] }));
                           } else {
                             setForm(prev => ({ ...prev, fundAllocations: current.filter(a => a.fundType !== f) }));
                           }
