@@ -59,6 +59,10 @@ internal static class RiskPreferenceRuleBook
             if (Math.Abs(total - 100m) > 0.01m)
                 return (false, $"Fund allocations must sum to 100%. Current sum: {total}%.");
 
+            var belowMin = req.FundAllocations.FirstOrDefault(f => f.AllocationPercent < 10m);
+            if (belowMin != null)
+                return (false, $"Each selected fund must have at least 10% allocation. '{belowMin.FundType}' has {belowMin.AllocationPercent}%.");
+
             var invalidAlloc = req.FundAllocations.FirstOrDefault(f => f.AllocationPercent % 5m != 0);
             if (invalidAlloc != null)
                 return (false, "Each fund allocation must be in multiples of 5% for Self-Managed Investment Strategy.");

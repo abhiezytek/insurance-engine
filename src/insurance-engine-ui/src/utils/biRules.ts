@@ -53,6 +53,11 @@ export type InvestmentStrategy =
   | 'Age-based Investment Strategy'
   | null;
 
+export interface FundAllocationEntry {
+  fundType: string;
+  allocationPercent: number;
+}
+
 export interface EwealthRoyaleForm {
   product: 'EWEALTH_ROYALE';
   option: string | null;
@@ -75,7 +80,10 @@ export interface EwealthRoyaleForm {
   sumAssured?: number | null;
   investmentStrategy: InvestmentStrategy;
   riskPreference?: 'Aggressive' | 'Conservative' | null;
+  /** @deprecated Use fundAllocations instead for multi-fund support */
   fundOption?: string | null;
+  /** Multiple fund allocations for Self-Managed strategy. Each entry ≥ 10%, total = 100%. */
+  fundAllocations?: FundAllocationEntry[];
   standardAgeProof: boolean | null;
   salesChannel: SalesChannel | null;
   staffPolicy: boolean | null;
@@ -215,6 +223,7 @@ export function onInvestmentStrategyChange(strategy: InvestmentStrategy, form: E
   const nextForm = { ...form, investmentStrategy: strategy };
   if (!shouldShowFundOption(strategy)) {
     nextForm.fundOption = null;
+    nextForm.fundAllocations = [];
   }
   if (!shouldShowRiskPreference(strategy)) {
     nextForm.riskPreference = null;
@@ -263,8 +272,21 @@ export function validateUlip(form: EwealthRoyaleForm): string[] {
     }
   }
 
-  if (shouldShowFundOption(form.investmentStrategy) && !form.fundOption) {
-    errors.push('Fund Option is required for Self-Managed Investment Strategy');
+  if (shouldShowFundOption(form.investmentStrategy)) {
+    const allocs = form.fundAllocations ?? [];
+    if (allocs.length === 0 && !form.fundOption) {
+      errors.push('At least one fund allocation is required for Self-Managed Investment Strategy');
+    }
+    if (allocs.length > 0) {
+      const total = allocs.reduce((sum, a) => sum + (a.allocationPercent || 0), 0);
+      if (Math.abs(total - 100) > 0.01) {
+        errors.push(`Fund allocations must sum to 100%. Current total: ${total}%`);
+      }
+      const belowMin = allocs.find(a => a.allocationPercent > 0 && a.allocationPercent < 10);
+      if (belowMin) {
+        errors.push(`Each selected fund must have at least 10% allocation. '${belowMin.fundType}' has ${belowMin.allocationPercent}%`);
+      }
+    }
   }
 
   if (!shouldShowFundOption(form.investmentStrategy) && form.fundOption) {

@@ -118,12 +118,20 @@ public class YpygController : ControllerBase
     /// </summary>
     [HttpPost("calculate")]
     [ProducesResponseType(typeof(YpygCalculationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Calculate([FromBody] YpygCalculationRequest req)
     {
-        if (req.ProductCategory == "ULIP")
-            return await CalculateUlip(req);
+        try
+        {
+            if (req.ProductCategory == "ULIP")
+                return await CalculateUlip(req);
 
-        return await CalculateTraditional(req);
+            return await CalculateTraditional(req);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     private async Task<IActionResult> CalculateTraditional(YpygCalculationRequest req)
@@ -134,7 +142,9 @@ public class YpygController : ControllerBase
             ProductVersion = req.ProductVersion,
             FactorVersion = req.FactorVersion,
             FormulaVersion = req.FormulaVersion,
+            AnnualisedPremium = req.AnnualisedPremium,
             AnnualPremium = req.AnnualPremium,
+            PremiumFrequency = req.PremiumFrequency,
             Ppt = req.PremiumPayingTerm,
             PolicyTerm = req.PolicyTerm,
             EntryAge = req.EntryAge,
@@ -217,7 +227,7 @@ public class YpygController : ControllerBase
             EntryAge = req.EntryAge,
             PolicyTerm = req.PolicyTerm,
             Ppt = req.PremiumPayingTerm,
-            AnnualizedPremium = req.AnnualPremium,
+            AnnualizedPremium = req.AnnualisedPremium ?? req.AnnualPremium,
             SumAssured = req.SumAssured,
             PremiumFrequency = req.PremiumFrequency,
             Option = req.Option,
@@ -420,6 +430,12 @@ public class PolicyLookupResponse
         public string PremiumFrequency { get; set; } = "Yearly";
         public string PolicyStatus { get; set; } = "In-Force";
         public string InvestmentStrategy { get; set; } = "Self-Managed Investment Strategy";
+        /// <summary>
+        /// Annualised Premium — base premium excluding modal loading.
+        /// When provided, used for GI/maturity/BI calculations.
+        /// Falls back to AnnualPremium when null.
+        /// </summary>
+        public decimal? AnnualisedPremium { get; set; }
         public decimal AnnualPremium { get; set; }
         public int PolicyTerm { get; set; }
         public int PremiumPayingTerm { get; set; }
