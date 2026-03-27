@@ -40,8 +40,9 @@ public class BenefitCalculationTests
         };
 
     [Test]
-    public async Task SumAssuredOnDeath_IsTenTimesAnnualisedPremium()
+    public async Task SumAssuredOnDeath_IsTenTimesAnnualPremium()
     {
+        // For Yearly mode, Annual Premium = Annualised Premium (modal factor = 1.0)
         var ap = 50000m;
         var result = await _svc.CalculateAsync(Request(ap, 7, 15, 25, "Immediate"));
         Assert.AreEqual(Math.Round(10 * ap, 2, MidpointRounding.AwayFromZero), result.SumAssuredOnDeath);
