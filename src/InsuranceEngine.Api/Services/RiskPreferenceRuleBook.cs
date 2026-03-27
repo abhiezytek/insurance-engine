@@ -1,5 +1,6 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Exceptions;
 using System.Threading;
 
 namespace InsuranceEngine.Api.Services;
@@ -62,6 +63,13 @@ internal static class RiskPreferenceRuleBook
             var belowMin = req.FundAllocations.FirstOrDefault(f => f.AllocationPercent > 0 && f.AllocationPercent < 10m);
             if (belowMin != null)
                 return (false, $"Each selected fund must have at least 10% allocation. '{belowMin.FundType}' has {belowMin.AllocationPercent}%.");
+
+            // Reject duplicate fund entries
+            var duplicateFund = req.FundAllocations
+                .GroupBy(f => f.FundType?.Trim(), StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(g => g.Count() > 1);
+            if (duplicateFund != null)
+                return (false, $"Duplicate fund '{duplicateFund.Key}' is not allowed. Each fund can appear only once.");
 
             var invalidAlloc = req.FundAllocations.FirstOrDefault(f => f.AllocationPercent % 5m != 0);
             if (invalidAlloc != null)

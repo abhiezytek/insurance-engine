@@ -1,6 +1,7 @@
 using InsuranceEngine.Api;
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Exceptions;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -186,10 +187,10 @@ public class CenturyIncomeRegressionTests
         using var emptyDb = new InsuranceDbContext(opts);
         var svc = new BenefitCalculationService(emptyDb);
 
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+        // GMB lookup fails first with ProductConfigurationException
+        var ex = Assert.ThrowsAsync<ProductConfigurationException>(
             () => svc.CalculateAsync(Request(50000m, 7, 15, 30, "Immediate")));
         Assert.IsNotNull(ex);
-        // Expect a message about missing factor data (GMB lookup fails first)
         Assert.IsTrue(
             ex!.Message.Contains("factor", StringComparison.OrdinalIgnoreCase) ||
             ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase),

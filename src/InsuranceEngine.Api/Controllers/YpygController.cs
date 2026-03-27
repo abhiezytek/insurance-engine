@@ -1,5 +1,6 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Exceptions;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -127,6 +128,19 @@ public class YpygController : ControllerBase
                 return await CalculateUlip(req);
 
             return await CalculateTraditional(req);
+        }
+        catch (ProductValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (ProductRuleNotFoundException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (ProductConfigurationException ex)
+        {
+            // Missing factor/config data — inform caller clearly.
+            return BadRequest(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
