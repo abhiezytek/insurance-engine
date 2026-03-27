@@ -181,4 +181,79 @@ describe('biRules utilities', () => {
     });
     expect(errors.some(e => e.includes('Risk Preference is required'))).toBe(true);
   });
+
+  // Fund allocation validation tests
+  const baseUlipForm = {
+    product: 'EWEALTH_ROYALE' as const,
+    option: 'Platinum',
+    isProposerDifferent: false,
+    lifeAssuredName: 'Test',
+    lifeAssuredDob: '1990-01-01',
+    lifeAssuredGender: 'Male' as const,
+    premium: 60000,
+    premiumFrequency: 'Yearly' as const,
+    pptType: 'Limited' as const,
+    pptYears: 10,
+    pt: 15,
+    investmentStrategy: 'Self-Managed Investment Strategy' as const,
+    policyEffectiveDate: '2024-01-01',
+    standardAgeProof: true,
+    salesChannel: 'Agency' as const,
+    staffPolicy: false,
+  };
+
+  it('rejects fund allocations that do not sum to 100%', () => {
+    const errors = validateUlip({
+      ...baseUlipForm,
+      fundAllocations: [
+        { fundType: 'Blue Chip Equity Fund', allocationPercent: 50 },
+        { fundType: 'Gilt Fund', allocationPercent: 30 },
+      ],
+    });
+    expect(errors.some(e => e.includes('must sum to 100%'))).toBe(true);
+  });
+
+  it('rejects fund allocation below 10%', () => {
+    const errors = validateUlip({
+      ...baseUlipForm,
+      fundAllocations: [
+        { fundType: 'Blue Chip Equity Fund', allocationPercent: 95 },
+        { fundType: 'Gilt Fund', allocationPercent: 5 },
+      ],
+    });
+    expect(errors.some(e => e.includes('at least 10%'))).toBe(true);
+  });
+
+  it('accepts fund allocations that sum to exactly 100%', () => {
+    const errors = validateUlip({
+      ...baseUlipForm,
+      fundAllocations: [
+        { fundType: 'Blue Chip Equity Fund', allocationPercent: 60 },
+        { fundType: 'Gilt Fund', allocationPercent: 40 },
+      ],
+    });
+    expect(errors.some(e => e.includes('must sum to 100%'))).toBe(false);
+    expect(errors.some(e => e.includes('at least 10%'))).toBe(false);
+  });
+
+  it('accepts single fund with 100% allocation', () => {
+    const errors = validateUlip({
+      ...baseUlipForm,
+      fundAllocations: [
+        { fundType: 'Blue Chip Equity Fund', allocationPercent: 100 },
+      ],
+    });
+    expect(errors.some(e => e.includes('must sum to 100%'))).toBe(false);
+  });
+
+  it('rejects fund allocations exceeding 100%', () => {
+    const errors = validateUlip({
+      ...baseUlipForm,
+      fundAllocations: [
+        { fundType: 'Blue Chip Equity Fund', allocationPercent: 60 },
+        { fundType: 'Gilt Fund', allocationPercent: 50 },
+      ],
+    });
+    expect(errors.some(e => e.includes('must sum to 100%'))).toBe(true);
+  });
 });

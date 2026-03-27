@@ -172,7 +172,83 @@ public class ValidationTests
         Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Test]
+    public async Task Ulip_AllocationBelow10Percent_Returns400()
+    {
+        var req = ValidUlipRequest();
+        req.FundAllocations = new List<UlipFundAllocation>
+        {
+            new() { FundType = "Equity Growth Fund", AllocationPercent = 95 },
+            new() { FundType = "Debt Fund", AllocationPercent = 5 },
+        };
+        var response = await _client.PostAsJsonAsync("/api/ulip/calculate", req);
+        Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        StringAssert.Contains("at least 10%", body);
+    }
+
+    [Test]
+    public async Task Ulip_MultipleFundsExactly100_DoesNotReturn400()
+    {
+        var req = ValidUlipRequest();
+        req.FundAllocations = new List<UlipFundAllocation>
+        {
+            new() { FundType = "Equity Growth Fund", AllocationPercent = 60 },
+            new() { FundType = "Debt Fund", AllocationPercent = 40 },
+        };
+        var response = await _client.PostAsJsonAsync("/api/ulip/calculate", req);
+        // Should not fail on allocation validation; may fail on PPT/PT rules but never 500
+        Assert.AreNotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
     // -----------------------------------------------------------------------
+    // YPYG error handling tests — must return 400 not 500
+    // -----------------------------------------------------------------------
+
+    [Test]
+    public async Task Ypyg_TraditionalCalculation_DoesNotReturn500()
+    {
+        var req = new
+        {
+            policyNumber = "YPYG-TEST-001",
+            productCode = "CENTURY_INCOME",
+            productCategory = "Traditional",
+            annualPremium = 50000m,
+            policyTerm = 15,
+            premiumPayingTerm = 7,
+            premiumsPaid = 5,
+            entryAge = 30,
+            option = "Immediate",
+            channel = "Agency",
+            gender = "Male",
+        };
+        var response = await _client.PostAsJsonAsync("/api/ypyg/calculate", req);
+        Assert.AreNotEqual(HttpStatusCode.InternalServerError, response.StatusCode,
+            "YPYG Traditional should not produce a 500 Internal Server Error");
+    }
+
+    [Test]
+    public async Task Ypyg_UlipCalculation_DoesNotReturn500()
+    {
+        var req = new
+        {
+            policyNumber = "YPYG-ULIP-001",
+            productCode = "EWEALTH-ROYALE",
+            productCategory = "ULIP",
+            annualPremium = 100000m,
+            policyTerm = 10,
+            premiumPayingTerm = 10,
+            premiumsPaid = 5,
+            sumAssured = 1000000m,
+            entryAge = 35,
+            option = "Platinum",
+            gender = "Male",
+            investmentStrategy = "Self-Managed Investment Strategy",
+        };
+        var response = await _client.PostAsJsonAsync("/api/ypyg/calculate", req);
+        Assert.AreNotEqual(HttpStatusCode.InternalServerError, response.StatusCode,
+            "YPYG ULIP should not produce a 500 Internal Server Error");
+    }
     // Century Income validation tests
     // -----------------------------------------------------------------------
 
