@@ -135,11 +135,15 @@ public class YpygController : ControllerBase
         }
         catch (ProductRuleNotFoundException ex)
         {
+            // YPYG: return 400 with descriptive message; the global handler covers
+            // truly unexpected config gaps as 500.
             return BadRequest(ex.Message);
         }
         catch (ProductConfigurationException ex)
         {
-            // Missing factor/config data — inform caller clearly.
+            // Missing factor/config data — return 400 from YPYG so callers get
+            // an actionable message. Truly unexpected config errors are caught by
+            // the global handler as 500.
             return BadRequest(ex.Message);
         }
         catch (InvalidOperationException ex)

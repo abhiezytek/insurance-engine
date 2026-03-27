@@ -116,13 +116,18 @@ public class BenefitIllustrationController : ControllerBase
         }
         catch (ProductRuleNotFoundException ex)
         {
-            // Whether config gap or not, the controller returns 400 since the
-            // BI endpoint only accepts product-specific requests.
+            // BI controller: regardless of IsConfigGap, return 400 because this
+            // endpoint only serves product-specific requests — a missing factor/rule
+            // means the request cannot be fulfilled, and the caller should be informed.
+            // The global exception handler catches truly unexpected cases as 500.
             return BadRequest(ex.Message);
         }
         catch (ProductConfigurationException ex)
         {
             // Missing factor data — inform caller that product configuration is incomplete.
+            // While ProductConfigurationException maps to 500 globally, the BI endpoint
+            // returns 400 with a descriptive message so users know to fix their request
+            // or contact support about missing config.
             return BadRequest(ex.Message);
         }
         catch (InvalidOperationException ex)

@@ -225,15 +225,29 @@ public class ProductRuleTests
     }
 
     // -----------------------------------------------------------------------
-    // 8) Startup_Fails_When_Ssv_Factors_Are_Missing is the same as test 6 above
+    // 8) Startup validation — missing all factors triggers ProductConfigurationException
     // -----------------------------------------------------------------------
 
     [Test]
     public void Startup_Fails_When_Ssv_Factors_Are_Missing()
     {
-        // This is a duplicate of SurrenderValue_Throws_When_Ssv_Factor_Missing
-        // with a different name to match the requested test list
-        SurrenderValue_Throws_When_Ssv_Factor_Missing();
+        // Seed only GMB to get past GMB lookup, skip GSV/SSV — should throw
+        var opts = new DbContextOptionsBuilder<InsuranceDbContext>()
+            .UseInMemoryDatabase("NoSsvStartup_" + Guid.NewGuid())
+            .Options;
+        using var partialDb = new InsuranceDbContext(opts);
+        partialDb.GmbFactors.Add(new GmbFactor
+        {
+            Ppt = 7, Pt = 15, Option = "Immediate",
+            EntryAgeMin = 18, EntryAgeMax = 65, Factor = 6.3379m
+        });
+        partialDb.SaveChanges();
+
+        var svc = new BenefitCalculationService(partialDb);
+        var ex = Assert.ThrowsAsync<ProductConfigurationException>(
+            () => svc.CalculateAsync(Request(50000m, 7, 15, 30, "Immediate")));
+        Assert.IsNotNull(ex);
+        StringAssert.Contains("factor", ex!.Message.ToLowerInvariant());
     }
 }
 
