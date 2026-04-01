@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using InsuranceEngine.Api.Data;
+using InsuranceEngine.Api.Exceptions;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -159,22 +160,72 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-// Global exception handler — ensures CORS headers are present even on 500 responses.
+// Global exception handler — maps typed product exceptions to appropriate HTTP
+// status codes and ensures CORS headers are present even on error responses.
 // Must be registered BEFORE CORS/routing so it wraps all middleware.
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
     {
-        context.Response.StatusCode = 500;
-        context.Response.ContentType = "application/json";
-
         var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-
         var logger = context.RequestServices.GetService<ILoggerFactory>()
             ?.CreateLogger("ExceptionHandler");
+
+        if (error?.Error is ProductValidationException validationEx)
+        {
+            // Client sent an invalid request — 400 Bad Request
+            context.Response.StatusCode = 400;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync(
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    status = 400,
+                    message = validationEx.Message
+                }));
+            return;
+        }
+
+        if (error?.Error is ProductRuleNotFoundException ruleEx)
+        {
+            // IsConfigGap = true → internal config issue (500)
+            // IsConfigGap = false → unsupported request combination (400)
+            var statusCode = ruleEx.IsConfigGap ? 500 : 400;
+            context.Response.StatusCode = statusCode;
+            context.Response.ContentType = "application/json";
+            var message = ruleEx.IsConfigGap
+                ? "A required product rule or factor is not configured. Please contact support."
+                : ruleEx.Message;
+            if (ruleEx.IsConfigGap)
+                logger?.LogError(ruleEx, "Product rule config gap on {Path}", context.Request.Path);
+            await context.Response.WriteAsync(
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    status = statusCode,
+                    message
+                }));
+            return;
+        }
+
+        if (error?.Error is ProductConfigurationException configEx)
+        {
+            // Internal configuration failure — 500
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            logger?.LogError(configEx, "Product configuration error on {Path}", context.Request.Path);
+            await context.Response.WriteAsync(
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    status = 500,
+                    message = "A product configuration error occurred. Please contact support."
+                }));
+            return;
+        }
+
+        // Unknown / unhandled exception — generic 500 (no stack trace exposed)
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
         if (error != null)
             logger?.LogError(error.Error, "Unhandled exception on {Path}", context.Request.Path);
-
         await context.Response.WriteAsync(
             System.Text.Json.JsonSerializer.Serialize(new
             {
@@ -234,6 +285,39 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "Could not apply migrations/seed. Continuing startup.");
+    }
+
+    // ── Startup fail-fast: validate critical product configuration ──
+    // Missing factor tables or rule CSVs should prevent the app from serving
+    // requests that would produce silent miscalculations.
+    try
+    {
+        var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        // Century Income GSV factors
+        var gsvCount = db.GsvFactors.Count();
+        if (gsvCount == 0)
+            startupLogger.LogWarning("Century Income GSV factor table is empty. GSV calculations will fail until factors are seeded.");
+
+        // Century Income SSV factors
+        var ssvCount = db.SsvFactors.Count();
+        if (ssvCount == 0)
+            startupLogger.LogWarning("Century Income SSV factor table is empty. SSV calculations will fail until factors are seeded.");
+
+        // e-Wealth Royale PPT/PT rules
+        var pptPtRules = PptPtRuleBook.Rules;
+        if (pptPtRules.Count == 0)
+            startupLogger.LogWarning("e-Wealth Royale PPT/PT rules are not loaded. ULIP calculations will fail until ewealth_ppt_pt_rules.csv is available.");
+
+        // e-Wealth Royale risk preference rules
+        var riskRules = RiskPreferenceRuleBook.Rules;
+        if (riskRules.Count == 0)
+            startupLogger.LogWarning("e-Wealth Royale risk preference rules are not loaded. Strategy validation will fail until ewealth_risk_preference_rules.csv is available.");
+    }
+    catch (Exception ex)
+    {
+        var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        startupLogger.LogWarning(ex, "Startup validation check encountered an error. Continuing startup.");
     }
 }
 

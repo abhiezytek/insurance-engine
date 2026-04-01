@@ -77,12 +77,12 @@ describe('BI screens', () => {
     });
 
     const strategySelect = await screen.findByDisplayValue('Self-Managed Investment Strategy');
-    expect(screen.getByText('Fund Option')).toBeInTheDocument();
+    expect(screen.getByText('Fund Allocations')).toBeInTheDocument();
     SELF_MANAGED_FUNDS.forEach(f => expect(screen.getByText(f)).toBeInTheDocument());
 
     await act(async () => {
       fireEvent.change(strategySelect, { target: { value: 'Age-based Investment Strategy' } });
     });
-    expect(screen.queryByText('Fund Option')).not.toBeInTheDocument();
+    expect(screen.queryByText('Fund Allocations')).not.toBeInTheDocument();
   });
 });

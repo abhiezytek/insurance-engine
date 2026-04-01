@@ -368,8 +368,8 @@ public class UlipCalculationTests
         req.InvestmentStrategy = "Self-Managed Investment Strategy";
         req.FundAllocations = new List<UlipFundAllocation>
         {
-            new() { FundType = "Equity Growth Fund", AllocationPercent = 97 },
-            new() { FundType = "Debt Fund", AllocationPercent = 3 },
+            new() { FundType = "Equity Growth Fund", AllocationPercent = 88 },
+            new() { FundType = "Debt Fund", AllocationPercent = 12 },
         };
 
         var ex = Assert.ThrowsAsync<InvalidOperationException>(() => _svc.CalculateAsync(req));

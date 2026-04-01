@@ -343,8 +343,8 @@ public class EWealthRoyaleStrategyRegressionTests
         var req = DefaultRequest(policyNumber: "STRAT-5PCT-" + Guid.NewGuid().ToString("N")[..6]);
         req.FundAllocations = new List<UlipFundAllocation>
         {
-            new() { FundType = "Blue-chip Equity Fund", AllocationPercent = 97 },
-            new() { FundType = "Gilt Fund", AllocationPercent = 3 },
+            new() { FundType = "Blue-chip Equity Fund", AllocationPercent = 88 },
+            new() { FundType = "Gilt Fund", AllocationPercent = 12 },
         };
 
         var ex = Assert.ThrowsAsync<InvalidOperationException>(() => _svc.CalculateAsync(req));

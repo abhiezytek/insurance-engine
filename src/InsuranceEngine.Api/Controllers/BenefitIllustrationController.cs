@@ -1,4 +1,5 @@
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Exceptions;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -85,12 +86,49 @@ public class BenefitIllustrationController : ControllerBase
             return BadRequest($"Unsupported premium frequency '{request.PremiumFrequency}'. Allowed values: Yearly, Half Yearly, Quarterly, Monthly.");
         }
 
+        // Century Income PPT/PT combination validation
+        var allowedPptPt = new Dictionary<int, int[]>
+        {
+            [7] = new[] { 15, 20 },
+            [10] = new[] { 20, 25 },
+            [12] = new[] { 25 }
+        };
+        if (allowedPptPt.TryGetValue(request.Ppt, out var allowedPts))
+        {
+            if (!allowedPts.Contains(request.PolicyTerm))
+                return BadRequest($"Invalid PPT/PT combination: PPT={request.Ppt}, PT={request.PolicyTerm}. Allowed PT values for PPT {request.Ppt}: {string.Join(", ", allowedPts)}.");
+        }
+        else
+        {
+            return BadRequest($"Invalid PPT value: {request.Ppt}. Allowed PPT values: 7, 10, 12.");
+        }
+
         try
         {
             var result = await _svc.CalculateAsync(request);
             await _audit.LogAsync("BI", "GenerateIllustration",
                 recordId: $"{request.Option ?? "Default"}/PPT{request.Ppt}/PT{request.PolicyTerm}");
             return Ok(result);
+        }
+        catch (ProductValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (ProductRuleNotFoundException ex)
+        {
+            // BI controller: regardless of IsConfigGap, return 400 because this
+            // endpoint only serves product-specific requests — a missing factor/rule
+            // means the request cannot be fulfilled, and the caller should be informed.
+            // The global exception handler catches truly unexpected cases as 500.
+            return BadRequest(ex.Message);
+        }
+        catch (ProductConfigurationException ex)
+        {
+            // Missing factor data — inform caller that product configuration is incomplete.
+            // While ProductConfigurationException maps to 500 globally, the BI endpoint
+            // returns 400 with a descriptive message so users know to fix their request
+            // or contact support about missing config.
+            return BadRequest(ex.Message);
         }
         catch (InvalidOperationException ex)
         {

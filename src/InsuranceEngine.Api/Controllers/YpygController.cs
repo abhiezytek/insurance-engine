@@ -1,5 +1,6 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Exceptions;
 using InsuranceEngine.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -118,12 +119,37 @@ public class YpygController : ControllerBase
     /// </summary>
     [HttpPost("calculate")]
     [ProducesResponseType(typeof(YpygCalculationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Calculate([FromBody] YpygCalculationRequest req)
     {
-        if (req.ProductCategory == "ULIP")
-            return await CalculateUlip(req);
+        try
+        {
+            if (req.ProductCategory == "ULIP")
+                return await CalculateUlip(req);
 
-        return await CalculateTraditional(req);
+            return await CalculateTraditional(req);
+        }
+        catch (ProductValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (ProductRuleNotFoundException ex)
+        {
+            // YPYG: return 400 with descriptive message; the global handler covers
+            // truly unexpected config gaps as 500.
+            return BadRequest(ex.Message);
+        }
+        catch (ProductConfigurationException ex)
+        {
+            // Missing factor/config data — return 400 from YPYG so callers get
+            // an actionable message. Truly unexpected config errors are caught by
+            // the global handler as 500.
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     private async Task<IActionResult> CalculateTraditional(YpygCalculationRequest req)
@@ -134,7 +160,9 @@ public class YpygController : ControllerBase
             ProductVersion = req.ProductVersion,
             FactorVersion = req.FactorVersion,
             FormulaVersion = req.FormulaVersion,
+            AnnualisedPremium = req.AnnualisedPremium,
             AnnualPremium = req.AnnualPremium,
+            PremiumFrequency = req.PremiumFrequency,
             Ppt = req.PremiumPayingTerm,
             PolicyTerm = req.PolicyTerm,
             EntryAge = req.EntryAge,
@@ -217,7 +245,7 @@ public class YpygController : ControllerBase
             EntryAge = req.EntryAge,
             PolicyTerm = req.PolicyTerm,
             Ppt = req.PremiumPayingTerm,
-            AnnualizedPremium = req.AnnualPremium,
+            AnnualizedPremium = req.AnnualisedPremium ?? req.AnnualPremium,
             SumAssured = req.SumAssured,
             PremiumFrequency = req.PremiumFrequency,
             Option = req.Option,
@@ -420,6 +448,12 @@ public class PolicyLookupResponse
         public string PremiumFrequency { get; set; } = "Yearly";
         public string PolicyStatus { get; set; } = "In-Force";
         public string InvestmentStrategy { get; set; } = "Self-Managed Investment Strategy";
+        /// <summary>
+        /// Annualised Premium — base premium excluding modal loading.
+        /// When provided, used for GI/maturity/BI calculations.
+        /// Falls back to AnnualPremium when null.
+        /// </summary>
+        public decimal? AnnualisedPremium { get; set; }
         public decimal AnnualPremium { get; set; }
         public int PolicyTerm { get; set; }
         public int PremiumPayingTerm { get; set; }

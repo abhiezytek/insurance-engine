@@ -74,6 +74,7 @@ export default function UlipIllustration() {
     investmentStrategy: 'Self-Managed Investment Strategy',
     riskPreference: null,
     fundOption: null,
+    fundAllocations: [],
     standardAgeProof: true,
     salesChannel: 'Corporate Agency',
     staffPolicy: false,
@@ -146,11 +147,15 @@ export default function UlipIllustration() {
         sumAssured: derived.sumAssured ?? 0,
         premiumFrequency: (nextForm.premiumFrequency === 'Half-Yearly' ? 'Half Yearly' : nextForm.premiumFrequency) as any,
         policyEffectiveDate: nextForm.policyEffectiveDate ?? '',
-        fundOption: shouldShowFundOption(nextForm.investmentStrategy) ? nextForm.fundOption ?? '' : '',
+        fundOption: shouldShowFundOption(nextForm.investmentStrategy)
+          ? (nextForm.fundAllocations?.[0]?.fundType ?? nextForm.fundOption ?? '')
+          : '',
         investmentStrategy: (nextForm.investmentStrategy ?? 'Self-Managed Investment Strategy') as any,
         riskPreference: shouldShowRiskPreference(nextForm.investmentStrategy) ? nextForm.riskPreference ?? undefined : undefined,
         fundAllocations: shouldShowFundOption(nextForm.investmentStrategy)
-          ? [{ fundType: nextForm.fundOption ?? '', allocationPercent: 100 }]
+          ? (nextForm.fundAllocations && nextForm.fundAllocations.length > 0
+              ? nextForm.fundAllocations.filter(a => a.fundType && a.allocationPercent > 0)
+              : nextForm.fundOption ? [{ fundType: nextForm.fundOption, allocationPercent: 100 }] : [])
           : [],
         distributionChannel: nextForm.salesChannel ?? '',
         isStaffFamily: nextForm.staffPolicy ?? false,
@@ -466,17 +471,60 @@ export default function UlipIllustration() {
             )}
 
             {isSelfManaged && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Fund Option</label>
-                <select
-                  value={form.fundOption ?? ''}
-                  onChange={e => set('fundOption', e.target.value || null)}
-                  className={INPUT_CLS}>
-                  <option value="">Select Fund</option>
-                  {SELF_MANAGED_FUNDS.map(f => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
+              <div className="col-span-full">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Fund Allocations</label>
+                <p className="text-xs text-slate-500 mb-2">Select funds and allocate percentages (min 10% each, total must equal 100%)</p>
+                {SELF_MANAGED_FUNDS.map(f => {
+                  const alloc = (form.fundAllocations ?? []).find(a => a.fundType === f);
+                  const isSelected = !!alloc;
+                  return (
+                    <div key={f} className="flex items-center gap-2 mb-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={e => {
+                          const current = form.fundAllocations ?? [];
+                          if (e.target.checked) {
+                            setForm(prev => ({ ...prev, fundAllocations: [...current, { fundType: f, allocationPercent: 10 }] }));
+                          } else {
+                            setForm(prev => ({ ...prev, fundAllocations: current.filter(a => a.fundType !== f) }));
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 border-slate-300 rounded"
+                      />
+                      <span className="text-sm text-slate-700 flex-1 min-w-0 truncate">{f}</span>
+                      {isSelected && (
+                        <input
+                          type="number"
+                          min={10}
+                          max={100}
+                          step={5}
+                          value={alloc.allocationPercent || ''}
+                          onChange={e => {
+                            const val = Number(e.target.value) || 0;
+                            setForm(prev => ({
+                              ...prev,
+                              fundAllocations: (prev.fundAllocations ?? []).map(a =>
+                                a.fundType === f ? { ...a, allocationPercent: val } : a
+                              ),
+                            }));
+                          }}
+                          placeholder="%"
+                          className="w-20 rounded-md border border-slate-300 text-sm px-2 py-1 text-right"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+                {(() => {
+                  const total = (form.fundAllocations ?? []).reduce((s, a) => s + (a.allocationPercent || 0), 0);
+                  const selected = (form.fundAllocations ?? []).length;
+                  return selected > 0 ? (
+                    <p className={`text-sm font-medium mt-2 ${Math.abs(total - 100) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
+                      Total Allocation: {total}% {Math.abs(total - 100) < 0.01 ? '✓' : `(must be 100%)`}
+                    </p>
+                  ) : null;
+                })()}
               </div>
             )}
 

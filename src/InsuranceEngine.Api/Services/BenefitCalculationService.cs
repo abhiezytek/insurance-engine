@@ -1,5 +1,6 @@
 using InsuranceEngine.Api.Data;
 using InsuranceEngine.Api.DTOs;
+using InsuranceEngine.Api.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -85,7 +86,7 @@ public class BenefitCalculationService : IBenefitCalculationService
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
+        throw new ProductConfigurationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
     }
 
     /// <summary>
@@ -154,26 +155,26 @@ public class BenefitCalculationService : IBenefitCalculationService
     internal static decimal LookupGsvFactor(int py, List<Models.GsvFactor> factors)
     {
         if (factors.Count == 0)
-            throw new InvalidOperationException("GSV factor table is empty. Ensure Century Income factors are seeded.");
+            throw new ProductConfigurationException("GSV factor table is empty. Ensure Century Income factors are seeded.");
 
         var exact = factors.FirstOrDefault(x => x.PolicyYear == py);
         if (exact != null) return exact.FactorPercent;
 
         var nearest = factors.MinBy(x => Math.Abs(x.PolicyYear - py));
-        return nearest?.FactorPercent ?? throw new InvalidOperationException($"No GSV factor found for policy year {py}.");
+        return nearest?.FactorPercent ?? throw new ProductRuleNotFoundException($"No GSV factor found for policy year {py}.", isConfigGap: true);
     }
 
     internal static (decimal f1, decimal f2) LookupSsvFactors(int py, List<Models.SsvFactor> factors)
     {
         if (factors.Count == 0)
-            throw new InvalidOperationException("SSV factor table is empty. Ensure Century Income SSV factors are seeded.");
+            throw new ProductConfigurationException("SSV factor table is empty. Ensure Century Income SSV factors are seeded.");
 
         var exact = factors.FirstOrDefault(x => x.PolicyYear == py);
         if (exact != null) return (exact.Factor1, exact.Factor2);
 
         var nearest = factors.MinBy(x => Math.Abs(x.PolicyYear - py));
         if (nearest != null) return (nearest.Factor1, nearest.Factor2);
-        throw new InvalidOperationException($"No SSV factor found for policy year {py}.");
+        throw new ProductRuleNotFoundException($"No SSV factor found for policy year {py}.", isConfigGap: true);
     }
 
     internal static bool HasLoyaltyIncome(string option) => option == "Immediate";
@@ -371,7 +372,7 @@ public class DefaultBenefitFormulaStrategy : IBenefitFormulaStrategy
             x.Ppt == ppt && x.Pt == pt && x.Option == option);
         if (fallback != null) return fallback.Factor;
 
-        throw new InvalidOperationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
+        throw new ProductConfigurationException($"GMB factor not found for PPT={ppt}, PT={pt}, LifeAssuredAge={lifeAssuredAge}, Option={option}. Ensure {CenturyIncomeFactorLoader.GmbFile} exists under the /docs folder and run the data seed/migrations.");
     }
 
     private async Task<T> GetCachedAsync<T>(string cacheKey, Func<Task<T>> factory)
